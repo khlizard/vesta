@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Vesta のキー割り当て：ウィンドウのどこにフォーカスがあっても効くもの。
+  一覧にフォーカスがあるときは keyboard-folder.xml の割り当てが先に効く。
+  modifier：C=Ctrl、S=Shift、A=Alt、W=Windows の組み合わせ（空なら修飾なし）。
+  移動のコマンドでは、押している修飾キーが開き方になる（Ctrl：横に追加、Shift：隠して追加）。
+-->
+<keyboard name="form">
+  <!-- 移動 -->
+  <bind modifier="A"   key="←" command="Current.Go.Back"/>
+  <bind modifier="AC"  key="←" command="Current.Go.Back"/>
+  <bind modifier="AS"  key="←" command="Current.Go.Back"/>
+  <bind modifier="A"   key="→" command="Current.Go.Forward"/>
+  <bind modifier="AC"  key="→" command="Current.Go.Forward"/>
+  <bind modifier="AS"  key="→" command="Current.Go.Forward"/>
+  <bind modifier="A"   key="↑" command="Current.Go.Up"/>
+  <bind modifier="AC"  key="↑" command="Current.Go.Up"/>
+  <bind modifier="AS"  key="↑" command="Current.Go.Up"/>
+  <bind modifier=""    key="backspace" command="Current.Go.Up"/>
+  <bind modifier="C"   key="backspace" command="Current.Go.Up"/>
+  <bind modifier="S"   key="backspace" command="Current.Go.Up"/>
+  <bind modifier="A"   key="D" command="Address.Focus"/>
+  <bind modifier="C"   key="L" command="Address.Focus"/>
+  <bind modifier="C"   key="O" command="File.Open"/>
+
+  <!-- タブ -->
+  <bind modifier="C"   key="W" command="Current.Close"/>
+  <bind modifier="CS"  key="W" command="Others.Close"/>
+  <bind modifier="CS"  key="T" command="File.MRU"/>
+  <bind modifier="C"   key="H" command="Current.Show(false)"/>
+  <bind modifier="CS"  key="H" command="Others.Show(false)"/>
+  <bind modifier="CS"  key="A" command="All.Show(true)"/>
+  <bind modifier="CS"  key="L" command="Current.Lock(toggle)"/>
+  <bind modifier="C"   key="tab" command="Tab.Next"/>
+  <bind modifier="CS"  key="tab" command="Tab.Prev"/>
+  <bind modifier="C"   key="pagedown" command="Tab.Next"/>
+  <bind modifier="C"   key="pageup"   command="Tab.Prev"/>
+  <bind modifier="CS"  key="pageup"   command="Current.ToLeft"/>
+  <bind modifier="CS"  key="pagedown" command="Current.ToRight"/>
+
+  <!-- Ctrl+数字：そのタブの表示を切り替える。Alt+数字：そのタブをカレントにする -->
+  <bind modifier="C" key="1" command="Tab[1].Show(toggle)"/>
+  <bind modifier="C" key="2" command="Tab[2].Show(toggle)"/>
+  <bind modifier="C" key="3" command="Tab[3].Show(toggle)"/>
+  <bind modifier="C" key="4" command="Tab[4].Show(toggle)"/>
+  <bind modifier="C" key="5" command="Tab[5].Show(toggle)"/>
+  <bind modifier="C" key="6" command="Tab[6].Show(toggle)"/>
+  <bind modifier="C" key="7" command="Tab[7].Show(toggle)"/>
+  <bind modifier="C" key="8" command="Tab[8].Show(toggle)"/>
+  <bind modifier="C" key="9" command="Tab[9].Show(toggle)"/>
+  <bind modifier="A" key="1" command="Tab[1].Focus"/>
+  <bind modifier="A" key="2" command="Tab[2].Focus"/>
+  <bind modifier="A" key="3" command="Tab[3].Focus"/>
+  <bind modifier="A" key="4" command="Tab[4].Focus"/>
+  <bind modifier="A" key="5" command="Tab[5].Focus"/>
+  <bind modifier="A" key="6" command="Tab[6].Focus"/>
+  <bind modifier="A" key="7" command="Tab[7].Focus"/>
+  <bind modifier="A" key="8" command="Tab[8].Focus"/>
+  <bind modifier="A" key="9" command="Tab[9].Focus"/>
+
+  <!-- そのほか -->
+  <bind modifier="C"   key="Z" command="Current.Undo"/>
+</keyboard>

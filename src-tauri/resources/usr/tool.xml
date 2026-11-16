@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Vesta のツールバー。text はボタンの説明（ツールチップ）、image はアイコンの番号。
+  子の <menu> を持つ項目はドロップダウンになる。
+-->
+<menu>
+  <menu text="戻る"                 command="Current.Go.Back"      image="7"/>
+  <menu text="進む"                 command="Current.Go.Forward"   image="8"/>
+  <menu text="上のフォルダ"         command="Current.Go.Up"        image="9"/>
+  <menu/>
+  <menu text="閉じたフォルダを開く" command="File.MRU"             image="2"/>
+  <menu text="最新の情報に更新"     command="Current.Refresh"      image="17"/>
+  <menu/>
+  <menu text="切り取り"             command="Current.Cut"          image="3"/>
+  <menu text="コピー"               command="Current.Copy"         image="4"/>
+  <menu text="貼り付け"             command="Current.Paste"        image="5"/>
+  <menu text="削除"                 command="Current.Delete"       image="6"/>
+  <menu text="元に戻す"             command="Current.Undo"         image="1"/>
+  <menu/>
+  <menu text="新しいフォルダー"     command="Current.NewFolder"    image="27"/>
+  <menu/>
+  <menu text="詳細"                 command="Current.Mode.Details"   image="36"/>
+  <menu text="縮小版"               command="Current.Mode.Thumbnail" image="32"/>
+</menu>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Vesta のキー割り当て：一覧にフォーカスがあるときだけ効くもの（keyboard-form.xml より先に効く）。
+  子の <menu> を持つ割り当ては、押すとその場にメニューを出す。
+  execute の args：[selected] は選択項目ごとに1回ずつ、{selected} は全部をまとめて渡す。
+-->
+<keyboard name="folder">
+  <!-- 選択 -->
+  <bind modifier=""   key="escape" command="Current.SelectNone"/>
+  <bind modifier="C"  key="A"      command="Current.SelectAll"/>
+  <bind modifier="C"  key="I"      command="Current.SelectReverse"/>
+  <bind modifier="C"  key="F"      command="Current.SelectPattern"/>
+
+  <!-- ファイル操作 -->
+  <bind modifier="C"  key="C"      command="Current.Copy"/>
+  <bind modifier="C"  key="X"      command="Current.Cut"/>
+  <bind modifier="C"  key="V"      command="Current.Paste"/>
+  <bind modifier="CS" key="V"      command="Current.Copy.Here"/>
+  <bind modifier=""   key="delete" command="Current.Delete"/>
+  <bind modifier="C"  key="D"      command="Current.Delete"/>
+  <bind modifier="S"  key="delete" command="Current.Bury"/>
+  <bind modifier=""   key="F2"     command="Current.Rename"/>
+  <bind modifier="C"  key="N"      command="Current.New"/>
+  <bind modifier="CS" key="N"      command="Current.NewFolder"/>
+  <bind modifier=""   key="F7"     command="Current.CopyToOther"/>
+  <bind modifier=""   key="F8"     command="Current.MoveToOther"/>
+  <bind modifier="A"  key="return" command="Current.Property"/>
+  <bind modifier="CS" key="C">
+    <menu text="_P : フルパスをコピー"           command="Current.Copy.Path"/>
+    <menu text="_N : 名前をコピー"               command="Current.Copy.Name"/>
+    <menu text="_B : 拡張子を除いた名前をコピー" command="Current.Copy.Base"/>
+  </bind>
+
+  <!-- 表示 -->
+  <bind modifier=""   key="F5"     command="Current.Refresh"/>
+  <bind modifier="C"  key="R"      command="Current.Refresh"/>
+
+  <!-- ペインの切り替え：Tab で右隣、Shift+Tab で左隣のペインへ -->
+  <bind modifier=""   key="tab"    command="Tab.Next2"/>
+  <bind modifier="S"  key="tab"    command="Tab.Prev2"/>
+
+  <!-- ツール -->
+  <bind modifier="C"  key="T">
+    <menu text="_C : コマンドプロンプト" execute="SYSTEM\cmd.exe"/>
+    <menu text="_N : メモ帳で開く"       execute="SYSTEM\notepad.exe" args="[selected]"/>
+  </bind>
+</keyboard>

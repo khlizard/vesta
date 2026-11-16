@@ -1,0 +1,60 @@
+/* Base look: close to classic Windows chrome (light only). Spec: docs/spec/ui.md */
+
+:root {
+  --font: "Yu Gothic UI", "Meiryo UI", "Segoe UI", sans-serif;
+  --font-size: 12px;        /* set from the FontSize option (App.tsx) */
+  /* Heights that follow the text (model/fontSize.ts textMetrics): 20px / 15px at 12px. */
+  --line-h: calc(var(--font-size) + 8px);
+  --label-line-h: calc(var(--font-size) + 3px);
+  --face: #f0f0f0;          /* button face */
+  --face-dark: #e3e3e3;
+  --edge-light: #ffffff;
+  --edge-dark: #a0a0a0;
+  --line: #d9d9d9;
+  --text: #000000;
+  --text-dim: #6d6d6d;      /* inactive tab text */
+  --text-locked: #c00000;   /* locked tab text */
+  --window: #ffffff;
+  --select: #cce8ff;        /* selected item */
+  --select-border: #99d1ff;
+  --hover: #e5f3ff;
+  --select-inactive: #d9d9d9;
+  --accent: #0078d7;
+  --icon: #22426f;          /* bar and menu icons (the app icon's navy, lightened) */
+  --icon-disabled: #a8b0bd;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font);
+  font-size: var(--font-size);
+  color: var(--text);
+  background: var(--face);
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+input,
+button,
+select {
+  font: inherit;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}

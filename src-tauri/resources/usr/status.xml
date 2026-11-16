@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Vesta のステータスバーの右側のボタン。押し込みの状態はコマンドのチェックに合わせる。
+  1〜9 はタブの番号：押すとそのタブの表示を切り替える。
+-->
+<menu>
+  <menu text="1" command="Tab[1].Show(toggle)"/>
+  <menu text="2" command="Tab[2].Show(toggle)"/>
+  <menu text="3" command="Tab[3].Show(toggle)"/>
+  <menu text="4" command="Tab[4].Show(toggle)"/>
+  <menu text="5" command="Tab[5].Show(toggle)"/>
+  <menu text="6" command="Tab[6].Show(toggle)"/>
+  <menu text="7" command="Tab[7].Show(toggle)"/>
+  <menu text="8" command="Tab[8].Show(toggle)"/>
+  <menu text="9" command="Tab[9].Show(toggle)"/>
+  <menu/>
+  <menu text="ロック"           command="Current.Lock(toggle)" image="29"/>
+  <menu text="隠しファイル"     command="Current.ShowAllFiles" image="16"/>
+  <menu text="グループ"         command="Current.Grouping"/>
+  <menu/>
+  <menu text="詳細"             command="Current.Mode.Details"   image="36"/>
+  <menu text="縮小版"           command="Current.Mode.Thumbnail" image="32"/>
+</menu>

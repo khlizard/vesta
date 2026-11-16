@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Vesta のメニューバー。書式は docs/spec/config.md を参照。
+  text の _X は X をアクセスキーにする。<menu/> は区切り線。
+  image はアイコンの番号（docs/spec/config.md「image の番号」）。
+-->
+<menu>
+  <menu text="ファイル(_F)">
+    <menu text="新しいフォルダー(_N)"       command="Current.NewFolder" image="27"/>
+    <menu text="新規作成(_W)..."            command="Current.New"       image="15"/>
+    <menu/>
+    <menu text="場所を開く(_O)..."          command="File.Open"         image="13"/>
+    <menu text="閉じたフォルダを開く(_R)"   command="File.MRU"          image="2"/>
+    <menu/>
+    <menu text="プロパティ(_P)"             command="Current.Property"/>
+    <menu text="ごみ箱を空にする(_E)..."    command="RecycleBin.Empty"  image="30"/>
+    <menu/>
+    <menu text="終了(_X)"                   command="System.Exit"/>
+  </menu>
+
+  <menu text="編集(_E)">
+    <menu text="元に戻す(_U)"               command="Current.Undo"      image="1"/>
+    <menu/>
+    <menu text="切り取り(_T)"               command="Current.Cut"       image="3"/>
+    <menu text="コピー(_C)"                 command="Current.Copy"      image="4"/>
+    <menu text="貼り付け(_P)"               command="Current.Paste"     image="5"/>
+    <menu text="同じ場所に複製(_D)"         command="Current.Copy.Here"/>
+    <menu/>
+    <menu text="名前の変更(_M)"             command="Current.Rename"/>
+    <menu text="削除（ごみ箱へ）(_L)"       command="Current.Delete"    image="6"/>
+    <menu text="完全に削除(_B)"             command="Current.Bury"/>
+    <menu/>
+    <menu text="隣のペインへコピー(_Y)"     command="Current.CopyToOther" image="11"/>
+    <menu text="隣のペインへ移動(_V)"       command="Current.MoveToOther" image="10"/>
+    <menu/>
+    <menu text="テキストとしてコピー(_X)">
+      <menu text="フルパス(_P)"             command="Current.Copy.Path"/>
+      <menu text="名前(_N)"                 command="Current.Copy.Name"/>
+      <menu text="拡張子を除いた名前(_B)"   command="Current.Copy.Base"/>
+    </menu>
+    <menu/>
+    <menu text="すべて選択(_A)"             command="Current.SelectAll"/>
+    <menu text="選択を反転(_I)"             command="Current.SelectReverse"/>
+    <menu text="選択を解除(_E)"             command="Current.SelectNone"/>
+    <menu text="パターンで選択(_S)..."      command="Current.SelectPattern"/>
+  </menu>
+
+  <menu text="表示(_V)">
+    <menu text="詳細(_D)"                   command="Current.Mode.Details"   image="36"/>
+    <menu text="縮小版(_T)"                 command="Current.Mode.Thumbnail" image="32"/>
+    <menu text="縮小版の大きさ(_Z)">
+      <menu text="小 (64)"                  command="Option.Thumbnail.64"/>
+      <menu text="標準 (96)"                command="Option.Thumbnail.96"/>
+      <menu text="やや大 (128)"             command="Option.Thumbnail.128"/>
+      <menu text="大 (192)"                 command="Option.Thumbnail.192"/>
+      <menu text="特大 (256)"               command="Option.Thumbnail.256"/>
+    </menu>
+    <menu text="文字の大きさ(_F)">
+      <menu text="小 (11)"                  command="Option.FontSize.11"/>
+      <menu text="標準 (12)"                command="Option.FontSize.12"/>
+      <menu text="大 (14)"                  command="Option.FontSize.14"/>
+      <menu text="特大 (16)"                command="Option.FontSize.16"/>
+    </menu>
+    <menu/>
+    <menu text="グループで表示(_G)"         command="Current.Grouping"/>
+    <menu text="隠しファイルを表示(_H)"     command="Current.ShowAllFiles"   image="16"/>
+    <menu/>
+    <menu text="列の幅(_W)">
+      <menu text="中身に合わせる(_I)"       command="Current.AdjustToItem"/>
+      <menu text="ペインの幅に合わせる(_P)" command="Current.AdjustToWindow"/>
+      <menu/>
+      <menu text="表示中のペインすべてで中身に合わせる"     command="Shown.AdjustToItem"/>
+      <menu text="表示中のペインすべてでペインの幅に合わせる" command="Shown.AdjustToWindow"/>
+    </menu>
+    <menu text="バー(_B)">
+      <menu text="メニューバー(_M)"         command="Menu.Show(toggle)"/>
+      <menu text="ツールバー(_T)"           command="Tool.Show(toggle)"/>
+      <menu text="リンクバー(_L)"           command="Link.Show(toggle)"/>
+      <menu text="ステータスバー(_S)"       command="Status.Show(toggle)"/>
+    </menu>
+    <menu/>
+    <menu text="最新の情報に更新(_R)"       command="Current.Refresh" image="17"/>
+  </menu>
+
+  <menu text="移動(_G)">
+    <menu text="戻る(_B)"                   command="Current.Go.Back"    image="7"/>
+    <menu text="進む(_F)"                   command="Current.Go.Forward" image="8"/>
+    <menu text="上のフォルダ(_U)"           command="Current.Go.Up"      image="9"/>
+    <menu/>
+    <menu text="ドキュメント(_H)"           navigate="HOME"              image="19"/>
+    <menu text="場所を指定(_L)..."          command="Current.Go.Location"/>
+    <menu text="アドレスバーへ(_A)"         command="Address.Focus"/>
+  </menu>
+
+  <menu text="タブ(_T)">
+    <menu text="閉じる(_C)"                 command="Current.Close"       image="25"/>
+    <menu text="まとめて閉じる(_M)">
+      <menu text="ほかのタブ(_O)"           command="Others.Close"        image="46"/>
+      <menu text="左側のタブ(_L)"           command="Left.Close"          image="42"/>
+      <menu text="右側のタブ(_R)"           command="Right.Close"         image="41"/>
+      <menu text="表示中のタブ(_S)"         command="Shown.Close"         image="44"/>
+      <menu text="隠れているタブ(_H)"       command="Hidden.Close"        image="43"/>
+      <menu text="同じフォルダのタブ(_D)"   command="Duplicate.Close"     image="45"/>
+      <menu/>
+      <menu text="すべて(_A)"               command="All.Close"           image="40"/>
+    </menu>
+    <menu/>
+    <menu text="隠す(_H)"                   command="Current.Show(false)" image="28"/>
+    <menu text="まとめて表示(_S)">
+      <menu text="すべて(_A)"               command="All.Show(true)"      image="53"/>
+      <menu text="左側のタブ(_L)"           command="Left.Show(true)"/>
+      <menu text="右側のタブ(_R)"           command="Right.Show(true)"/>
+    </menu>
+    <menu text="まとめて隠す(_I)">
+      <menu text="ほかのタブ(_O)"           command="Others.Show(false)"/>
+      <menu text="左側のタブ(_L)"           command="Left.Show(false)"/>
+      <menu text="右側のタブ(_R)"           command="Right.Show(false)"/>
+    </menu>
+    <menu/>
+    <menu text="ロック(_K)"                 command="Current.Lock(toggle)" image="29"/>
+    <menu/>
+    <menu text="左へ動かす(_E)"             command="Current.ToLeft"/>
+    <menu text="右へ動かす(_G)"             command="Current.ToRight"/>
+  </menu>
+
+  <menu text="ツール(_O)">
+    <menu text="設定ファイルのフォルダ(_S)" navigate="VESTA\usr"/>
+    <menu text="設定ファイルを読み直す(_R)" command="Option.Reload"/>
+  </menu>
+
+  <menu text="オプション(_P)">
+    <menu text="起動時にタブを復元(_C)"     command="Option.RestoreConditions"/>
+    <menu/>
+    <menu text="一覧(_L)">
+      <menu text="行全体で選択(_R)"         command="Option.FullRowSelect"/>
+      <menu text="罫線を引く(_G)"           command="Option.GridLine"/>
+      <menu text="名前の変更で拡張子を除いて選ぶ(_X)" command="Option.RenameExtension"/>
+      <menu text="選んだフォルダの中へ貼り付ける(_P)" command="Option.PasteInFolder"/>
+      <menu text="別ドライブへのドラッグはコピー(_D)" command="Option.DnDCopyInterDrive"/>
+    </menu>
+    <menu text="タブ(_B)">
+      <menu text="同じ名前のタブを区別する(_D)" command="Option.DistinguishTab"/>
+      <menu text="同じフォルダを重ねて開く(_O)" command="Option.OpenDups"/>
+      <menu text="ロック中のタブも閉じる(_L)"   command="Option.LockClose"/>
+      <menu/>
+      <menu text="新しいタブを左端に(_H)"       command="Option.Insert.Head"/>
+      <menu text="新しいタブを右端に(_T)"       command="Option.Insert.Tail"/>
+      <menu text="新しいタブをカレントの左に(_P)" command="Option.Insert.Prev"/>
+      <menu text="新しいタブをカレントの右に(_N)" command="Option.Insert.Next"/>
+    </menu>
+  </menu>
+
+  <menu text="ヘルプ(_H)">
+    <menu text="更新して再起動(_U)"         command="System.Update"/>
+    <menu text="Vesta のサイト(_W)"         execute="https://github.com/khlizard/vesta"/>
+    <menu/>
+    <menu text="バージョン情報(_A)"         command="System.About"/>
+  </menu>
+</menu>
