@@ -11,6 +11,7 @@ use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
 use windows::core::PCWSTR;
 
 use crate::com::{self, Pidl, err, wide};
+use crate::path;
 use crate::types::Modifiers;
 
 /// Opens each location with `verb` (`None` = default verb). `args` and `cwd` are passed through
@@ -45,8 +46,9 @@ fn open_sync(
 
     let mut errors = Vec::new();
     for loc in locations {
-        let result = if is_url(loc) {
-            // A web address is not a shell item: hand it to the default browser as text.
+        let result = if path::is_http_url(loc) {
+            // A web address (menu items like "open the web site") is not a shell item: hand
+            // it to the default browser as text.
             let file_w = wide(loc);
             let mut info = SHELLEXECUTEINFOW {
                 cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
@@ -80,12 +82,6 @@ fn open_sync(
     if errors.is_empty() { Ok(()) } else { Err(errors.join("\n")) }
 }
 
-/// `http://` / `https://` addresses (menu items like "open the web site").
-pub fn is_url(s: &str) -> bool {
-    let l = s.to_ascii_lowercase();
-    l.starts_with("http://") || l.starts_with("https://")
-}
-
 /// Current state of Ctrl / Shift / Alt (GetAsyncKeyState).
 pub fn key_state() -> Modifiers {
     let down = |vk: i32| (unsafe { GetAsyncKeyState(vk) } as u16 & 0x8000) != 0;
@@ -99,14 +95,6 @@ pub fn key_state() -> Modifiers {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn urls_are_recognised() {
-        assert!(is_url("https://github.com/khlizard/vesta"));
-        assert!(is_url("HTTP://example.com"));
-        assert!(!is_url("C:\\https\\x"));
-        assert!(!is_url("ftp://example.com"));
-    }
 
     #[test]
     fn key_state_does_not_panic() {

@@ -7,7 +7,7 @@
 | フォルダ | 中身 | 書く人 |
 |---|---|---|
 | `usr/` | link.xml、keyboard-form.xml、keyboard-folder.xml、menu.xml、tool.xml、status.xml | ユーザー。初回の起動時に既定のファイルをコピーする。既にあるファイルは上書きしない |
-| `var/` | session.json（タブ、最近閉じたフォルダ、ウィンドウ）、config.json（オプション）、folders.json（フォルダごとの表示設定）、crash.log（異常終了の記録） | アプリ |
+| `var/` | session.json（タブ、最近閉じたフォルダ、ウィンドウ）、config.json（オプション）、folders.json（フォルダごとの表示設定）、crash.log（異常終了の記録）、vesta.log（アプリを止めない問題の記録。1 MB を超えたら作り直す） | アプリ |
 
 - `Option.Reload`（設定ファイルの再読み込み）で usr/ を読み直す
 - session.json の `window` は `{ "x", "y", "width", "height", "maximized" }`（物理ピクセル。ui.md「ウィンドウ」）

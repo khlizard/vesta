@@ -20,8 +20,8 @@ use windows::Win32::UI::Shell::{
 };
 
 use crate::com::{
-    display_name, err, from_wide_buf, item_name, parsing_name, shell_item, take_cotaskmem_string,
-    wide, Pidl,
+    display_name, err, from_wide_buf, item_name, lock, parsing_name, shell_item,
+    take_cotaskmem_string, wide, Pidl,
 };
 use crate::types::{FolderInfo, Resolved};
 
@@ -159,7 +159,7 @@ pub fn is_root(item: &IShellItem) -> bool {
 
 /// Shell item for a canonical location (`DESKTOP` or anything the Shell can parse).
 pub fn item_for(location: &str) -> Result<IShellItem, String> {
-    if location.eq_ignore_ascii_case(DESKTOP) {
+    if crate::path::is_desktop(location) {
         return root_item();
     }
     shell_item(location).map_err(|e| format!("場所が見つかりません: {location} ({})", err(e)))
@@ -173,18 +173,28 @@ pub fn is_filesystem(item: &IShellItem) -> bool {
     attrs(item, SFGAO_FILESYSTEM) & SFGAO_FILESYSTEM.0 != 0
 }
 
-/// Canonical location of a Shell item that is known not to be the root.
-pub fn location_of_nonroot(item: &IShellItem) -> String {
-    if is_filesystem(item) && let Ok(p) = item_name(item, SIGDN_FILESYSPATH) {
-        return p;
+/// The parsing name of a Shell item as its location. An item without one cannot be found
+/// again, so that is an error and not an empty location.
+fn parsing_location(item: &IShellItem) -> Result<String, String> {
+    match parsing_name(item) {
+        Ok(name) if !name.is_empty() => Ok(name),
+        Ok(_) => Err("この項目には場所の名前がありません".into()),
+        Err(e) => Err(err(e)),
     }
-    parsing_name(item).unwrap_or_default()
+}
+
+/// Canonical location of a Shell item that is known not to be the root.
+fn location_of_nonroot(item: &IShellItem) -> Result<String, String> {
+    if is_filesystem(item) && let Ok(p) = item_name(item, SIGDN_FILESYSPATH) {
+        return Ok(p);
+    }
+    parsing_location(item)
 }
 
 /// Canonical location of a Shell item.
-pub fn location_of(item: &IShellItem) -> String {
+pub fn location_of(item: &IShellItem) -> Result<String, String> {
     if is_root(item) {
-        return DESKTOP.into();
+        return Ok(DESKTOP.into());
     }
     location_of_nonroot(item)
 }
@@ -197,7 +207,7 @@ pub fn resolve(input: &str) -> Result<Resolved, String> {
     if a & SFGAO_FOLDER.0 != 0 && a & SFGAO_STREAM.0 == 0 {
         Ok(Resolved::Folder { folder: info_from_item(&item)? })
     } else {
-        Ok(Resolved::File { location: location_of(&item) })
+        Ok(Resolved::File { location: location_of(&item)? })
     }
 }
 
@@ -307,29 +317,24 @@ fn join_relative(dir: &str, rel: &str) -> String {
     parts.join("\\")
 }
 
-/// Folder information for a canonical location (public API of this module; used by tests,
-/// `listing::list` uses `info_from_item` to avoid creating the item twice).
-#[allow(dead_code)]
-pub fn folder_info(location: &str) -> Result<FolderInfo, String> {
-    info_from_item(&item_for(location)?)
-}
-
 pub fn info_from_item(item: &IShellItem) -> Result<FolderInfo, String> {
     let root = is_root(item);
     let fs = !root && is_filesystem(item);
     let fs_path = if fs { item_name(item, SIGDN_FILESYSPATH).ok() } else { None };
-    let location = if root {
-        DESKTOP.to_string()
-    } else {
-        fs_path.clone().unwrap_or_else(|| parsing_name(item).unwrap_or_default())
+    let location = match &fs_path {
+        _ if root => DESKTOP.to_string(),
+        Some(p) => p.clone(),
+        None => parsing_location(item)?,
     };
     let parent = if root {
         None
     } else {
+        // A parent that cannot be had or named: going up leads to the root.
         Some(
             unsafe { item.GetParent() }
-                .map(|p| location_of(&p))
-                .unwrap_or_else(|_| DESKTOP.to_string()),
+                .ok()
+                .and_then(|p| location_of(&p).ok())
+                .unwrap_or_else(|| DESKTOP.to_string()),
         )
     };
     let name = display_name(item).map_err(err)?;
@@ -369,9 +374,9 @@ fn sync_cache() -> &'static Mutex<HashMap<String, bool>> {
 /// True when `path` is inside a cloud-files sync root. Results are cached per path;
 /// a cached sync-root ancestor answers for its descendants.
 pub fn is_sync_root(path: &str) -> bool {
-    let key = path.trim_end_matches('\\').to_lowercase();
+    let key = crate::path::key(path);
     {
-        let cache = sync_cache().lock().unwrap();
+        let cache = lock(sync_cache());
         if let Some(&v) = cache.get(&key) {
             return v;
         }
@@ -395,7 +400,7 @@ pub fn is_sync_root(path: &str) -> bool {
         )
     }
     .is_ok();
-    sync_cache().lock().unwrap().insert(key, ok);
+    lock(sync_cache()).insert(key, ok);
     ok
 }
 
@@ -621,7 +626,7 @@ mod tests {
         assert!(d.parent.is_none());
         let pc = folder(resolve("::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"));
         assert_eq!(pc.parent.as_deref(), Some(DESKTOP));
-        assert_eq!(folder_info(DESKTOP).unwrap(), d);
+        assert_eq!(info_from_item(&item_for(DESKTOP).unwrap()).unwrap(), d);
         let c = folder(resolve("C:\\"));
         assert_eq!(c.parent.as_deref(), Some(pc.location.as_str()));
     }

@@ -33,7 +33,7 @@ Windows 用のタブ型ファイラ。開いたタブを横に並べて表示し
 | フォルダ | 中身 |
 |---|---|
 | `usr\` | `menu.xml`、`tool.xml`、`status.xml`、`link.xml`、`keyboard-form.xml`、`keyboard-folder.xml` |
-| `var\` | タブとウィンドウの位置（`session.json`）、オプション（`config.json`）、フォルダごとの表示設定（`folders.json`）、異常終了の記録（`crash.log`） |
+| `var\` | タブとウィンドウの位置（`session.json`）、オプション（`config.json`）、フォルダごとの表示設定（`folders.json`）、異常終了の記録（`crash.log`）、そのほかの問題の記録（`vesta.log`） |
 
 - `usr\` のファイルは、初回の起動時に Vesta の既定のものが作られる。書き換えたら、メニューの「ツール → 設定ファイルを読み直す」で反映する
 - メニュー、ツールバー、ステータスバー、リンクバー、キー割り当てを書き換えられる。書式は [docs/spec/config.md](docs/spec/config.md)、使えるコマンドは [docs/spec/commands.md](docs/spec/commands.md)

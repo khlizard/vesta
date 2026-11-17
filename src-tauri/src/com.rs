@@ -5,7 +5,7 @@
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::mpsc;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
 use std::thread;
 
 use windows::core::{PCWSTR, PWSTR};
@@ -39,7 +39,7 @@ impl StaPool {
                     init_sta();
                     loop {
                         let job = {
-                            let guard = rx.lock().expect("sta queue poisoned");
+                            let guard = lock(&rx);
                             guard.recv()
                         };
                         match job {
@@ -93,7 +93,7 @@ impl StaPool {
     {
         let _ = self.tx.send(Box::new(move || {
             if let Err(e) = catch_unwind(AssertUnwindSafe(f)) {
-                eprintln!("STA job panicked: {}", panic_message(e));
+                crate::logfile::line(&format!("STA job panicked: {}", panic_message(e)));
             }
         }));
     }
@@ -107,6 +107,12 @@ fn panic_message(e: Box<dyn std::any::Any + Send>) -> String {
     } else {
         "panic".to_string()
     }
+}
+
+/// Locks `m`. A lock poisoned by a panic on another thread is taken all the same: the data
+/// under the locks of this app (caches, queues, lists) is whole between any two statements.
+pub fn lock<T: ?Sized>(m: &Mutex<T>) -> MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 /// Initialises COM (STA) and OLE on the current thread. Safe to call more than once.

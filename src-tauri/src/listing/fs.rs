@@ -13,7 +13,7 @@ use windows::Win32::Storage::FileSystem::{
 };
 use windows::Win32::UI::Shell::{SHGetFileInfoW, SHFILEINFOW, SHGFI_TYPENAME, SHGFI_USEFILEATTRIBUTES};
 
-use crate::com::{from_wide_buf, wide};
+use crate::com::{from_wide_buf, lock, wide};
 use crate::types::{Entry, SyncState};
 
 const UNIX_EPOCH_100NS: u64 = 116_444_736_000_000_000;
@@ -59,7 +59,7 @@ pub fn type_name(name: &str, is_folder: bool) -> String {
             None => String::new(),
         }
     };
-    if let Some(v) = type_cache().lock().unwrap().get(&key) {
+    if let Some(v) = lock(type_cache()).get(&key) {
         return v.clone();
     }
     let v = if is_folder {
@@ -68,7 +68,7 @@ pub fn type_name(name: &str, is_folder: bool) -> String {
         let probe = if key.is_empty() { "file".to_string() } else { format!("file{key}") };
         query_type_name(&probe, FILE_ATTRIBUTE_NORMAL.0)
     };
-    type_cache().lock().unwrap().insert(key, v.clone());
+    lock(type_cache()).insert(key, v.clone());
     v
 }
 

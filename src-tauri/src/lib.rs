@@ -11,6 +11,8 @@ mod icons;
 mod launch;
 mod listing;
 mod location;
+mod logfile;
+mod path;
 mod startup;
 mod store;
 mod types;
@@ -215,7 +217,6 @@ async fn update_restart() -> Result<(), String> {
         .map_err(|e| e.to_string())?
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     update::startup();
     tauri::Builder::default()
@@ -237,6 +238,7 @@ pub fn run() {
         .setup(|app| {
             if let Ok(dir) = app.path().app_config_dir() {
                 startup::install_panic_hook(dir.join("var"));
+                logfile::set_dir(dir.join("var"));
                 location::set_avesta_dir(dir);
             }
             app.manage(watcher::Watcher::new(app.handle().clone()));
@@ -248,7 +250,7 @@ pub fn run() {
                 dragdrop::install(&window)?;
                 // Not fatal: without it nothing can be dropped on the window, the rest works.
                 if let Err(e) = droptarget::install(&window) {
-                    eprintln!("drop target: {e}");
+                    logfile::line(&format!("drop target: {e}"));
                 }
             }
             Ok(())

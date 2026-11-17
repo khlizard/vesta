@@ -33,6 +33,7 @@ use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, SetForegroundWin
 use windows::core::{BOOL, PCWSTR, Ref, implement, w};
 
 use crate::com;
+use crate::path;
 
 const EVENT: &str = "drag-drop";
 const TEMP_FOLDER: &str = "vesta-drop";
@@ -106,19 +107,16 @@ fn safe_name(raw: &str) -> String {
     if name.is_empty() || name.chars().all(|c| c == '.') {
         name = "download".to_string();
     }
-    let (stem, ext) = match name.rfind('.') {
-        Some(dot) if dot > 0 => (name[..dot].to_string(), name[dot..].to_string()),
-        _ => (name.clone(), String::new()),
-    };
+    let (stem, ext) = path::split_ext(&name);
     // CON, NUL, COM1 ... are devices whatever the extension.
     let device = stem.split('.').next().unwrap_or("").trim().to_ascii_uppercase();
     let reserved = matches!(device.as_str(), "CON" | "PRN" | "AUX" | "NUL")
         || (device.len() == 4
             && (device.starts_with("COM") || device.starts_with("LPT"))
             && device.ends_with(|c: char| c.is_ascii_digit() && c != '0'));
-    let stem = if reserved { format!("_{stem}") } else { stem };
+    let stem = if reserved { format!("_{stem}") } else { stem.to_string() };
     // Windows counts a name in UTF-16 units (an emoji is two), at most 255.
-    let ext = take_units(&ext, MAX_EXT_UNITS);
+    let ext = take_units(ext, MAX_EXT_UNITS);
     let stem = take_units(&stem, (MAX_UNITS - ext.encode_utf16().count()).max(1));
     // Cutting may leave a space or a period at the end, which Windows would drop by itself.
     let name = format!("{stem}{ext}");
@@ -143,14 +141,11 @@ fn distinct_names(names: Vec<String>) -> Vec<String> {
     names
         .into_iter()
         .map(|name| {
-            let (stem, ext) = match name.rfind('.') {
-                Some(dot) if dot > 0 => (&name[..dot], &name[dot..]),
-                _ => (name.as_str(), ""),
-            };
+            let (stem, ext) = path::split_ext(&name);
             let mut candidate = name.clone();
             let mut n = 2;
             while !taken.insert(candidate.to_lowercase()) {
-                candidate = format!("{stem} ({n}){ext}");
+                candidate = path::numbered(stem, n, ext);
                 n += 1;
             }
             candidate
@@ -161,8 +156,7 @@ fn distinct_names(names: Vec<String>) -> Vec<String> {
 /// The name and contents of an Internet shortcut for `url`; `None` unless it is http(s).
 fn url_shortcut(url: &str) -> Option<(String, String)> {
     let url = url.lines().next().unwrap_or("").trim();
-    let lower = url.to_ascii_lowercase();
-    let rest = lower.strip_prefix("https://").or_else(|| lower.strip_prefix("http://"))?;
+    let rest = path::strip_http(url)?.to_ascii_lowercase();
     let host = rest.split(['/', '?', '#', ':', '@']).next().unwrap_or("");
     if host.is_empty() {
         return None;
@@ -352,15 +346,11 @@ fn new_drop_dir() -> Result<PathBuf, String> {
     Ok(dir)
 }
 
-/// Saves what a drag without paths carries. Returns the files, in a temporary folder.
-fn save(data: &IDataObject, kind: Kind) -> Result<Vec<String>, String> {
+/// Saves what a drag without paths carries: `write` puts it into the temporary folder it is
+/// given. Returns the files written.
+fn save(write: impl FnOnce(&Path) -> Result<Vec<PathBuf>, String>) -> Result<Vec<String>, String> {
     let dir = new_drop_dir()?;
-    let files = match kind {
-        Kind::Virtual => save_virtual(data, &dir),
-        Kind::Url => save_url(data, &dir),
-        Kind::Files | Kind::None => Ok(Vec::new()),
-    };
-    match files {
+    match write(&dir) {
         Ok(files) => Ok(files.iter().map(|p| p.to_string_lossy().into_owned()).collect()),
         Err(e) => {
             let _ = std::fs::remove_dir_all(&dir);
@@ -488,15 +478,15 @@ impl IDropTarget_Impl for Target_Impl {
             unsafe { *effect = self.effect.get() };
         }
         let Some(data) = data.as_ref() else { return Ok(()) };
-        if kind == Kind::None {
-            return Ok(());
-        }
-        let (paths, error) = match kind {
-            Kind::Files => (hdrop_paths(data), None),
-            _ => match save(data, kind) {
-                Ok(paths) => (paths, None),
-                Err(e) => (Vec::new(), Some(e)),
-            },
+        let saved = match kind {
+            Kind::None => return Ok(()),
+            Kind::Files => Ok(hdrop_paths(data)),
+            Kind::Virtual => save(|dir| save_virtual(data, dir)),
+            Kind::Url => save(|dir| save_url(data, dir)),
+        };
+        let (paths, error) = match saved {
+            Ok(paths) => (paths, None),
+            Err(e) => (Vec::new(), Some(e)),
         };
         self.emit(DragEvent::Drop {
             paths,

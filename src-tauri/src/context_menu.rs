@@ -19,6 +19,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 
 use crate::com::{self, Pidl};
+use crate::path;
 
 /// Verbs the app handles itself; the menu returns them instead of invoking them.
 pub const APP_VERBS: &[&str] = &["rename", "delete", "cut", "copy", "paste", "properties"];
@@ -78,7 +79,7 @@ unsafe extern "system" fn subclass_proc(
 
 pub(crate) fn shell_folder(folder: &str) -> Result<IShellFolder, String> {
     unsafe {
-        if folder == "DESKTOP" {
+        if path::is_desktop(folder) {
             SHGetDesktopFolder().map_err(com::err)
         } else {
             let item = com::shell_item(folder).map_err(com::err)?;
@@ -191,13 +192,13 @@ fn show_blocking(
     }
 
     // Directory for the invoked command (file system folders only).
-    let dir: Option<Vec<u16>> = if folder == "DESKTOP" {
+    let dir: Option<Vec<u16>> = if path::is_desktop(folder) {
         None
     } else {
         com::shell_item(folder)
             .ok()
             .and_then(|i| com::parsing_name(&i).ok())
-            .filter(|p| !p.starts_with("::") && !p.starts_with("\\\\?\\"))
+            .filter(|p| !path::is_virtual(p) && !p.starts_with("\\\\?\\"))
             .map(|p| com::wide(&p))
     };
 

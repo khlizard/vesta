@@ -22,7 +22,16 @@ pub fn list_items(folder: &IShellItem, show_hidden: bool) -> Result<Vec<Entry>, 
     loop {
         let mut buf: [Option<IShellItem>; 16] = Default::default();
         let mut fetched = 0u32;
-        let _ = unsafe { en.Next(&mut buf, Some(&mut fetched)) };
+        // The end of the list is S_FALSE, which is not an error. A failure before anything was
+        // read is the folder's error. One part-way (a network place that stops answering) keeps
+        // what was read: showing those items is better than an empty pane. It is noted in the log.
+        if let Err(e) = unsafe { en.Next(&mut buf, Some(&mut fetched)) } {
+            if out.is_empty() {
+                return Err(err(e));
+            }
+            crate::logfile::line(&format!("listing stopped after {} items: {}", out.len(), err(e)));
+            break;
+        }
         if fetched == 0 {
             break;
         }

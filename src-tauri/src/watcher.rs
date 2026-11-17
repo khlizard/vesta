@@ -12,6 +12,9 @@ use notify::{RecommendedWatcher, RecursiveMode, Watcher as _};
 use serde_json::json;
 use tauri::{AppHandle, Emitter};
 
+use crate::com::lock;
+use crate::path;
+
 const QUIET: Duration = Duration::from_millis(200);
 const MAX_WAIT: Duration = Duration::from_millis(1500);
 
@@ -61,10 +64,6 @@ impl Debouncer {
     }
 }
 
-fn norm(p: &str) -> String {
-    p.trim_end_matches('\\').to_lowercase()
-}
-
 #[derive(Clone)]
 struct Watched {
     /// Normalised path.
@@ -76,8 +75,8 @@ struct Watched {
 
 /// Maps an event path to the watched location it belongs to.
 fn match_location<'a>(watched: &'a [Watched], event_path: &Path) -> Option<&'a Watched> {
-    let p = norm(&event_path.to_string_lossy());
-    let parent = event_path.parent().map(|x| norm(&x.to_string_lossy()));
+    let p = path::key(&event_path.to_string_lossy());
+    let parent = event_path.parent().map(|x| path::key(&x.to_string_lossy()));
     watched
         .iter()
         .find(|w| w.key == p || parent.as_deref() == Some(w.key.as_str()))
@@ -102,16 +101,16 @@ struct Shared {
 
 impl Shared {
     fn lists(&self) -> std::sync::MutexGuard<'_, Lists> {
-        self.lists.lock().unwrap_or_else(|e| e.into_inner())
+        lock(&self.lists)
     }
 
     fn watch(&self, path: &Path) -> bool {
-        let mut w = self.watcher.lock().unwrap_or_else(|e| e.into_inner());
+        let mut w = lock(&self.watcher);
         w.as_mut().is_some_and(|w| w.watch(path, RecursiveMode::NonRecursive).is_ok())
     }
 
     fn unwatch(&self, path: &Path) {
-        let mut w = self.watcher.lock().unwrap_or_else(|e| e.into_inner());
+        let mut w = lock(&self.watcher);
         if let Some(w) = w.as_mut() {
             let _ = w.unwatch(path);
         }
@@ -171,10 +170,10 @@ impl Shared {
         }
         let mut next = Lists::default();
         for loc in locations {
-            if loc.starts_with("::") || loc.eq_ignore_ascii_case("DESKTOP") {
+            if path::is_virtual(&loc) {
                 continue;
             }
-            let key = norm(&loc);
+            let key = path::key(&loc);
             if next.watched.iter().chain(&next.lost).any(|n| n.key == key) {
                 continue;
             }
@@ -201,10 +200,44 @@ impl Shared {
     }
 }
 
+/// The set asked for (locations, `fresh`) on its way to being applied.
+type Request = (Vec<String>, bool);
+
+/// Requests come in from any thread and are applied one at a time, the newest last.
+#[derive(Default)]
+struct Requests {
+    /// The newest request that has not been applied yet.
+    waiting: Mutex<Option<Request>>,
+    /// Held while requests are applied.
+    applying: Mutex<()>,
+}
+
+impl Requests {
+    /// Only the newest request is kept. `fresh` is kept until applied.
+    fn put(&self, locations: Vec<String>, fresh: bool) {
+        let mut w = lock(&self.waiting);
+        let fresh = fresh || w.as_ref().is_some_and(|(_, f)| *f);
+        *w = Some((locations, fresh));
+    }
+
+    fn take(&self) -> Option<Request> {
+        lock(&self.waiting).take()
+    }
+
+    /// Hands the waiting request to `set`, and those that arrive while it runs. Calls from
+    /// several threads run one after the other, so a slow `set` (an offline share) cannot
+    /// finish after the `set` of a newer request and undo it.
+    fn apply(&self, set: impl Fn(Vec<String>, bool)) {
+        let _one_at_a_time = lock(&self.applying);
+        while let Some((locations, fresh)) = self.take() {
+            set(locations, fresh);
+        }
+    }
+}
+
 pub struct Watcher {
     shared: Arc<Shared>,
-    /// The newest requested set that has not been applied yet (see `request` / `apply`).
-    requested: Mutex<Option<(Vec<String>, bool)>>,
+    requests: Requests,
 }
 
 impl Watcher {
@@ -248,7 +281,7 @@ impl Watcher {
             })
             .expect("failed to spawn watcher thread");
 
-        Self { shared, requested: Mutex::new(None) }
+        Self { shared, requests: Requests::default() }
     }
 
     /// The watcher sending the location of every change to `tx`.
@@ -264,25 +297,21 @@ impl Watcher {
                 }
             }
         };
-        *shared.watcher.lock().unwrap() = notify::recommended_watcher(handler).ok();
+        *lock(&shared.watcher) = notify::recommended_watcher(handler).ok();
         shared
     }
 
     /// Notes the set to watch; `apply` (on a worker thread: checking an offline share can take
-    /// many seconds) then makes it so. Only the newest request is kept, so requests that
-    /// overtake each other still end with the last one. `fresh` is kept until applied.
+    /// many seconds) then makes it so. Only the newest request is kept and requests are applied
+    /// one at a time, so requests that overtake each other still end with the last one.
     pub fn request(&self, locations: Vec<String>, fresh: bool) {
-        let mut r = self.requested.lock().unwrap_or_else(|e| e.into_inner());
-        let fresh = fresh || r.as_ref().is_some_and(|(_, f)| *f);
-        *r = Some((locations, fresh));
+        self.requests.put(locations, fresh);
     }
 
-    /// Applies the newest request, if another call has not taken it already.
+    /// Applies the newest request, if another call has not taken it already. Returns once no
+    /// request is waiting; a call that finds another one at work waits for it.
     pub fn apply(&self) {
-        let next = self.requested.lock().unwrap_or_else(|e| e.into_inner()).take();
-        if let Some((locations, fresh)) = next {
-            self.shared.set(locations, fresh);
-        }
+        self.requests.apply(|locations, fresh| self.shared.set(locations, fresh));
     }
 }
 
@@ -394,9 +423,60 @@ mod tests {
     }
 
     #[test]
+    fn a_slow_request_does_not_undo_a_newer_one() {
+        let requests = Arc::new(Requests::default());
+        // What was set, in the order the sets finished.
+        let applied = Arc::new(Mutex::new(Vec::<Request>::new()));
+        let (started_tx, started_rx) = mpsc::channel::<()>();
+        let (release_tx, release_rx) = mpsc::channel::<()>();
+        let release_rx = Mutex::new(release_rx);
+
+        requests.put(vec!["first".into()], true);
+        let slow = {
+            let (requests, applied) = (Arc::clone(&requests), Arc::clone(&applied));
+            std::thread::spawn(move || {
+                requests.apply(|locations, fresh| {
+                    // The first set hangs (as on an offline share) until it is released.
+                    if locations == ["first"] {
+                        let _ = started_tx.send(());
+                        let _ = lock(&release_rx).recv_timeout(Duration::from_secs(5));
+                    }
+                    lock(&applied).push((locations, fresh));
+                });
+            })
+        };
+        started_rx.recv_timeout(Duration::from_secs(5)).expect("the first set did not start");
+
+        requests.put(vec!["second".into()], false);
+        let quick = {
+            let (requests, applied) = (Arc::clone(&requests), Arc::clone(&applied));
+            std::thread::spawn(move || requests.apply(|locations, fresh| lock(&applied).push((locations, fresh))))
+        };
+        // Time for the second call to finish first, were it not made to wait.
+        std::thread::sleep(Duration::from_millis(100));
+        assert!(lock(&applied).is_empty(), "a newer request was applied while an older one was at work");
+        release_tx.send(()).unwrap();
+        slow.join().unwrap();
+        quick.join().unwrap();
+
+        assert_eq!(*lock(&applied), vec![(vec!["first".to_string()], true), (vec!["second".to_string()], false)]);
+        assert!(requests.take().is_none());
+    }
+
+    #[test]
+    fn only_the_newest_waiting_request_is_applied_and_fresh_is_kept() {
+        let requests = Requests::default();
+        requests.put(vec!["a".into()], true);
+        requests.put(vec!["b".into()], false);
+        let applied = Mutex::new(Vec::new());
+        requests.apply(|locations, fresh| lock(&applied).push((locations, fresh)));
+        assert_eq!(*lock(&applied), vec![(vec!["b".to_string()], true)]);
+    }
+
+    #[test]
     fn maps_event_paths() {
         let w = vec![Watched {
-            key: norm("C:\\Foo\\"),
+            key: path::key("C:\\Foo\\"),
             path: PathBuf::from("C:\\Foo"),
             location: "C:\\Foo".into(),
         }];

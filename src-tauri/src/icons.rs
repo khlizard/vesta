@@ -21,7 +21,8 @@ use windows::Win32::UI::Shell::{
     IShellItemImageFactory, SIIGBF_BIGGERSIZEOK, SIIGBF_ICONONLY, SIIGBF_RESIZETOFIT, SIIGBF,
 };
 
-use crate::com::shell_item;
+use crate::com::{lock, shell_item};
+use crate::path;
 
 type Png = std::sync::Arc<Vec<u8>>;
 
@@ -102,7 +103,7 @@ fn parse_query(req: &Request<Vec<u8>>) -> Option<Query> {
 /// A per-location key includes `item` (kind and modified time), so a folder that replaced a file
 /// of the same name, or a rewritten .exe / .lnk, does not get the old icon.
 fn icon_key(loc: &str, size: i32, item: &str) -> String {
-    let ext = if loc.starts_with("::") {
+    let ext = if path::is_virtual(loc) {
         None
     } else {
         std::path::Path::new(loc)
@@ -264,25 +265,25 @@ fn ok_png(png: &Png) -> Response<Vec<u8>> {
 pub fn icon_response(req: &Request<Vec<u8>>) -> Response<Vec<u8>> {
     let Some(q) = parse_query(req) else { return not_found() };
     let key = icon_key(&q.loc, q.size, &q.item);
-    if let Some(hit) = icon_cache().lock().unwrap().get(&key).cloned() {
+    if let Some(hit) = lock(icon_cache()).get(&key).cloned() {
         return ok_png(&hit);
     }
     let Some(png) = get_image(&q.loc, q.size, SIIGBF_ICONONLY) else { return not_found() };
     let png = Png::new(png);
-    icon_cache().lock().unwrap().put(key, png.clone());
+    lock(icon_cache()).put(key, png.clone());
     ok_png(&png)
 }
 
 pub fn thumb_response(req: &Request<Vec<u8>>) -> Response<Vec<u8>> {
     let Some(q) = parse_query(req) else { return not_found() };
-    if let Some(hit) = thumb_cache().lock().unwrap().get(&q.raw) {
+    if let Some(hit) = lock(thumb_cache()).get(&q.raw) {
         return ok_png(&hit);
     }
     let png = get_image(&q.loc, q.size, SIIGBF_BIGGERSIZEOK | SIIGBF_RESIZETOFIT)
         .or_else(|| get_image(&q.loc, q.size, SIIGBF_ICONONLY));
     let Some(png) = png else { return not_found() };
     let png = Png::new(png);
-    thumb_cache().lock().unwrap().put(q.raw, png.clone());
+    lock(thumb_cache()).put(q.raw, png.clone());
     ok_png(&png)
 }
 
@@ -346,7 +347,7 @@ mod tests {
         assert_eq!(r.headers()["Cache-Control"], "max-age=3600");
         // same extension: served from the cache (b.txt would otherwise be a distinct key)
         let k2 = icon_key(&f2.to_string_lossy(), 16, "");
-        assert!(icon_cache().lock().unwrap().contains(&k2));
+        assert!(lock(icon_cache()).contains(&k2));
         assert!(is_png(&icon_response(&req("icon", &f2.to_string_lossy(), 16))));
         assert_ne!(icon_key(&f1.to_string_lossy(), 16, ""), icon_key(&f1.to_string_lossy(), 32, ""));
         // per-extension keys do not depend on the item

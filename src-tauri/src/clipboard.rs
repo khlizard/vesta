@@ -108,9 +108,12 @@ fn set_files_sync(paths: &[String], cut: bool) -> Result<(), String> {
             u: STGMEDIUM_0 { hGlobal: hg },
             pUnkForRelease: ManuallyDrop::new(None),
         };
-        // fRelease = true: the data object owns `hg` from here on.
-        data.SetData(&formatetc(drop_effect_format()), &medium, true)
-            .map_err(err)?;
+        // fRelease = true: the data object owns `hg` once the call has succeeded. When it
+        // fails the block is still ours to free.
+        if let Err(e) = data.SetData(&formatetc(drop_effect_format()), &medium, true) {
+            let _ = GlobalFree(Some(hg));
+            return Err(err(e));
+        }
 
         retry_busy(|| OleSetClipboard(&data)).map_err(err)?;
         retry_busy(|| OleFlushClipboard()).map_err(err)?;

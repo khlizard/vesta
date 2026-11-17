@@ -62,7 +62,7 @@ fn history() -> &'static Mutex<VecDeque<Entry>> {
 }
 
 fn record(entry: Entry) {
-    let mut h = history().lock().unwrap_or_else(|e| e.into_inner());
+    let mut h = com::lock(history());
     h.push_back(entry);
     while h.len() > HISTORY_MAX {
         h.pop_front();
@@ -97,14 +97,6 @@ impl Event {
     }
 }
 
-/// `path` is somewhere below the folder `folder` (not the folder itself). Empty paths never match.
-fn is_inside(path: &str, folder: &str) -> bool {
-    let folder = folder.trim_end_matches('\\');
-    !folder.is_empty()
-        && path.get(..folder.len()).is_some_and(|head| head.eq_ignore_ascii_case(folder))
-        && path[folder.len()..].starts_with('\\')
-}
-
 /// Lower-cased names of the `sources` that already have an item of the same name in `dest`.
 /// Copying or moving those replaces a file or merges into a folder, so what ends up there is not
 /// ours to remove on undo (and what was replaced cannot be brought back).
@@ -137,9 +129,7 @@ impl Sink {
             .unwrap_or_default();
         // For deletes this is the `$R...` path of the item in the Recycle Bin.
         let created = new.and_then(|n| parsing_name(n).ok());
-        if let Ok(mut v) = self.events.lock() {
-            v.push(Event { kind, source, created, hr });
-        }
+        com::lock(&self.events).push(Event { kind, source, created, hr });
     }
 }
 
@@ -265,7 +255,7 @@ impl Outcome {
     fn ok_events(&self, kind: Kind) -> impl Iterator<Item = &Event> {
         let done: Vec<&Event> = self.events.iter().filter(|e| e.kind == kind && e.done()).collect();
         let sources: Vec<&str> = done.iter().map(|e| e.source.as_str()).collect();
-        done.into_iter().filter(move |e| !sources.iter().any(|s| is_inside(&e.source, s)))
+        done.into_iter().filter(move |e| !sources.iter().any(|s| crate::path::is_inside(&e.source, s)))
     }
 
     fn any_ok(&self) -> bool {
@@ -341,7 +331,7 @@ where
         let aborted = op.GetAnyOperationsAborted().map(|b| b.as_bool()).unwrap_or(false);
         let _ = op.Unadvise(cookie);
 
-        let events = std::mem::take(&mut *events.lock().unwrap_or_else(|e| e.into_inner()));
+        let events = std::mem::take(&mut *com::lock(&events));
         let mut out = Outcome { events, aborted, perform_err: None };
         if let Err(e) = perform {
             if e.code().0 == E_CANCELLED {
@@ -504,7 +494,7 @@ fn make_link(source: &str, dest_dir: &Path) -> Result<String, String> {
         let mut path = dest_dir.join(format!("{base}.lnk"));
         let mut n = 2;
         while path.exists() {
-            path = dest_dir.join(format!("{base} ({n}).lnk"));
+            path = dest_dir.join(crate::path::numbered(&base, n, ".lnk"));
             n += 1;
         }
         let link: IShellLinkW = CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER).map_err(err)?;
@@ -573,7 +563,7 @@ fn new_item(
 // undo
 
 pub(crate) fn undo_sync(owner: isize, silent: bool) -> Result<Option<String>, String> {
-    let entry = history().lock().unwrap_or_else(|e| e.into_inner()).pop_back();
+    let entry = com::lock(history()).pop_back();
     let Some(entry) = entry else { return Ok(None) };
     let (result, left) = undo_entry(entry, owner, silent);
     // What could not be undone but is still there goes back, so the next undo tries it again
@@ -972,11 +962,11 @@ mod tests {
         fs::write(&file, "x").unwrap();
         let p = s(&file);
         on_op(move || {
-            let before = history().lock().unwrap().len();
+            let before = com::lock(history()).len();
             let r = exec(FileOp::Delete { paths: vec![p] });
             assert!(!r.undoable);
             assert!(!file.exists());
-            assert_eq!(history().lock().unwrap().len(), before);
+            assert_eq!(com::lock(history()).len(), before);
         });
     }
 
@@ -987,16 +977,6 @@ mod tests {
         fs::create_dir_all(&src).unwrap();
         fs::create_dir_all(&dst).unwrap();
         (tmp, src, dst)
-    }
-
-    #[test]
-    fn is_inside_matches_items_below_a_folder_only() {
-        assert!(is_inside(r"C:\a\b\c.txt", r"C:\a\b"));
-        assert!(is_inside(r"C:\A\B\c.txt", r"c:\a\b\"));
-        assert!(!is_inside(r"C:\a\b", r"C:\a\b"));
-        assert!(!is_inside(r"C:\a\bc\d.txt", r"C:\a\b"));
-        assert!(!is_inside(r"C:\a\b", ""));
-        assert!(!is_inside(r"C:\あ\い", r"C:\あい"));
     }
 
     #[test]
@@ -1026,10 +1006,10 @@ mod tests {
         fs::write(dst.join("dir").join("was-here.txt"), "old").unwrap();
         let (a, d) = (s(&src.join("dir")), s(&dst));
         on_op(move || {
-            let before = history().lock().unwrap().len();
+            let before = com::lock(history()).len();
             let r = exec(FileOp::Copy { sources: vec![a], dest: d });
             assert!(r.replaced && !r.undoable);
-            assert_eq!(history().lock().unwrap().len(), before);
+            assert_eq!(com::lock(history()).len(), before);
             assert!(dst.join("dir").join("from-src.txt").exists());
             assert!(dst.join("dir").join("was-here.txt").exists());
         });
@@ -1102,9 +1082,9 @@ mod tests {
         on_op(move || {
             exec(FileOp::Copy { sources: vec![a], dest: d });
             fs::remove_file(dst.join("g.txt")).unwrap();
-            let before = history().lock().unwrap().len();
+            let before = com::lock(history()).len();
             assert_eq!(undo_sync(0, true), Err(NOT_FOUND.to_string()));
-            assert_eq!(history().lock().unwrap().len(), before - 1);
+            assert_eq!(com::lock(history()).len(), before - 1);
         });
     }
 
@@ -1165,7 +1145,7 @@ mod tests {
                 "rename: {:?}",
                 execute_sync(FileOp::Rename { path: inside.clone(), new_name: "renamed.txt".into() }, 0, true)
             );
-            let renamed = format!("{d}\renamed.txt");
+            let renamed = format!("{d}\\renamed.txt");
             println!("recycle: {:?}", execute_sync(FileOp::Recycle { paths: vec![renamed] }, 0, true));
             println!("undo: {:?}", undo_sync(0, true));
             println!("new folder: {:?}", execute_sync(FileOp::NewFolder { parent: d, name: "n".into() }, 0, true));

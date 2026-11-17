@@ -92,7 +92,7 @@ unsafe extern "system" fn subclass_proc(
     _data: usize,
 ) -> LRESULT {
     if msg == WM_APP_DRAG {
-        let pending = PENDING.lock().ok().and_then(|mut p| p.take());
+        let pending = com::lock(&PENDING).take();
         if let Some((locations, reply)) = pending {
             let _ = reply.send(drag_blocking(hwnd, &locations));
         }
@@ -106,11 +106,8 @@ unsafe extern "system" fn subclass_proc(
 pub async fn start_drag(window: tauri::WebviewWindow, locations: Vec<String>) -> Result<String, String> {
     let hwnd = com::hwnd_of(&window)?;
     let (tx, rx) = tokio::sync::oneshot::channel();
-    {
-        let mut pending = PENDING.lock().map_err(|e| e.to_string())?;
-        // A request that never ran (should not happen) is answered by dropping its sender.
-        *pending = Some((locations, tx));
-    }
+    // A request that never ran (should not happen) is answered by dropping its sender.
+    *com::lock(&PENDING) = Some((locations, tx));
     unsafe { PostMessageW(Some(hwnd), WM_APP_DRAG, WPARAM(0), LPARAM(0)) }.map_err(com::err)?;
     rx.await.map_err(|_| "drag was dropped".to_string())?
 }

@@ -26,14 +26,14 @@ fn manager() -> Option<UpdateManager> {
 
 fn store(um: UpdateManager, asset: VelopackAsset) -> String {
     let version = asset.Version.clone();
-    *READY.lock().unwrap_or_else(|e| e.into_inner()) = Some((um, asset));
+    *crate::com::lock(&READY) = Some((um, asset));
     version
 }
 
 /// Checks for a newer release and downloads it. Blocking (network).
 /// Returns the version that is ready to apply, or None when up to date / not installed.
 pub fn check_and_download() -> Result<Option<String>, String> {
-    if let Some((_, asset)) = READY.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
+    if let Some((_, asset)) = crate::com::lock(&READY).as_ref() {
         return Ok(Some(asset.Version.clone()));
     }
     let Some(um) = manager() else { return Ok(None) };
@@ -53,14 +53,14 @@ pub fn check_and_download() -> Result<Option<String>, String> {
 
 /// Applies the downloaded update and restarts. Exits the process on success.
 pub fn restart_now() -> Result<(), String> {
-    let ready = READY.lock().unwrap_or_else(|e| e.into_inner()).take();
+    let ready = crate::com::lock(&READY).take();
     let Some((um, asset)) = ready else { return Err("更新はありません".into()) };
     um.apply_updates_and_restart(&asset).map_err(|e| e.to_string())
 }
 
 /// On exit: lets the Velopack updater apply a downloaded update once this process has ended.
 pub fn apply_on_exit() {
-    let ready = READY.lock().unwrap_or_else(|e| e.into_inner()).take();
+    let ready = crate::com::lock(&READY).take();
     if let Some((um, asset)) = ready {
         let _ = um.wait_exit_then_apply_updates(&asset, true, false, Vec::<String>::new());
     }
