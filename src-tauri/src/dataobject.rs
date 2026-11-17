@@ -6,8 +6,7 @@ use std::mem::ManuallyDrop;
 
 use windows::Win32::Foundation::{GlobalFree, HGLOBAL};
 use windows::Win32::System::Com::{
-    DVASPECT_CONTENT, FORMATETC, IBindCtx, IDataObject, IStream, STGMEDIUM, STGMEDIUM_0, TYMED_HGLOBAL,
-    TYMED_ISTREAM,
+    DVASPECT_CONTENT, FORMATETC, IBindCtx, IDataObject, IStream, STGMEDIUM, TYMED_HGLOBAL, TYMED_ISTREAM,
 };
 use windows::Win32::System::DataExchange::RegisterClipboardFormatW;
 use windows::Win32::System::Memory::{GMEM_MOVEABLE, GlobalAlloc, GlobalLock, GlobalSize, GlobalUnlock};
@@ -245,11 +244,13 @@ pub fn global_data(data: &IDataObject, format: u16) -> Result<Vec<u8>, String> {
 }
 
 /// Stores `bytes` in `data` as `format`, in a memory block the data object then owns.
+/// Only tests build data objects by hand (to stand in for what a browser drops).
+#[cfg(test)]
 pub fn set_global(data: &IDataObject, format: &FORMATETC, bytes: &[u8]) -> Result<(), String> {
     let block = Global::copy_of(bytes)?;
     let medium = STGMEDIUM {
         tymed: TYMED_HGLOBAL.0 as u32,
-        u: STGMEDIUM_0 { hGlobal: block.handle() },
+        u: windows::Win32::System::Com::STGMEDIUM_0 { hGlobal: block.handle() },
         pUnkForRelease: ManuallyDrop::new(None),
     };
     // fRelease = true: the data object owns the block once the call has succeeded. When it
@@ -260,6 +261,7 @@ pub fn set_global(data: &IDataObject, format: &FORMATETC, bytes: &[u8]) -> Resul
 }
 
 /// Stores a number (a drop effect) in `data` as `format`.
+#[cfg(test)]
 pub fn set_u32(data: &IDataObject, format: u16, value: u32) -> Result<(), String> {
     set_global(data, &global(format), &value.to_ne_bytes())
 }
