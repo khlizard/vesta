@@ -8,6 +8,7 @@ import {
   moveTab,
   newlyShown,
   setShown,
+  shownChanged,
   targetIds,
   toggleLock,
   toggleShown,
@@ -94,6 +95,23 @@ describe("newlyShown", () => {
     expect(newlyShown(s0, s0)).toEqual([]);
     expect(newlyShown(s0, toggleShown(s0, "b"))).toEqual([]);
     expect(newlyShown(s0, focusTab(s0, "b"))).toEqual([]);
+  });
+});
+
+describe("shownChanged", () => {
+  it("is false when only the current tab or a hidden tab changes", () => {
+    const s0 = state("a* b* c", "a");
+    expect(shownChanged(s0, focusTab(s0, "b"))).toBe(false);
+    expect(shownChanged(s0, toggleLock(s0, "a"))).toBe(false);
+    expect(shownChanged(s0, closeTabs(s0, ["c"], true).state)).toBe(false);
+  });
+
+  it("is true when a tab is shown, hidden, closed or moved among the shown ones", () => {
+    const s0 = state("a* b* c", "a");
+    expect(shownChanged(s0, toggleShown(s0, "c"))).toBe(true);
+    expect(shownChanged(s0, toggleShown(s0, "b"))).toBe(true);
+    expect(shownChanged(s0, closeTabs(s0, ["b"], true).state)).toBe(true);
+    expect(shownChanged(s0, moveTab(s0, "a", 2))).toBe(true);
   });
 });
 

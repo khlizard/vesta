@@ -7,9 +7,10 @@ import { runItem } from "../commands/items";
 import { toolContent } from "../config/icons";
 import { useConfig } from "../config/store";
 import type { MenuItem } from "../config/types";
+import { modsOf } from "../model/input";
 import { useStore } from "../state/store";
 import { CommandIcon } from "./CommandIcon";
-import { isSeparator, modsOf, openPopup, type PopupItem } from "./popupBus";
+import { isSeparator, openPopup, type PopupItem } from "./popupBus";
 import "../styles/chrome.css";
 
 function dropDown(e: MouseEvent<HTMLElement>, items: PopupItem[]) {

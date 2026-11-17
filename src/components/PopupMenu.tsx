@@ -2,6 +2,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { commandChecked, commandEnabled } from "../commands/registry";
 import { menuLabel, runItem } from "../commands/items";
+import { modsOf } from "../model/input";
 import type { Mods } from "../model/navigation";
 import { CommandIcon } from "./CommandIcon";
 import { accessKeyPressed, closePopup, isSeparator, usePopup, type PopupItem } from "./popupBus";
@@ -44,12 +45,6 @@ function isDisabled(item: PopupItem): boolean {
   if (item.command) return !commandEnabled(item.command);
   return false;
 }
-
-const modsOf = (e: { ctrlKey: boolean; shiftKey: boolean; altKey: boolean }): Mods => ({
-  ctrl: e.ctrlKey,
-  shift: e.shiftKey,
-  alt: e.altKey,
-});
 
 interface MenuProps {
   items: PopupItem[];

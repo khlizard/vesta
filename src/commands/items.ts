@@ -2,6 +2,7 @@
 
 import { backend } from "../api/backend";
 import type { MenuItem } from "../config/types";
+import { errorText } from "../model/input";
 import { NO_MODS, type Mods } from "../model/navigation";
 import { openExternal, setMessage } from "../state/actions";
 import { selectedEntries } from "../state/selection";
@@ -71,7 +72,7 @@ export async function runItem(item: MenuItem, mods: Mods = NO_MODS) {
     const { selected, current } = currentContext();
     const program = normalizeExecute(item.execute);
     if (isUrl(program)) {
-      await backend.openItems([program]).catch((e) => setMessage(`${program}: ${String(e)}`));
+      await backend.openItems([program]).catch((e) => setMessage(`${program}: ${errorText(e)}`));
       return;
     }
     try {
@@ -84,7 +85,7 @@ export async function runItem(item: MenuItem, mods: Mods = NO_MODS) {
         await backend.openItems([loc], undefined, args || undefined, current ?? undefined);
       }
     } catch (e) {
-      setMessage(`${program}: ${String(e)}`);
+      setMessage(`${program}: ${errorText(e)}`);
     }
   }
 }

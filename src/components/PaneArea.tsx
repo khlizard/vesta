@@ -89,10 +89,7 @@ export function PaneArea() {
   // Pointer-down anywhere in a pane makes it current (without consuming the event).
   const makeCurrent = (id: string) => {
     if (getState().tabs.currentId === id) return;
-    const { paneWidths, paneRowSplit } = getState();
     setTabs((s) => focusTab(s, id));
-    // setTabs resets the layout; focusing a pane must keep the user's sizes.
-    if (paneWidths || paneRowSplit !== null) setState({ paneWidths, paneRowSplit });
   };
 
   return (

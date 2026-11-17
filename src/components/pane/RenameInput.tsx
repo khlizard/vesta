@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { Entry } from "../../api/types";
+import { isImeKey } from "../../model/input";
 import { rename } from "../../state/fileActions";
 import { updatePane, useStore } from "../../state/store";
 
@@ -39,7 +40,7 @@ export function RenameInput({ id, entry }: { id: string; entry: Entry }) {
       onKeyDown={(e) => {
         e.stopPropagation();
         // Enter that confirms a Japanese conversion is not the end of the rename.
-        if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+        if (isImeKey(e)) return;
         if (e.key === "Enter") {
           e.preventDefault();
           finish(true);

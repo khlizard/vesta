@@ -44,6 +44,13 @@ export function newlyShown(prev: TabsState, next: TabsState): string[] {
     .map((t) => t.id);
 }
 
+/** Whether the shown tabs, in order, differ between `prev` and `next` (the panes get arranged again). */
+export function shownChanged(prev: TabsState, next: TabsState): boolean {
+  const a = shownTabs(prev);
+  const b = shownTabs(next);
+  return a.length !== b.length || a.some((t, i) => t.id !== b[i].id);
+}
+
 /** Restores the invariants. `preferIndex` is where to look for a new current tab. */
 export function normalize(s: TabsState, preferIndex = 0): TabsState {
   if (s.tabs.length === 0) return EMPTY_TABS;

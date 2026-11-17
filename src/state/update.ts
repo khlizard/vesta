@@ -1,6 +1,7 @@
 // Automatic updates (Velopack). Spec: docs/spec/update.md
 
 import { backend } from "../api/backend";
+import { errorText } from "../model/input";
 import { flushState, setMessage } from "./actions";
 import { mayClose } from "./busy";
 import { getState, setState } from "./store";
@@ -32,6 +33,6 @@ export async function restartForUpdate() {
   try {
     await backend.updateRestart();
   } catch (e) {
-    setMessage(`更新できませんでした: ${typeof e === "string" ? e : String(e)}`);
+    setMessage(`更新できませんでした: ${errorText(e)}`);
   }
 }

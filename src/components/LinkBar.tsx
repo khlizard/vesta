@@ -4,8 +4,9 @@ import { backend, iconUrl } from "../api/backend";
 import { linkAction, menuLabel, runItem } from "../commands/items";
 import { useConfig } from "../config/store";
 import type { MenuItem } from "../config/types";
+import { modsOf } from "../model/input";
 import type { Mods } from "../model/navigation";
-import { isSeparator, modsOf, openPopup, popupOwner, switchesOnHover, type PopupItem } from "./popupBus";
+import { isSeparator, openPopup, popupOwner, switchesOnHover, type PopupItem } from "./popupBus";
 import { MISSING_MARK, missingTitle, splitLabel } from "./PopupMenu";
 import "../styles/chrome.css";
 

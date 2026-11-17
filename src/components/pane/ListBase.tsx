@@ -4,7 +4,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { backend } from "../../api/backend";
 import type { Entry } from "../../api/types";
-import type { Mods } from "../../model/navigation";
+import { dragStarted, errorText, modsOf } from "../../model/input";
 import { listKeyIsBound } from "../../commands/keys";
 import { goUp, openEntries, setMessage } from "../../state/actions";
 import { selectedLocations } from "../../state/fileActions";
@@ -18,7 +18,7 @@ import {
   setSelection,
 } from "../../state/selection";
 import { getState, updatePane, type PaneState } from "../../state/store";
-import { errorText, runMenuVerb } from "./menu";
+import { runMenuVerb } from "./menu";
 import { marqueeHits, normalizeBox, revealScroll, sameSet, visibleRange, type Box, type ItemsRow, type Layout } from "./layout";
 import { trackPointer } from "./pointer";
 
@@ -50,12 +50,6 @@ const EDGE = 24;
 /** Wheel delta of one mouse notch; touchpads send smaller deltas that add up to it. */
 const WHEEL_NOTCH = 100;
 const GROUP_HEIGHT_CLASS = "group-row";
-
-const modsOf = (e: { ctrlKey: boolean; shiftKey: boolean; altKey: boolean }): Mods => ({
-  ctrl: e.ctrlKey,
-  shift: e.shiftKey,
-  alt: e.altKey,
-});
 
 export function ListBase(props: ListBaseProps) {
   const { id, pane, current, className, headerHeight, header, contentWidth, itemHeight, layoutFor, itemBox, horizontalKeys, renderItem, onCtrlWheel } = props;
@@ -175,7 +169,7 @@ export function ListBase(props: ListBaseProps) {
       const r = body.getBoundingClientRect();
       const cx = px - r.left;
       const cy = py - r.top;
-      if (!active && Math.hypot(cx - sx, cy - sy) < 4) return;
+      if (!active && !dragStarted(cx - sx, cy - sy)) return;
       active = true;
       const box = normalizeBox(sx, sy, cx, cy);
       setMarquee(box);
@@ -231,7 +225,7 @@ export function ListBase(props: ListBaseProps) {
     const sy = e.clientY;
     const stop = trackPointer(
       (ev) => {
-        if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
+        if (!dragStarted(ev.clientX - sx, ev.clientY - sy)) return;
         stop();
         const locs = selectedLocations(id);
         backend
@@ -252,7 +246,7 @@ export function ListBase(props: ListBaseProps) {
     const sy = e.clientY;
     const stop = trackPointer(
       (ev) => {
-        if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
+        if (!dragStarted(ev.clientX - sx, ev.clientY - sy)) return;
         stop();
         if (!getState().panes[id]?.selected.has(loc)) clickItem(id, loc, { ctrl: false, shift: false });
         const locs = selectedLocations(id);

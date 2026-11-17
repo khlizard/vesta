@@ -185,7 +185,8 @@
   position: absolute;
   z-index: 50;
   left: 2px;
-  top: 23px;
+  /* Just under the box, whatever the text size. */
+  top: calc(100% - 1px);
   min-width: calc(100% - 4px);
   max-width: 480px;
   max-height: 320px;

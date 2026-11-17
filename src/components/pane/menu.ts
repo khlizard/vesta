@@ -26,7 +26,3 @@ export async function runMenuVerb(id: string, verb: string | null) {
       break;
   }
 }
-
-export function errorText(e: unknown): string {
-  return typeof e === "string" ? e : e instanceof Error ? e.message : String(e);
-}

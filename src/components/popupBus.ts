@@ -78,7 +78,3 @@ export function accessKeyPressed(e: { key: string; metaKey: boolean }): string |
   return e.key.length === 1 && !e.metaKey ? e.key.toLowerCase() : null;
 }
 
-/** Modifier state of a mouse/keyboard event as navigation modifiers. */
-export function modsOf(e: { ctrlKey: boolean; shiftKey: boolean; altKey: boolean }): Mods {
-  return { ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey };
-}

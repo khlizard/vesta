@@ -3,13 +3,13 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import { getVersion } from "@tauri-apps/api/app";
 import { formatBuildTime } from "../model/buildTime";
 import { backend } from "../api/backend";
-import { modsOf } from "./popupBus";
+import { errorText, isImeKey, modsOf } from "../model/input";
 import { PopupHost } from "./PopupMenu";
 import { navigate, openExternal, setMessage } from "../state/actions";
 import { newItem } from "../state/fileActions";
 import { selectPattern } from "../state/selection";
 import { currentPaneId, setState, useStore } from "../state/store";
-import type { Mods } from "../model/navigation";
+import { NO_MODS, type Mods } from "../model/navigation";
 import "../styles/chrome.css";
 
 const close = () => setState({ dialog: null });
@@ -79,13 +79,13 @@ function TextDialog({ title, label, initial, selectLength, history, onConfirm }:
 
   const ok = (mods: Mods) => onConfirm(text, mods);
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+    if (e.key === "Enter" && !isImeKey(e)) {
       e.preventDefault();
       ok(modsOf(e));
     }
   };
   return (
-    <Frame title={title} onOk={() => ok({ ctrl: false, shift: false, alt: false })}>
+    <Frame title={title} onOk={() => ok(NO_MODS)}>
       <label className="dlg-label">
         {label}
         <input
@@ -106,7 +106,7 @@ function TextDialog({ title, label, initial, selectLength, history, onConfirm }:
                 setText(h);
                 input.current?.focus();
               }}
-              onDoubleClick={() => onConfirm(h, { ctrl: false, shift: false, alt: false })}
+              onDoubleClick={() => onConfirm(h, NO_MODS)}
             >
               {h}
             </li>
@@ -155,7 +155,7 @@ async function goLocation(text: string, mods: Mods) {
     if (r.kind === "file") await backend.openItems([r.location]);
     else if (id) await navigate(id, r.folder.location, mods);
   } catch (e) {
-    setMessage(`${text}: ${String(e)}`);
+    setMessage(`${text}: ${errorText(e)}`);
   }
 }
 

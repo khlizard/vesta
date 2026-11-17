@@ -5,6 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { backend } from "../api/backend";
 import type { Entry, FolderInfo, WindowPlacement } from "../api/types";
+import { errorText } from "../model/input";
 import { externalAction, inPaneAction, NO_MODS, type Action, type Mods } from "../model/navigation";
 import { oneAtATime, within } from "../model/pacing";
 import { uniqueByLocation } from "../model/paths";
@@ -25,10 +26,6 @@ export function setMessage(text: string | null, ms = 5000) {
   clearTimeout(messageTimer);
   setState({ message: text });
   if (text) messageTimer = setTimeout(() => setState({ message: null }), ms);
-}
-
-function errorText(e: unknown): string {
-  return typeof e === "string" ? e : e instanceof Error ? e.message : String(e);
 }
 
 const sameLocation = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
@@ -348,7 +345,7 @@ export async function reopenClosed(mods: Mods = NO_MODS) {
 }
 
 export function setTabs(f: (s: T.TabsState) => T.TabsState) {
-  setState((s) => ({ tabs: f(s.tabs), paneWidths: null, paneRowSplit: null }));
+  setState((s) => ({ tabs: f(s.tabs) }));
 }
 
 export function setView(tabId: string, f: (v: PaneState["view"]) => Partial<PaneState["view"]>, reload = false) {
@@ -524,7 +521,10 @@ async function watchWindow() {
     .catch(() => {});
 }
 
-/** Reacts to store changes: reloads panes that come into view, follows them with the watcher, saves the session. */
+/**
+ * Reacts to store changes: reloads panes that come into view, arranges the panes evenly when
+ * the shown tabs change, follows them with the watcher, saves the session.
+ */
 export function subscribe(): () => void {
   let prevTabs = getState().tabs;
   let prevPanes = getState().panes;
@@ -540,6 +540,10 @@ export function subscribe(): () => void {
     if (s.tabs !== before.tabs) {
       // A hidden pane is not watched, so its list may be old: read it again when it is shown.
       for (const id of T.newlyShown(before.tabs, s.tabs)) void reloadPane(id);
+      // Other panes on screen: the sizes the user dragged no longer fit, arrange evenly again.
+      if (T.shownChanged(before.tabs, s.tabs) && (s.paneWidths || s.paneRowSplit !== null)) {
+        setState({ paneWidths: null, paneRowSplit: null });
+      }
     }
     if (s.tabs !== before.tabs || s.panes !== before.panes) syncWatches();
     if (s.tabs !== before.tabs || s.mru !== before.mru) scheduleSave();

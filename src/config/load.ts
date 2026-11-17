@@ -3,6 +3,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { defineCommand, isKnownCommand } from "../commands/registry";
+import { errorText } from "../model/input";
 import { setMessage } from "../state/actions";
 import { useConfig } from "./store";
 import type { KeyBinding, MenuItem, UiConfig } from "./types";
@@ -90,7 +91,7 @@ export async function loadUiConfig(): Promise<string[]> {
     // The backend answers with the built-in settings even when usr/ cannot be used, so this
     // only happens if the call itself fails; the window then has no menus until a reload works.
     console.warn("get_ui_config failed", e);
-    setMessage(`設定ファイルを読めませんでした: ${String(e)}`);
+    setMessage(`設定ファイルを読めませんでした: ${errorText(e)}`);
     return [];
   }
 }

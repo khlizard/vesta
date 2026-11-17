@@ -2,6 +2,7 @@
 
 import { backend } from "../api/backend";
 import type { FileOp } from "../api/types";
+import { errorText } from "../model/input";
 import type { Mods } from "../model/navigation";
 import { newItemKind } from "../model/newItem";
 import { dropKind, resultMessage, transferOps, type TransferKind } from "../model/fileOps";
@@ -10,10 +11,6 @@ import { reloadPane, setMessage } from "./actions";
 import { beginFileOp, endFileOp } from "./busy";
 import { selectedEntries } from "./selection";
 import { getState, updatePane } from "./store";
-
-function errorText(e: unknown): string {
-  return typeof e === "string" ? e : e instanceof Error ? e.message : String(e);
-}
 
 function paneOf(id: string | null) {
   return id ? getState().panes[id] ?? null : null;
@@ -27,6 +24,13 @@ export function selectedLocations(id: string | null): string[] {
 
 function folderPath(id: string | null): string | null {
   return paneOf(id)?.folder?.location ?? null;
+}
+
+/** Reads every shown pane again; `select` names an item to select in one of them. */
+async function reloadShown(select?: { paneId: string; location: string }) {
+  await Promise.all(
+    shownTabs(getState().tabs).map((t) => reloadPane(t.id, select && t.id === select.paneId ? select.location : undefined)),
+  );
 }
 
 /** An item to select in a pane after an operation (the first created item), optionally renaming it. */
@@ -63,9 +67,7 @@ async function run(ops: FileOp | FileOp[], after?: SelectAfter): Promise<boolean
   }
   // Watchers reload changed folders; reload shown panes too in case the folder is not watchable.
   const select = after && created;
-  await Promise.all(
-    shownTabs(getState().tabs).map((t) => reloadPane(t.id, select && t.id === after.paneId ? select : undefined)),
-  );
+  await reloadShown(after && created ? { paneId: after.paneId, location: created } : undefined);
   if (after?.rename && select && getState().panes[after.paneId]?.selected.has(select)) {
     updatePane(after.paneId, () => ({ renaming: select }));
   }
@@ -193,7 +195,7 @@ export async function undo() {
   } finally {
     endFileOp();
   }
-  for (const t of shownTabs(getState().tabs)) reloadPane(t.id);
+  await reloadShown();
 }
 
 export async function copyNames(id: string | null, what: "path" | "name" | "base") {
@@ -215,7 +217,12 @@ export async function copyNames(id: string | null, what: "path" | "name" | "base
     })
     .join("\r\n");
   if (!text) return;
-  await backend.clipboardSetText(text).catch((e) => setMessage(errorText(e)));
+  try {
+    await backend.clipboardSetText(text);
+  } catch (e) {
+    setMessage(errorText(e));
+    return;
+  }
   setMessage(text.split("\r\n")[0] + (locs.length > 1 ? ` ほか ${locs.length - 1} 件` : "") + " をコピーしました", 2000);
 }
 

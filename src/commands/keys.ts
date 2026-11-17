@@ -3,7 +3,7 @@
 import { openPopup } from "../components/popupBus";
 import { useConfig } from "../config/store";
 import type { KeyBinding } from "../config/types";
-import type { Mods } from "../model/navigation";
+import { modsOf } from "../model/input";
 import { getState } from "../state/store";
 import { runItem } from "./items";
 
@@ -175,6 +175,6 @@ export function handleGlobalKeyDown(e: KeyboardEvent) {
     openPopup(item.children, x, y);
     return;
   }
-  const m: Mods = { ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey };
+  const m = modsOf(e);
   void runItem(item, m);
 }

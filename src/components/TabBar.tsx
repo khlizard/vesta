@@ -1,13 +1,13 @@
 // Tab bar. Spec: docs/spec/tabs.md
 import { useMemo, useRef, type MouseEvent, type PointerEvent } from "react";
 import { closeTabs, closeTarget, setTabs } from "../state/actions";
+import { dragStarted } from "../model/input";
 import { computeLabels } from "../model/labels";
 import * as T from "../model/tabs";
 import { getState, useStore } from "../state/store";
 import { openPopup, type PopupItem } from "./popupBus";
 import "../styles/chrome.css";
 
-const DRAG_THRESHOLD = 4;
 
 interface DragState {
   id: string;
@@ -62,7 +62,7 @@ export function TabBar() {
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     const d = drag.current;
     if (!d) return;
-    if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) < DRAG_THRESHOLD) return;
+    if (!d.moved && !dragStarted(e.clientX - d.x, e.clientY - d.y)) return;
     d.moved = true;
     const over = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>("[data-drop-tab]");
     const otherId = over?.dataset.dropTab;

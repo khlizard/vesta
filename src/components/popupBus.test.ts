@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { externalAction } from "../model/navigation";
-import { accessKeyPressed, modsOf, switchesOnHover } from "./popupBus";
+import { modsOf } from "../model/input";
+import { accessKeyPressed, switchesOnHover } from "./popupBus";
 
 const key = (k: string, mods: Partial<{ ctrlKey: boolean; shiftKey: boolean; altKey: boolean; metaKey: boolean }> = {}) => ({
   key: k,

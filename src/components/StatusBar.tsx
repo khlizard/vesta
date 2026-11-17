@@ -6,7 +6,8 @@ import { statusText } from "../model/format";
 import { selectedEntries } from "../state/selection";
 import { useStore } from "../state/store";
 import { CommandIcon } from "./CommandIcon";
-import { isSeparator, modsOf } from "./popupBus";
+import { modsOf } from "../model/input";
+import { isSeparator } from "./popupBus";
 import "../styles/chrome.css";
 
 export function StatusBar() {

@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { iconUrl } from "../api/backend";
 import type { Entry } from "../api/types";
+import { cx, dragStarted } from "../model/input";
 import { setOption } from "../state/options";
 import {
   ALL_COLUMNS,
@@ -27,8 +28,6 @@ import { openPopup, type PopupItem } from "./popupBus";
 import "../styles/pane.css";
 
 const MIN_COL = 24;
-/** Pointer travel (px) before a header press becomes a column drag. */
-const DRAG_START = 4;
 
 const MENU_KEY: Record<SortKey, string> = {
   name: "N",
@@ -88,7 +87,6 @@ function SyncIcon({ state }: { state: NonNullable<Entry["syncState"]> }) {
   );
 }
 
-const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
 export function DetailsView({ id, pane, current }: ViewProps) {
   const fullRow = useStore((s) => s.options.FullRowSelect);
@@ -160,7 +158,7 @@ export function DetailsView({ id, pane, current }: ViewProps) {
           onPointerMove={(e) => {
             const m = moving.current;
             if (!m) return;
-            if (!m.dragging && Math.abs(e.clientX - m.x) < DRAG_START) return;
+            if (!m.dragging && !dragStarted(e.clientX - m.x, 0)) return;
             m.dragging = true;
             setDrag({ key: m.key, at: dropIndexAt(e.clientX) });
           }}

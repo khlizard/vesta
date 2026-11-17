@@ -5,8 +5,8 @@ import { backend, iconUrl } from "../api/backend";
 import type { FolderInfo } from "../api/types";
 import { compareNames } from "../model/sort";
 import { navigate, setMessage } from "../state/actions";
+import { dragStarted, errorText, isImeKey, modsOf } from "../model/input";
 import type { Mods } from "../model/navigation";
-import { errorText } from "./pane/menu";
 import { trackPointer } from "./pane/pointer";
 import "../styles/pane.css";
 
@@ -131,8 +131,8 @@ export function AddressBar({ id, folder, current }: Props) {
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     e.stopPropagation();
     // Keys used by a Japanese conversion (Enter to confirm, arrows, Esc) belong to the IME.
-    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-    const mods: Mods = { ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey };
+    if (isImeKey(e)) return;
+    const mods = modsOf(e);
     const n = suggest.names.length;
     if (e.key === "Enter") {
       e.preventDefault();
@@ -160,7 +160,7 @@ export function AddressBar({ id, folder, current }: Props) {
     const loc = folder.location;
     const stop = trackPointer(
       (ev) => {
-        if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
+        if (!dragStarted(ev.clientX - sx, ev.clientY - sy)) return;
         stop();
         backend.startDrag([loc]).catch((err) => setMessage(errorText(err)));
       },
@@ -224,7 +224,7 @@ export function AddressBar({ id, folder, current }: Props) {
               onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => {
                 setAncestors(null);
-                void navigate(id, f.location, { ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey });
+                void navigate(id, f.location, modsOf(e));
                 focusList();
               }}
             >
@@ -242,7 +242,7 @@ export function AddressBar({ id, folder, current }: Props) {
               className={`address-item${i === pick ? " picked" : ""}`}
               onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => {
-                void commit(suggest.parent + name, { ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey });
+                void commit(suggest.parent + name, modsOf(e));
               }}
             >
               <img src={iconUrl(suggest.parent + name)} draggable={false} alt="" />

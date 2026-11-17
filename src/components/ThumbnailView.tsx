@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { iconUrl, thumbUrl } from "../api/backend";
 import type { Entry } from "../api/types";
 import { textMetrics } from "../model/fontSize";
+import { cx } from "../model/input";
 import { stepThumbnailSize } from "../model/thumbSize";
 import { setOption } from "../state/options";
 import { ordered } from "../state/selection";
@@ -16,8 +17,6 @@ import "../styles/pane.css";
 const PAD = 4;
 const CELL_PAD_X = 16;
 const CELL_PAD_Y = 8;
-
-const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
 export function ThumbnailView({ id, pane, current }: ViewProps) {
   const size = useStore((s) => s.options.ThumbnailSize);

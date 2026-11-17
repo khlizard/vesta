@@ -6,6 +6,7 @@
 
 import { listen } from "@tauri-apps/api/event";
 import { backend } from "../api/backend";
+import { errorText } from "../model/input";
 import { normPath, splitByParent } from "../model/paths";
 import { setShown } from "../model/tabs";
 import { openDroppedFolders, setMessage, setTabs } from "./actions";
@@ -267,7 +268,7 @@ export async function initDnd(): Promise<() => void> {
         const mods = await backend.keyState();
         await dropFiles(p.paths, dest, mods);
       } catch (e) {
-        setMessage(typeof e === "string" ? e : e instanceof Error ? e.message : String(e));
+        setMessage(errorText(e));
       }
     })();
   });
