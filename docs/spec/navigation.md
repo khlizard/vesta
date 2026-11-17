@@ -68,6 +68,7 @@
 - フルパス：`C:\foo`、`C:`（`C:\` とみなす）
 - UNC：`\\server`（共有の一覧）、`\\server\share`
 - 環境変数：`%TEMP%`、`%USERPROFILE%\Desktop`
+- `~`：ユーザーフォルダ（別名の `PROFILE` と同じ）。`~/.claude`、`~\Desktop`。先頭の `~` だけを読む。`~user`（ほかのユーザー）や、途中の `~` は読まない。起動引数でも同じ。アドレスバーの補完も `~\` の先で効く
 - シェルの GUID：`::{20D04FE0-3AEA-1069-A2D8-08002B30309D}`
 - 別名（大文字小文字を区別しない。`別名\サブパス` も可）
 
@@ -78,7 +79,7 @@
 | DRIVES, DRIVE | PC |
 | HOME, MYDOCUMENTS, PERSONAL | ドキュメント |
 | MYMUSIC, MYPICTURES, MYPICTURE, MYVIDEO, MYVIDEOS | ミュージック、ピクチャ、ビデオ |
-| PROFILE | ユーザーフォルダ |
+| PROFILE, ~ | ユーザーフォルダ |
 | CONTROLS, CONTROLPANEL, CONTROL | コントロールパネル |
 | BITBUCKET, RECYCLEBIN, TRASH | ごみ箱 |
 | NETWORK, NETHOOD | ネットワーク |

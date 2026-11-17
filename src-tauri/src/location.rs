@@ -57,7 +57,7 @@ fn alias_target(name: &str) -> Option<AliasTarget> {
         "MYMUSIC" => Known(FOLDERID_Music),
         "MYPICTURES" | "MYPICTURE" => Known(FOLDERID_Pictures),
         "MYVIDEO" | "MYVIDEOS" => Known(FOLDERID_Videos),
-        "PROFILE" => Known(FOLDERID_Profile),
+        "PROFILE" | "~" => Known(FOLDERID_Profile),
         "CONTROLS" | "CONTROLPANEL" | "CONTROL" => Fixed(CONTROL_PANEL),
         "BITBUCKET" | "RECYCLEBIN" | "TRASH" => Fixed(RECYCLE_BIN),
         "NETWORK" | "NETHOOD" => Fixed(NETWORK),
@@ -566,6 +566,13 @@ mod tests {
         assert!(f.location.to_lowercase().ends_with("\\windows\\system32"));
         let f = folder(resolve("Profile"));
         assert!(f.fs_path.is_some());
+        // `~` is the profile folder; only as the whole first component.
+        let home = f.location;
+        assert_eq!(folder(resolve("~")).location, home);
+        let sub = folder(resolve("~/AppData")).location;
+        assert!(sub.eq_ignore_ascii_case(&format!("{home}\\AppData")));
+        assert_eq!(folder(resolve("~\\AppData\\")).location, sub);
+        assert!(resolve("~nobody-here").is_err());
         assert_eq!(folder(resolve("DESKTOP")).location, DESKTOP);
         assert!(folder(resolve("desktopdirectory")).fs_path.is_some());
         assert!(resolve("AVESTA").unwrap_err().contains("not available"));

@@ -18,11 +18,20 @@ interface Props {
   current: boolean;
 }
 
-/** Splits typed text into the parent to list and the name prefix, or null when there is no `\`. */
+/** Splits typed text into the parent to list and the name prefix, or null when there is no `\` or `/`. */
 export function splitTyped(text: string): { parent: string; prefix: string } | null {
-  const i = text.lastIndexOf("\\");
+  const i = Math.max(text.lastIndexOf("\\"), text.lastIndexOf("/"));
   if (i < 0) return null;
   return { parent: text.slice(0, i + 1), prefix: text.slice(i + 1) };
+}
+
+/** The folder to list for a typed parent: `/` as `\`, and `~\…` resolved to the profile folder. */
+async function listableParent(parent: string): Promise<string> {
+  const p = parent.replace(/\//g, "\\");
+  if (!p.startsWith("~\\")) return p;
+  const r = await backend.resolveLocation(p);
+  if (r.kind !== "folder") throw new Error("not a folder");
+  return r.folder.location;
 }
 
 export function AddressBar({ id, folder, current }: Props) {
@@ -89,7 +98,7 @@ export function AddressBar({ id, folder, current }: Props) {
       names = folderCache.current.names;
     } else {
       try {
-        const listing = await backend.listFolder(t.parent, false);
+        const listing = await backend.listFolder(await listableParent(t.parent), false);
         names = listing.entries
           .filter((e) => e.isFolder)
           .map((e) => e.name)

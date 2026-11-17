@@ -27,8 +27,12 @@ pub fn paths_from_args(args: impl Iterator<Item = String>, cwd: &Path) -> Vec<St
 }
 
 /// `.`, `..`, `sub\x`, `.\x`: something to resolve against the working folder. A bare word
-/// such as `DESKTOP` is left alone (it may be a location alias).
+/// such as `DESKTOP` is left alone (it may be a location alias), and so is `~\x` (the
+/// profile folder).
 fn looks_relative(a: &str) -> bool {
+    if a.starts_with("~\\") || a.starts_with("~/") {
+        return false;
+    }
     a == "." || a == ".." || a.contains('\\') || a.contains('/')
 }
 
@@ -85,5 +89,6 @@ mod tests {
             "DESKTOP",
             "::{645FF040-5081-101B-9F08-00AA002F954E}"
         ]);
+        assert_eq!(run(&["~", "~/.claude", "~\\x"]), vec!["~", "~/.claude", "~\\x"]);
     }
 }
