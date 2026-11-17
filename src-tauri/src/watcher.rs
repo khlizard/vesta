@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 use notify::{RecommendedWatcher, RecursiveMode, Watcher as _};
 use serde_json::json;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::com::lock;
 use crate::path;
@@ -313,6 +313,13 @@ impl Watcher {
     pub fn apply(&self) {
         self.requests.apply(|locations, fresh| self.shared.set(locations, fresh));
     }
+}
+
+/// Sets the folders to watch (the `watch_folders` command): notes the request, then applies it
+/// off the async runtime and returns when it is in effect.
+pub async fn watch(app: AppHandle, locations: Vec<String>, fresh: bool) -> Result<(), String> {
+    app.state::<Watcher>().request(locations, fresh);
+    crate::com::blocking(move || app.state::<Watcher>().apply()).await
 }
 
 #[cfg(test)]

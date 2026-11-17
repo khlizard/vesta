@@ -4,6 +4,7 @@ mod clipboard;
 mod com;
 mod config;
 mod context_menu;
+mod dataobject;
 mod dragdrop;
 mod droptarget;
 mod fileops;
@@ -13,6 +14,7 @@ mod listing;
 mod location;
 mod logfile;
 mod path;
+mod shelldrop;
 mod startup;
 mod store;
 mod types;
@@ -20,51 +22,39 @@ mod update;
 mod watcher;
 mod window_state;
 
+use com::Hwnd;
 use tauri::{Emitter, Manager, WebviewWindow};
 use types::{ClipFiles, DiskFree, FileOp, FolderInfo, Listing, Modifiers, OpResult, Resolved};
 
-fn owner(window: &WebviewWindow) -> isize {
-    com::hwnd_of(window).map(|h| h.0 as isize).unwrap_or(0)
-}
-
 #[tauri::command]
 async fn list_folder(location: String, show_hidden: bool) -> Result<Listing, String> {
-    com::list_pool()
-        .run(move || listing::list(&location, show_hidden))
-        .await?
+    listing::list_async(location, show_hidden).await
 }
 
 #[tauri::command]
 async fn resolve_location(input: String) -> Result<Resolved, String> {
-    com::list_pool().run(move || location::resolve(&input)).await?
+    location::resolve_async(input).await
 }
 
 /// The folder a shortcut points to, or null (not a shortcut, or it points to a file).
 #[tauri::command]
 async fn link_folder(location: String) -> Result<Option<FolderInfo>, String> {
-    com::list_pool().run(move || location::link_folder(&location)).await
+    location::link_folder_async(location).await
 }
 
 #[tauri::command]
 async fn folder_ancestors(location: String) -> Result<Vec<FolderInfo>, String> {
-    com::list_pool()
-        .run(move || location::ancestors(&location))
-        .await?
+    location::ancestors_async(location).await
 }
 
 #[tauri::command]
 async fn disk_free(location: String) -> Result<Option<DiskFree>, String> {
-    com::list_pool()
-        .run(move || listing::disk_free(&location))
-        .await
+    listing::disk_free_async(location).await
 }
 
 #[tauri::command]
 async fn watch_folders(app: tauri::AppHandle, locations: Vec<String>, fresh: bool) -> Result<(), String> {
-    app.state::<watcher::Watcher>().request(locations, fresh);
-    tauri::async_runtime::spawn_blocking(move || app.state::<watcher::Watcher>().apply())
-        .await
-        .map_err(|e| e.to_string())
+    watcher::watch(app, locations, fresh).await
 }
 
 #[tauri::command]
@@ -75,7 +65,7 @@ async fn open_items(
     args: Option<String>,
     cwd: Option<String>,
 ) -> Result<(), String> {
-    launch::open(locations, verb, args, cwd, owner(&window)).await
+    launch::open(locations, verb, args, cwd, Hwnd::of_or_none(&window)).await
 }
 
 #[tauri::command]
@@ -85,12 +75,12 @@ fn key_state() -> Modifiers {
 
 #[tauri::command]
 async fn file_op(window: WebviewWindow, op: FileOp) -> Result<OpResult, String> {
-    fileops::execute(op, owner(&window)).await
+    fileops::execute(op, Hwnd::of_or_none(&window)).await
 }
 
 #[tauri::command]
 async fn undo(window: WebviewWindow) -> Result<Option<String>, String> {
-    fileops::undo(owner(&window)).await
+    fileops::undo(Hwnd::of_or_none(&window)).await
 }
 
 #[tauri::command]
@@ -138,48 +128,23 @@ async fn right_drop(
     x: f64,
     y: f64,
 ) -> Result<(), String> {
-    droptarget::right_drop(window, sources, folder, x, y).await
+    shelldrop::right_drop(window, sources, folder, x, y).await
 }
 
 // File access runs off the main thread: the data folder may sit on a slow or offline share.
 #[tauri::command]
 async fn read_state(app: tauri::AppHandle, name: String) -> Result<Option<String>, String> {
-    tauri::async_runtime::spawn_blocking(move || store::read_state(&app, &name))
-        .await
-        .map_err(|e| e.to_string())?
+    com::blocking(move || store::read_state(&app, &name)).await?
 }
 
 #[tauri::command]
 async fn write_state(app: tauri::AppHandle, name: String, json: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || store::write_state(&app, &name, &json))
-        .await
-        .map_err(|e| e.to_string())?
-}
-
-#[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-struct UiConfigResponse {
-    config: config::UiConfig,
-    warnings: Vec<String>,
-    usr_dir: String,
+    com::blocking(move || store::write_state(&app, &name, &json)).await?
 }
 
 #[tauri::command]
-async fn get_ui_config(app: tauri::AppHandle) -> Result<UiConfigResponse, String> {
-    tauri::async_runtime::spawn_blocking(move || match store::usr_dir(&app) {
-        Ok(usr) => {
-            let (config, warnings) = config::load(&usr);
-            UiConfigResponse { config, warnings, usr_dir: usr.to_string_lossy().into_owned() }
-        }
-        // No settings folder (it cannot be created): the app still gets its menus and keys.
-        Err(e) => UiConfigResponse {
-            config: config::defaults(),
-            warnings: vec![format!("usr: {e}; using the built-in settings")],
-            usr_dir: String::new(),
-        },
-    })
-    .await
-    .map_err(|e| e.to_string())
+async fn get_ui_config(app: tauri::AppHandle) -> Result<config::UiConfigResponse, String> {
+    config::ui_config(app).await
 }
 
 /// Expands `%NAME%` environment variables (args of execute / link items).
@@ -191,8 +156,7 @@ fn expand_env(text: String) -> String {
 /// Folders and files named on the command line of this (first) instance.
 #[tauri::command]
 fn startup_paths() -> Vec<String> {
-    let cwd = std::env::current_dir().unwrap_or_default();
-    startup::paths_from_args(std::env::args().skip(1), &cwd)
+    startup::paths()
 }
 
 /// Current placement of the main window, for the frontend to store in the session.
@@ -204,17 +168,13 @@ fn window_placement(window: WebviewWindow) -> Result<window_state::Placement, St
 /// Checks GitHub Releases and downloads a newer version; the version ready to apply, or null.
 #[tauri::command]
 async fn update_check() -> Result<Option<String>, String> {
-    tauri::async_runtime::spawn_blocking(update::check_and_download)
-        .await
-        .map_err(|e| e.to_string())?
+    com::blocking(update::check_and_download).await?
 }
 
 /// Applies the downloaded update and restarts (the process exits).
 #[tauri::command]
 async fn update_restart() -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(update::restart_now)
-        .await
-        .map_err(|e| e.to_string())?
+    com::blocking(update::restart_now).await?
 }
 
 pub fn run() {

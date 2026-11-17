@@ -14,14 +14,14 @@ use tauri::http::{Request, Response};
 use windows::core::Interface;
 use windows::Win32::Foundation::SIZE;
 use windows::Win32::Graphics::Gdi::{
-    DeleteObject, GetDC, GetDIBits, GetObjectW, ReleaseDC, BITMAP, BITMAPINFO, BITMAPINFOHEADER,
+    GetDIBits, GetObjectW, BITMAP, BITMAPINFO, BITMAPINFOHEADER,
     BI_RGB, DIB_RGB_COLORS, HBITMAP,
 };
 use windows::Win32::UI::Shell::{
     IShellItemImageFactory, SIIGBF_BIGGERSIZEOK, SIIGBF_ICONONLY, SIIGBF_RESIZETOFIT, SIIGBF,
 };
 
-use crate::com::{lock, shell_item};
+use crate::com::{lock, shell_item, BitmapGuard, ScreenDc};
 use crate::path;
 
 type Png = std::sync::Arc<Vec<u8>>;
@@ -149,11 +149,8 @@ enum Tried {
 fn try_image(factory: &IShellItemImageFactory, size: i32, flags: SIIGBF) -> Tried {
     match unsafe { factory.GetImage(SIZE { cx: size, cy: size }, flags) } {
         Ok(hbm) => {
-            let png = hbitmap_to_png(hbm);
-            unsafe {
-                let _ = DeleteObject(hbm.into());
-            }
-            png.map_or(Tried::NotReady, Tried::Image)
+            let hbm = BitmapGuard(hbm);
+            hbitmap_to_png(hbm.0).map_or(Tried::NotReady, Tried::Image)
         }
         Err(e) if e.code() == E_PENDING => Tried::NotReady,
         Err(_) => Tried::Failed,
@@ -204,11 +201,10 @@ fn hbitmap_to_png(hbm: HBITMAP) -> Option<Vec<u8>> {
         ..Default::default()
     };
     let mut px = vec![0u8; w * h * 4];
-    let hdc = unsafe { GetDC(None) };
-    let lines = unsafe {
-        GetDIBits(hdc, hbm, 0, h as u32, Some(px.as_mut_ptr() as *mut _), &mut bmi, DIB_RGB_COLORS)
+    let lines = {
+        let dc = ScreenDc::get();
+        unsafe { GetDIBits(dc.0, hbm, 0, h as u32, Some(px.as_mut_ptr() as *mut _), &mut bmi, DIB_RGB_COLORS) }
     };
-    unsafe { ReleaseDC(None, hdc) };
     // All zero: nothing was drawn (an image the Shell has not fetched yet), not a picture.
     if lines == 0 || px.iter().all(|&b| b == 0) {
         return None;

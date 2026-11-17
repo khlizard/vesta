@@ -9,16 +9,17 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{GetKeyState, VIRTUAL_KEY, VK_C
 use windows::Win32::UI::Shell::Common::ITEMIDLIST;
 use windows::Win32::UI::Shell::{
     BHID_SFObject, DefSubclassProc, IContextMenu, IContextMenu2, IContextMenu3, ILFindLastID,
-    IShellFolder, SHGetDesktopFolder, SetWindowSubclass, CMF_CANRENAME, CMF_EXTENDEDVERBS,
-    CMF_NORMAL, CMIC_MASK_CONTROL_DOWN, CMIC_MASK_PTINVOKE, CMIC_MASK_SHIFT_DOWN,
-    CMINVOKECOMMANDINFOEX, GCS_VERBW, SEE_MASK_UNICODE,
+    IShellFolder, SHBindToParent, SHGetDesktopFolder, CMF_CANRENAME, CMF_EXTENDEDVERBS,
+    CMF_NORMAL, CMIC_MASK_CONTROL_DOWN, CMIC_MASK_PTINVOKE, CMIC_MASK_SHIFT_DOWN, CMINVOKECOMMANDINFO,
+    CMINVOKECOMMANDINFOEX, GCS_VERBW, SEE_MASK_FLAG_NO_UI, SEE_MASK_NOASYNC, SEE_MASK_UNICODE,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     CreatePopupMenu, DestroyMenu, TrackPopupMenuEx, HMENU, SW_SHOWNORMAL, TPM_RETURNCMD,
     TPM_RIGHTBUTTON, WM_DRAWITEM, WM_INITMENUPOPUP, WM_MEASUREITEM, WM_MENUCHAR,
 };
 
-use crate::com::{self, Pidl};
+use crate::com::{self, Hwnd, Pidl};
+use crate::dataobject;
 use crate::path;
 
 /// Verbs the app handles itself; the menu returns them instead of invoking them.
@@ -40,13 +41,7 @@ thread_local! {
 
 /// Installs the window subclass that forwards menu messages to IContextMenu2/3.
 pub fn install(window: &tauri::WebviewWindow) -> Result<(), String> {
-    let hwnd = com::hwnd_of(window)?;
-    let ok = unsafe { SetWindowSubclass(hwnd, Some(subclass_proc), SUBCLASS_ID, 0) };
-    if ok.as_bool() {
-        Ok(())
-    } else {
-        Err("SetWindowSubclass failed".into())
-    }
+    com::subclass(window, subclass_proc, SUBCLASS_ID)
 }
 
 unsafe extern "system" fn subclass_proc(
@@ -90,9 +85,11 @@ pub(crate) fn shell_folder(folder: &str) -> Result<IShellFolder, String> {
 }
 
 /// An IContextMenu with its populated popup menu.
-struct BuiltMenu {
+pub(crate) struct BuiltMenu {
     cm: IContextMenu,
     hmenu: HMENU,
+    /// How many command offsets the menu uses, counted from 0 (the largest one + 1).
+    span: u32,
 }
 
 impl Drop for BuiltMenu {
@@ -103,15 +100,64 @@ impl Drop for BuiltMenu {
     }
 }
 
+impl BuiltMenu {
+    /// Lets `cm` fill a new popup menu.
+    fn query(cm: IContextMenu, flags: u32) -> Result<Self, String> {
+        let hmenu = unsafe { CreatePopupMenu() }.map_err(com::err)?;
+        // From here on the menu is destroyed by `Drop`, also when the query fails.
+        let mut built = Self { cm, hmenu, span: 0 };
+        let hr = unsafe { built.cm.QueryContextMenu(hmenu, 0, ID_FIRST, ID_LAST, flags) };
+        hr.ok().map_err(com::err)?;
+        built.span = (hr.0 as u32) & 0xFFFF;
+        Ok(built)
+    }
+
+    /// The menu of the single item `pidl`, bound through its parent folder like Explorer does
+    /// (the items of the Recycle Bin have their verbs only there).
+    pub(crate) fn of_item(owner: HWND, pidl: &Pidl) -> Result<Self, String> {
+        let mut last: *mut ITEMIDLIST = std::ptr::null_mut();
+        let cm: IContextMenu = unsafe {
+            let folder: IShellFolder = SHBindToParent(pidl.as_ptr(), Some(&mut last)).map_err(com::err)?;
+            folder.GetUIObjectOf(owner, &[last as *const ITEMIDLIST], None).map_err(com::err)?
+        };
+        Self::query(cm, CMF_NORMAL)
+    }
+
+    /// The offset of the command whose canonical verb is `verb` (the last one, if several).
+    fn find_verb(&self, verb: &str) -> Option<u32> {
+        (0..self.span).rev().find(|&offset| verb_of(&self.cm, ID_FIRST + offset).eq_ignore_ascii_case(verb))
+    }
+
+    /// Runs the command with the canonical verb `verb`, without showing the menu. With `silent`
+    /// the command shows no dialogs.
+    pub(crate) fn invoke_verb(&self, owner: HWND, verb: &str, silent: bool) -> Result<(), String> {
+        // Find the command by its canonical verb and invoke it by offset: more reliable than
+        // passing the verb string to shell folders that only match menu offsets.
+        let name: Vec<u8> = verb.bytes().chain(std::iter::once(0)).collect();
+        let lp_verb = match self.find_verb(verb) {
+            Some(offset) => PCSTR(offset as usize as *const u8),
+            None => PCSTR(name.as_ptr()),
+        };
+        // CMIC_MASK_NOASYNC and CMIC_MASK_FLAG_NO_UI have the values of their SEE_MASK_ names.
+        // NOASYNC: the command is finished when the call returns (the caller looks at the result).
+        let info = CMINVOKECOMMANDINFO {
+            cbSize: std::mem::size_of::<CMINVOKECOMMANDINFO>() as u32,
+            fMask: SEE_MASK_NOASYNC | if silent { SEE_MASK_FLAG_NO_UI } else { 0 },
+            hwnd: owner,
+            lpVerb: lp_verb,
+            nShow: SW_SHOWNORMAL.0,
+            ..Default::default()
+        };
+        unsafe { self.cm.InvokeCommand(&info) }.map_err(com::err)
+    }
+}
+
 fn build_menu(hwnd: HWND, folder: &str, items: &[String], extended: bool) -> Result<BuiltMenu, String> {
     let sf = shell_folder(folder)?;
     let cm: IContextMenu = if items.is_empty() {
         unsafe { sf.CreateViewObject::<IContextMenu>(hwnd) }.map_err(com::err)?
     } else {
-        let pidls = items
-            .iter()
-            .map(|i| Pidl::from_parsing(i).map_err(com::err))
-            .collect::<Result<Vec<_>, _>>()?;
+        let pidls = dataobject::pidls(items).map_err(|e| e.plain(""))?;
         // Children are relative PIDLs pointing into the absolute ones (kept alive by `pidls`).
         let children: Vec<*const ITEMIDLIST> = pidls
             .iter()
@@ -120,23 +166,16 @@ fn build_menu(hwnd: HWND, folder: &str, items: &[String], extended: bool) -> Res
         unsafe { sf.GetUIObjectOf::<IContextMenu>(hwnd, &children, None) }.map_err(com::err)?
     };
 
-    let hmenu = unsafe { CreatePopupMenu() }.map_err(com::err)?;
     let mut flags = CMF_NORMAL | CMF_CANRENAME;
     if extended {
         flags |= CMF_EXTENDEDVERBS;
     }
-    if let Err(e) = unsafe { cm.QueryContextMenu(hmenu, 0, ID_FIRST, ID_LAST, flags) }.ok() {
-        unsafe {
-            let _ = DestroyMenu(hmenu);
-        }
-        return Err(com::err(e));
-    }
-    Ok(BuiltMenu { cm, hmenu })
+    BuiltMenu::query(cm, flags)
 }
 
-/// The verb of menu command `id` ("" when it has none). Asked only for the command the user
-/// chose: probing every possible id made each right-click slow, and some shell extensions
-/// misbehave when asked about ids that are not theirs.
+/// The verb of menu command `id` ("" when it has none). When showing a menu, asked only for the
+/// command the user chose: probing every possible id made each right-click slow, and some shell
+/// extensions misbehave when asked about ids that are not theirs.
 fn verb_of(cm: &IContextMenu, id: u32) -> String {
     let mut buf = [0u16; 256];
     let r = unsafe {
@@ -241,16 +280,9 @@ pub async fn show(
     x: f64,
     y: f64,
 ) -> Result<Option<String>, String> {
-    let raw = com::hwnd_of(&window)?.0 as isize;
+    let hwnd = Hwnd::of(&window)?;
     let scale = window.scale_factor().map_err(|e| e.to_string())?;
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    window
-        .run_on_main_thread(move || {
-            let hwnd = HWND(raw as *mut core::ffi::c_void);
-            let _ = tx.send(show_blocking(hwnd, &folder, &items, x, y, scale));
-        })
-        .map_err(|e| e.to_string())?;
-    rx.await.map_err(|_| "context menu was dropped".to_string())?
+    com::on_main(&window, "context menu", move || show_blocking(hwnd.get(), &folder, &items, x, y, scale)).await?
 }
 
 #[cfg(test)]

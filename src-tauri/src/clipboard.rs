@@ -1,68 +1,37 @@
 //! File and text clipboard (CF_HDROP + Preferred DropEffect, CF_UNICODETEXT).
-//! Everything runs on `crate::com::op_pool()`.
+//! Everything runs on `crate::com::clip_pool()`: one thread of its own, so the clipboard answers
+//! while a file operation runs.
 
-use std::mem::ManuallyDrop;
-
-use windows::Win32::Foundation::{GlobalFree, HANDLE, HGLOBAL};
-use windows::Win32::System::Com::{
-    DVASPECT_CONTENT, FORMATETC, IBindCtx, IDataObject, STGMEDIUM, STGMEDIUM_0, TYMED_HGLOBAL,
-};
-use windows::Win32::System::DataExchange::{
-    CloseClipboard, EmptyClipboard, OpenClipboard, RegisterClipboardFormatW, SetClipboardData,
-};
-use windows::Win32::System::Memory::{
-    GMEM_MOVEABLE, GlobalAlloc, GlobalLock, GlobalUnlock,
-};
+use windows::Win32::Foundation::HANDLE;
+use windows::Win32::System::DataExchange::{EmptyClipboard, SetClipboardData};
 use windows::Win32::System::Ole::{
-    CF_HDROP, CF_UNICODETEXT, DROPEFFECT_COPY, DROPEFFECT_MOVE, OleFlushClipboard, OleGetClipboard,
-    OleSetClipboard, ReleaseStgMedium,
+    CF_UNICODETEXT, DROPEFFECT_COPY, DROPEFFECT_MOVE, OleFlushClipboard, OleGetClipboard, OleSetClipboard,
 };
-use windows::Win32::UI::Shell::{
-    BHID_DataObject, DragQueryFileW, HDROP, SHCreateShellItemArrayFromIDLists,
-};
-use windows::core::w;
 
-use crate::com::{self, Pidl, err, from_wide_buf};
+use crate::com::{self, OpenClipboardGuard, err};
+use crate::dataobject::{self, Global, Medium};
 use crate::types::ClipFiles;
 
 pub async fn set_files(paths: Vec<String>, cut: bool) -> Result<(), String> {
-    com::op_pool().run(move || set_files_sync(&paths, cut)).await?
+    com::clip_pool().run(move || set_files_sync(&paths, cut)).await?
 }
 
 pub async fn get_files() -> Result<Option<ClipFiles>, String> {
-    com::op_pool().run(get_files_sync).await?
+    com::clip_pool().run(get_files_sync).await?
 }
 
 pub async fn set_text(text: String) -> Result<(), String> {
-    com::op_pool().run(move || set_text_sync(&text)).await?
+    com::clip_pool().run(move || set_text_sync(&text)).await?
 }
 
 /// Empties the clipboard (after pasting cut files: they are no longer where it says).
 pub async fn clear() -> Result<(), String> {
-    com::op_pool().run(clear_sync).await?
+    com::clip_pool().run(clear_sync).await?
 }
 
 fn clear_sync() -> Result<(), String> {
-    unsafe {
-        open_clipboard()?;
-        let result = EmptyClipboard().map_err(err);
-        let _ = CloseClipboard();
-        result
-    }
-}
-
-fn formatetc(cf: u16) -> FORMATETC {
-    FORMATETC {
-        cfFormat: cf,
-        ptd: std::ptr::null_mut(),
-        dwAspect: DVASPECT_CONTENT.0,
-        lindex: -1,
-        tymed: TYMED_HGLOBAL.0 as u32,
-    }
-}
-
-fn drop_effect_format() -> u16 {
-    unsafe { RegisterClipboardFormatW(w!("Preferred DropEffect")) as u16 }
+    let _open = OpenClipboardGuard::open()?;
+    unsafe { EmptyClipboard() }.map_err(err)
 }
 
 /// Retries while another process holds the clipboard (CLIPBRD_E_CANT_OPEN).
@@ -80,41 +49,10 @@ fn retry_busy<T>(mut f: impl FnMut() -> windows::core::Result<T>) -> windows::co
 }
 
 fn set_files_sync(paths: &[String], cut: bool) -> Result<(), String> {
-    if paths.is_empty() {
-        return Err("no files".into());
-    }
-    let pidls = paths
-        .iter()
-        .map(|p| Pidl::from_parsing(p).map_err(|e| format!("{p}: {}", err(e))))
-        .collect::<Result<Vec<_>, _>>()?;
-    let ptrs: Vec<_> = pidls.iter().map(|p| p.as_ptr()).collect();
+    let data = dataobject::data_object(paths).map_err(|e| e.with_path("no files"))?;
+    let effect = if cut { DROPEFFECT_MOVE } else { DROPEFFECT_COPY };
+    dataobject::set_u32(&data, dataobject::preferred_drop_effect(), effect.0)?;
     unsafe {
-        let array = SHCreateShellItemArrayFromIDLists(&ptrs).map_err(err)?;
-        let data: IDataObject = array
-            .BindToHandler(None::<&IBindCtx>, &BHID_DataObject)
-            .map_err(err)?;
-
-        let effect = if cut { DROPEFFECT_MOVE } else { DROPEFFECT_COPY };
-        let hg = GlobalAlloc(GMEM_MOVEABLE, 4).map_err(err)?;
-        let p = GlobalLock(hg) as *mut u32;
-        if p.is_null() {
-            let _ = GlobalFree(Some(hg));
-            return Err("GlobalLock failed".into());
-        }
-        *p = effect.0;
-        let _ = GlobalUnlock(hg);
-        let medium = STGMEDIUM {
-            tymed: TYMED_HGLOBAL.0 as u32,
-            u: STGMEDIUM_0 { hGlobal: hg },
-            pUnkForRelease: ManuallyDrop::new(None),
-        };
-        // fRelease = true: the data object owns `hg` once the call has succeeded. When it
-        // fails the block is still ours to free.
-        if let Err(e) = data.SetData(&formatetc(drop_effect_format()), &medium, true) {
-            let _ = GlobalFree(Some(hg));
-            return Err(err(e));
-        }
-
         retry_busy(|| OleSetClipboard(&data)).map_err(err)?;
         retry_busy(|| OleFlushClipboard()).map_err(err)?;
     }
@@ -122,75 +60,32 @@ fn set_files_sync(paths: &[String], cut: bool) -> Result<(), String> {
 }
 
 fn get_files_sync() -> Result<Option<ClipFiles>, String> {
-    unsafe {
-        let data = retry_busy(|| OleGetClipboard()).map_err(err)?;
-        let fmt = formatetc(CF_HDROP.0);
-        if data.QueryGetData(&fmt).0 != 0 {
-            return Ok(None);
-        }
-        let mut medium = retry_busy(|| data.GetData(&fmt)).map_err(err)?;
-        let hdrop = HDROP(medium.u.hGlobal.0);
-        let count = DragQueryFileW(hdrop, u32::MAX, None);
-        let mut paths = Vec::with_capacity(count as usize);
-        for i in 0..count {
-            let len = DragQueryFileW(hdrop, i, None) as usize;
-            let mut buf = vec![0u16; len + 1];
-            DragQueryFileW(hdrop, i, Some(&mut buf));
-            paths.push(from_wide_buf(&buf));
-        }
-        ReleaseStgMedium(&mut medium);
-
-        let mut cut = false;
-        if let Ok(mut m) = retry_busy(|| data.GetData(&formatetc(drop_effect_format()))) {
-            let hg = m.u.hGlobal;
-            let p = GlobalLock(hg) as *const u32;
-            if !p.is_null() {
-                cut = (*p & DROPEFFECT_MOVE.0) != 0;
-                let _ = GlobalUnlock(hg);
-            }
-            ReleaseStgMedium(&mut m);
-        }
-        Ok(Some(ClipFiles { paths, cut }))
+    let data = retry_busy(|| unsafe { OleGetClipboard() }).map_err(err)?;
+    let hdrop = dataobject::hdrop_format();
+    if unsafe { data.QueryGetData(&hdrop) }.0 != 0 {
+        return Ok(None);
     }
-}
-
-/// OpenClipboard fails while another process holds it; retry briefly.
-unsafe fn open_clipboard() -> Result<(), String> {
-    let mut last = None;
-    for _ in 0..20 {
-        match unsafe { OpenClipboard(None) } {
-            Ok(()) => return Ok(()),
-            Err(e) => last = Some(e),
-        }
-        std::thread::sleep(std::time::Duration::from_millis(25));
-    }
-    Err(last.map(err).unwrap_or_default())
+    let paths = retry_busy(|| Medium::get(&data, &hdrop)).map_err(err)?.hdrop_paths();
+    let effect = dataobject::global(dataobject::preferred_drop_effect());
+    let cut = retry_busy(|| Medium::get(&data, &effect))
+        .ok()
+        .and_then(|m| m.u32())
+        .is_some_and(|e| e & DROPEFFECT_MOVE.0 != 0);
+    Ok(Some(ClipFiles { paths, cut }))
 }
 
 fn set_text_sync(text: &str) -> Result<(), String> {
     let w = com::wide(text);
-    let bytes = w.len() * 2;
+    let _open = OpenClipboardGuard::open()?;
     unsafe {
-        open_clipboard()?;
-        let result = (|| -> Result<(), String> {
-            EmptyClipboard().map_err(err)?;
-            let hg: HGLOBAL = GlobalAlloc(GMEM_MOVEABLE, bytes).map_err(err)?;
-            let p = GlobalLock(hg) as *mut u16;
-            if p.is_null() {
-                let _ = GlobalFree(Some(hg));
-                return Err("GlobalLock failed".into());
-            }
-            std::ptr::copy_nonoverlapping(w.as_ptr(), p, w.len());
-            let _ = GlobalUnlock(hg);
-            if let Err(e) = SetClipboardData(CF_UNICODETEXT.0 as u32, Some(HANDLE(hg.0))) {
-                let _ = GlobalFree(Some(hg));
-                return Err(err(e));
-            }
-            Ok(())
-        })();
-        let _ = CloseClipboard();
-        result
+        EmptyClipboard().map_err(err)?;
+        let block = Global::copy_of(&w)?;
+        // The clipboard owns the block once the call has succeeded. When it fails the block is
+        // still ours to free (`block` is dropped).
+        SetClipboardData(CF_UNICODETEXT.0 as u32, Some(HANDLE(block.handle().0))).map_err(err)?;
+        let _ = block.into_raw();
     }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -206,7 +101,7 @@ mod tests {
         let f = dir.path().join("a.txt");
         std::fs::write(&f, "x").unwrap();
         let path = f.to_str().unwrap().to_string();
-        com::op_pool()
+        com::clip_pool()
             .run_blocking(move || {
                 set_files_sync(std::slice::from_ref(&path), false).unwrap();
                 let got = get_files_sync().unwrap().expect("hdrop");
@@ -227,7 +122,7 @@ mod tests {
     #[test]
     #[ignore]
     fn text_clears_files() {
-        com::op_pool()
+        com::clip_pool()
             .run_blocking(|| {
                 set_text_sync("avesta テスト").unwrap();
                 assert_eq!(get_files_sync().unwrap(), None);

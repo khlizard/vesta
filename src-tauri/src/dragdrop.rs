@@ -3,33 +3,12 @@
 use std::sync::Mutex;
 
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
-use windows::Win32::System::Com::IDataObject;
 use windows::Win32::System::Ole::{DROPEFFECT, DROPEFFECT_COPY, DROPEFFECT_LINK, DROPEFFECT_MOVE};
-use windows::Win32::UI::Shell::Common::ITEMIDLIST;
-use windows::Win32::UI::Shell::{
-    BHID_DataObject, DefSubclassProc, SHCreateShellItemArrayFromIDLists, SHDoDragDrop, SetWindowSubclass,
-};
+use windows::Win32::UI::Shell::{DefSubclassProc, SHDoDragDrop};
 use windows::Win32::UI::WindowsAndMessaging::{PostMessageW, WM_APP};
 
-use crate::com::{self, Pidl};
-
-/// Builds the Shell data object (CF_HDROP, Shell IDList array, drag image support) for `locations`.
-pub(crate) fn build_data_object(locations: &[String]) -> Result<IDataObject, String> {
-    if locations.is_empty() {
-        return Err("no items to drag".into());
-    }
-    let pidls = locations
-        .iter()
-        .map(|l| Pidl::from_parsing(l).map_err(com::err))
-        .collect::<Result<Vec<_>, _>>()?;
-    let ptrs: Vec<*const ITEMIDLIST> = pidls.iter().map(|p| p.as_ptr()).collect();
-    unsafe {
-        let array = SHCreateShellItemArrayFromIDLists(&ptrs).map_err(com::err)?;
-        array
-            .BindToHandler::<_, IDataObject>(None, &BHID_DataObject)
-            .map_err(com::err)
-    }
-}
+use crate::com;
+use crate::dataobject;
 
 fn effect_name(effect: DROPEFFECT) -> &'static str {
     if effect.0 & DROPEFFECT_MOVE.0 != 0 {
@@ -44,7 +23,7 @@ fn effect_name(effect: DROPEFFECT) -> &'static str {
 }
 
 fn drag_blocking(hwnd: HWND, locations: &[String]) -> Result<String, String> {
-    let data = build_data_object(locations)?;
+    let data = dataobject::data_object(locations).map_err(|e| e.plain("no items to drag"))?;
     let effect = unsafe {
         SHDoDragDrop(
             Some(hwnd),
@@ -74,13 +53,7 @@ static PENDING: Mutex<Option<(Vec<String>, Reply)>> = Mutex::new(None);
 
 /// Installs the window subclass that runs posted drags. Call on the main thread.
 pub fn install(window: &tauri::WebviewWindow) -> Result<(), String> {
-    let hwnd = com::hwnd_of(window)?;
-    let ok = unsafe { SetWindowSubclass(hwnd, Some(subclass_proc), SUBCLASS_ID, 0) };
-    if ok.as_bool() {
-        Ok(())
-    } else {
-        Err("SetWindowSubclass failed".into())
-    }
+    com::subclass(window, subclass_proc, SUBCLASS_ID)
 }
 
 unsafe extern "system" fn subclass_proc(
@@ -115,46 +88,6 @@ pub async fn start_drag(window: tauri::WebviewWindow, locations: Vec<String>) ->
 #[cfg(test)]
 mod tests {
     use super::*;
-    use windows::Win32::System::Com::{DVASPECT_CONTENT, FORMATETC, TYMED_HGLOBAL};
-    use windows::Win32::System::Ole::{ReleaseStgMedium, CF_HDROP};
-    use windows::Win32::UI::Shell::{DragQueryFileW, HDROP};
-
-    #[test]
-    fn data_object_exposes_hdrop() {
-        com::init_sta();
-        let dir = tempfile::tempdir().unwrap();
-        // The shell answers with long names; TEMP may be a short one (RUNNER~1 on CI).
-        let root = crate::location::long_path(dir.path());
-        let a = root.join("a.txt");
-        let b = root.join("b.txt");
-        std::fs::write(&a, b"a").unwrap();
-        std::fs::write(&b, b"b").unwrap();
-        let locs = vec![a.to_string_lossy().to_string(), b.to_string_lossy().to_string()];
-        let data = build_data_object(&locs).unwrap();
-        let fmt = FORMATETC {
-            cfFormat: CF_HDROP.0,
-            ptd: std::ptr::null_mut(),
-            dwAspect: DVASPECT_CONTENT.0,
-            lindex: -1,
-            tymed: TYMED_HGLOBAL.0 as u32,
-        };
-        unsafe {
-            assert!(data.QueryGetData(&fmt).is_ok());
-            let mut medium = data.GetData(&fmt).unwrap();
-            let hdrop = HDROP(medium.u.hGlobal.0);
-            let n = DragQueryFileW(hdrop, u32::MAX, None);
-            assert_eq!(n, 2);
-            let mut got = Vec::new();
-            for i in 0..n {
-                let mut buf = vec![0u16; 1024];
-                let len = DragQueryFileW(hdrop, i, Some(&mut buf)) as usize;
-                got.push(String::from_utf16_lossy(&buf[..len]).to_lowercase());
-            }
-            ReleaseStgMedium(&mut medium);
-            assert!(got.contains(&locs[0].to_lowercase()));
-            assert!(got.contains(&locs[1].to_lowercase()));
-        }
-    }
 
     #[test]
     fn effect_names() {

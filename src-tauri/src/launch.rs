@@ -1,16 +1,17 @@
 //! Opening items with ShellExecuteEx, and reading modifier key state.
+//! Items are opened on `crate::com::launch_pool()`.
 
-use windows::Win32::Foundation::HWND;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState, VK_CONTROL, VK_MENU, VK_SHIFT,
 };
 use windows::Win32::UI::Shell::{
-    SEE_MASK_FLAG_NO_UI, SEE_MASK_IDLIST, SEE_MASK_INVOKEIDLIST, SHELLEXECUTEINFOW, ShellExecuteExW,
+    SEE_MASK_FLAG_NO_UI, SEE_MASK_IDLIST, SEE_MASK_INVOKEIDLIST, SEE_MASK_NOASYNC, SHELLEXECUTEINFOW,
+    ShellExecuteExW,
 };
 use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
 use windows::core::PCWSTR;
 
-use crate::com::{self, Pidl, err, wide};
+use crate::com::{self, Hwnd, Pidl, err, wide};
 use crate::path;
 use crate::types::Modifiers;
 
@@ -21,9 +22,9 @@ pub async fn open(
     verb: Option<String>,
     args: Option<String>,
     cwd: Option<String>,
-    owner: isize,
+    owner: Hwnd,
 ) -> Result<(), String> {
-    com::list_pool()
+    com::launch_pool()
         .run(move || open_sync(&locations, verb.as_deref(), args.as_deref(), cwd.as_deref(), owner))
         .await?
 }
@@ -33,7 +34,7 @@ fn open_sync(
     verb: Option<&str>,
     args: Option<&str>,
     cwd: Option<&str>,
-    owner: isize,
+    owner: Hwnd,
 ) -> Result<(), String> {
     let verb_w = verb.filter(|v| !v.is_empty()).map(wide);
     let args_w = args.filter(|v| !v.is_empty()).map(wide);
@@ -44,6 +45,10 @@ fn open_sync(
     // app); a named verb reports failures through the returned error only.
     let quiet = if verb_w.is_some() { SEE_MASK_FLAG_NO_UI } else { Default::default() };
 
+    // SEE_MASK_NOASYNC (on both calls below): ShellExecuteEx returns when the launch is complete.
+    // Without it a launch may be finished later through messages to the calling thread (DDE,
+    // for one), and the pool threads run no message loop between jobs. Microsoft's description
+    // of the flag says calls from background threads should always pass it.
     let mut errors = Vec::new();
     for loc in locations {
         let result = if path::is_http_url(loc) {
@@ -52,8 +57,8 @@ fn open_sync(
             let file_w = wide(loc);
             let mut info = SHELLEXECUTEINFOW {
                 cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
-                fMask: SEE_MASK_FLAG_NO_UI,
-                hwnd: HWND(owner as _),
+                fMask: SEE_MASK_FLAG_NO_UI | SEE_MASK_NOASYNC,
+                hwnd: owner.get(),
                 lpFile: PCWSTR(file_w.as_ptr()),
                 nShow: SW_SHOWNORMAL.0,
                 ..Default::default()
@@ -63,8 +68,8 @@ fn open_sync(
             Pidl::from_parsing(loc).and_then(|pidl| {
                 let mut info = SHELLEXECUTEINFOW {
                     cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
-                    fMask: SEE_MASK_IDLIST | SEE_MASK_INVOKEIDLIST | quiet,
-                    hwnd: HWND(owner as _),
+                    fMask: SEE_MASK_IDLIST | SEE_MASK_INVOKEIDLIST | SEE_MASK_NOASYNC | quiet,
+                    hwnd: owner.get(),
                     lpVerb: ptr(&verb_w),
                     lpParameters: ptr(&args_w),
                     lpDirectory: ptr(&cwd_w),
@@ -108,8 +113,8 @@ mod tests {
     }
     #[test]
     fn open_nonexistent_path_is_error() {
-        let r = com::list_pool().run_blocking(|| {
-            open_sync(&["C:\\no-such-dir-avesta-test\\nofile.txt".to_string()], None, None, None, 0)
+        let r = com::launch_pool().run_blocking(|| {
+            open_sync(&["C:\\no-such-dir-avesta-test\\nofile.txt".to_string()], None, None, None, Hwnd::NONE)
         });
         assert!(r.unwrap().is_err());
     }

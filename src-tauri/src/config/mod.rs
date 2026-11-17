@@ -5,7 +5,7 @@ mod xml;
 
 use std::fs;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
@@ -118,6 +118,64 @@ pub fn load(usr: &Path) -> (UiConfig, Vec<String>) {
         key_folder: load_one(usr, "keyboard-folder.xml", KEYBOARD_FOLDER_XML, xml::parse_keyboard, &mut w),
     };
     (config, w)
+}
+
+/// What the frontend gets for `get_ui_config`.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiConfigResponse {
+    pub config: UiConfig,
+    pub warnings: Vec<String>,
+    /// The settings folder, or "" when there is none.
+    pub usr_dir: String,
+}
+
+/// The settings from the folder `usr`, or the built-in ones when there is no such folder.
+pub fn response(usr: Result<PathBuf, String>) -> UiConfigResponse {
+    match usr {
+        Ok(usr) => {
+            let (config, warnings) = load(&usr);
+            UiConfigResponse { config, warnings, usr_dir: usr.to_string_lossy().into_owned() }
+        }
+        // No settings folder (it cannot be created): the app still gets its menus and keys.
+        Err(e) => UiConfigResponse {
+            config: defaults(),
+            warnings: vec![format!("usr: {e}; using the built-in settings")],
+            usr_dir: String::new(),
+        },
+    }
+}
+
+/// Loads the settings of the app (the `get_ui_config` command). Off the async runtime: the
+/// settings folder may sit on a slow or offline share.
+pub async fn ui_config(app: tauri::AppHandle) -> Result<UiConfigResponse, String> {
+    crate::com::blocking(move || response(crate::store::usr_dir(&app))).await
+}
+
+#[cfg(test)]
+mod response_tests {
+    use super::*;
+
+    #[test]
+    fn without_a_settings_folder_the_built_in_settings_are_used() {
+        let r = response(Err("access denied".into()));
+        assert_eq!(r.config, defaults());
+        assert_eq!(r.warnings, vec!["usr: access denied; using the built-in settings".to_string()]);
+        assert_eq!(r.usr_dir, "");
+    }
+
+    #[test]
+    fn a_settings_folder_is_loaded_and_named() {
+        let dir = tempfile::tempdir().unwrap();
+        let r = response(Ok(dir.path().to_path_buf()));
+        assert_eq!(r.usr_dir, dir.path().to_string_lossy());
+        assert!(r.warnings.is_empty(), "{:?}", r.warnings);
+        // The default files were written, so what was loaded is the defaults.
+        assert_eq!(r.config, defaults());
+        assert!(dir.path().join("menu.xml").is_file());
+        let json = serde_json::to_value(&r).unwrap();
+        assert!(json.get("usrDir").is_some() && json.get("config").is_some() && json.get("warnings").is_some());
+    }
 }
 
 #[cfg(test)]

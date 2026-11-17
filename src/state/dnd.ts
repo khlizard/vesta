@@ -1,5 +1,5 @@
 // Drop coordinator: what is dropped from Explorer, a browser or our own drag arrives through the
-// "drag-drop" event of the window's drop target (src-tauri/src/droptarget.rs).
+// "drag-drop" event of the window's drop target (src-tauri/src/droptarget/).
 // Spec: docs/spec/fileops.md, docs/spec/tabs.md
 //
 // The hit-testing is split into pure functions (tested in dnd.test.ts) and a thin DOM/Tauri layer.

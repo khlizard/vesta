@@ -36,6 +36,12 @@ fn looks_relative(a: &str) -> bool {
     a == "." || a == ".." || a.contains('\\') || a.contains('/')
 }
 
+/// Folders and files named on the command line of this process.
+pub fn paths() -> Vec<String> {
+    let cwd = std::env::current_dir().unwrap_or_default();
+    paths_from_args(std::env::args().skip(1), &cwd)
+}
+
 /// With `panic = "abort"` a panic ends the process at once. Leave a trace first: a line in
 /// `var/crash.log` and a message box, so the user (and a bug report) knows what happened.
 pub fn install_panic_hook(var_dir: PathBuf) {

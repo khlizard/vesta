@@ -6,7 +6,7 @@ use std::sync::{Mutex, OnceLock};
 use windows::core::PCWSTR;
 use windows::Win32::Foundation::{ERROR_FILE_NOT_FOUND, FILETIME};
 use windows::Win32::Storage::FileSystem::{
-    FindClose, FindExInfoBasic, FindExSearchNameMatch, FindFirstFileExW, FindNextFileW,
+    FindExInfoBasic, FindExSearchNameMatch, FindFirstFileExW, FindNextFileW,
     FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_HIDDEN, FILE_ATTRIBUTE_NORMAL, FILE_ATTRIBUTE_OFFLINE,
     FILE_ATTRIBUTE_PINNED, FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS, FILE_ATTRIBUTE_RECALL_ON_OPEN,
     FILE_ATTRIBUTE_SYSTEM, FIND_FIRST_EX_LARGE_FETCH, WIN32_FIND_DATAW,
@@ -100,7 +100,7 @@ pub fn list_dir(dir: &str, show_hidden: bool, sync_root: bool) -> Result<Vec<Ent
         )
     };
     let handle = match found {
-        Ok(h) => h,
+        Ok(h) => crate::com::FindGuard(h),
         // The root of an empty drive has no entries at all (not even "." and ".."), which is
         // reported as "file not found": that is an empty folder, not a failure.
         Err(e) if e.code() == ERROR_FILE_NOT_FOUND.to_hresult() && std::path::Path::new(dir).is_dir() => {
@@ -144,10 +144,9 @@ pub fn list_dir(dir: &str, show_hidden: bool, sync_root: bool) -> Result<Vec<Ent
                 name,
             });
         }
-        if unsafe { FindNextFileW(handle, &mut data) }.is_err() {
+        if unsafe { FindNextFileW(handle.0, &mut data) }.is_err() {
             break;
         }
     }
-    let _ = unsafe { FindClose(handle) };
     Ok(out)
 }

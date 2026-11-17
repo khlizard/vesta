@@ -8,12 +8,11 @@ use windows::Win32::Storage::EnhancedStorage::{
 use windows::Win32::System::SystemServices::{
     SFGAO_FILESYSTEM, SFGAO_FOLDER, SFGAO_HIDDEN, SFGAO_LINK, SFGAO_STREAM,
 };
-use windows::Win32::UI::Shell::{
-    BHID_EnumItems, IEnumShellItems, IShellItem, IShellItem2, SIGDN_FILESYSPATH,
-};
+use windows::Win32::UI::Shell::{BHID_EnumItems, IEnumShellItems, IShellItem, IShellItem2};
 
 use super::fs::filetime_to_unix_ms;
-use crate::com::{display_name, err, item_name, parsing_name, take_cotaskmem_string};
+use crate::com::{display_name, err, take_cotaskmem_string};
+use crate::location;
 use crate::types::Entry;
 
 pub fn list_items(folder: &IShellItem, show_hidden: bool) -> Result<Vec<Entry>, String> {
@@ -55,13 +54,9 @@ fn entry_of(item: &IShellItem, show_hidden: bool) -> Option<Entry> {
     if hidden && !show_hidden {
         return None;
     }
-    let is_folder = a & SFGAO_FOLDER.0 != 0 && a & SFGAO_STREAM.0 == 0;
-    let location = if a & SFGAO_FILESYSTEM.0 != 0 {
-        item_name(item, SIGDN_FILESYSPATH).or_else(|_| parsing_name(item))
-    } else {
-        parsing_name(item)
-    }
-    .ok()?;
+    let is_folder = location::folder_attrs(a);
+    // An item that has no location cannot be opened or acted on: left out.
+    let (location, _) = location::place_of(item, a & SFGAO_FILESYSTEM.0 != 0).ok()?;
     let name = display_name(item).unwrap_or_else(|_| location.clone());
     let (mut size, mut modified, mut type_name) = (None, None, String::new());
     let (mut created, mut accessed, mut attributes) = (None, None, None);

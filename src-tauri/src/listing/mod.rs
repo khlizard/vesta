@@ -11,9 +11,19 @@ use std::time::Instant;
 use windows::Win32::Storage::FileSystem::GetDiskFreeSpaceExW;
 use windows::core::PCWSTR;
 
-use crate::com::wide;
+use crate::com::{self, wide};
 use crate::location;
 use crate::types::{DiskFree, Listing};
+
+/// `list` on the listing threads.
+pub async fn list_async(location: String, show_hidden: bool) -> Result<Listing, String> {
+    com::list_pool().run(move || list(&location, show_hidden)).await?
+}
+
+/// `disk_free` on the listing threads.
+pub async fn disk_free_async(location: String) -> Result<Option<DiskFree>, String> {
+    com::list_pool().run(move || disk_free(&location)).await
+}
 
 /// Lists the items in `location`. Hidden/system items are skipped unless `show_hidden`.
 pub fn list(location: &str, show_hidden: bool) -> Result<Listing, String> {
