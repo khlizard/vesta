@@ -11,7 +11,7 @@ import { modsOf } from "../model/input";
 import { menuLabel } from "../model/menu";
 import { useStore } from "../state/store";
 import { CommandIcon } from "./CommandIcon";
-import { isSeparator, openPopup, type PopupItem } from "./popupBus";
+import { isSeparator, openPopup, type PopupItem } from "../state/popup";
 import "../styles/chrome.css";
 
 function dropDown(e: MouseEvent<HTMLElement>, items: PopupItem[]) {

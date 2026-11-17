@@ -1,6 +1,6 @@
 // Key bindings (keyboard-form.xml / keyboard-folder.xml). Spec: docs/spec/config.md
 
-import { openPopup } from "../components/popupBus";
+import { openPopup } from "../state/popup";
 import { useConfig } from "../config/store";
 import type { KeyBinding } from "../config/types";
 import { modsOf } from "../model/input";

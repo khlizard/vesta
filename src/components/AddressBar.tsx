@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { backend, iconUrl } from "../api/backend";
 import type { FolderInfo } from "../api/types";
-import { compareNames } from "../model/sort";
+import { createSuggester, NO_SUGGESTION, type Suggestion } from "../state/address";
 import { setMessage } from "../state/message";
 import { navigate, openInput } from "../state/navigation";
 import { dragStarted, errorText, isImeKey, modsOf } from "../model/input";
@@ -11,28 +11,10 @@ import type { Mods } from "../model/navigation";
 import { trackPointer } from "./pane/pointer";
 import "../styles/pane.css";
 
-const MAX_SUGGEST = 20;
-
 interface Props {
   id: string;
   folder: FolderInfo | null;
   current: boolean;
-}
-
-/** Splits typed text into the parent to list and the name prefix, or null when there is no `\` or `/`. */
-export function splitTyped(text: string): { parent: string; prefix: string } | null {
-  const i = Math.max(text.lastIndexOf("\\"), text.lastIndexOf("/"));
-  if (i < 0) return null;
-  return { parent: text.slice(0, i + 1), prefix: text.slice(i + 1) };
-}
-
-/** The folder to list for a typed parent: `/` as `\`, and `~\…` resolved to the profile folder. */
-async function listableParent(parent: string): Promise<string> {
-  const p = parent.replace(/\//g, "\\");
-  if (!p.startsWith("~\\")) return p;
-  const r = await backend.resolveLocation(p);
-  if (r.kind !== "folder") throw new Error("not a folder");
-  return r.folder.location;
 }
 
 export function AddressBar({ id, folder, current }: Props) {
@@ -41,9 +23,9 @@ export function AddressBar({ id, folder, current }: Props) {
   const display = folder?.fsPath ?? folder?.displayName ?? "";
   const [draft, setDraft] = useState<string | null>(null);
   const [ancestors, setAncestors] = useState<FolderInfo[] | null>(null);
-  const [suggest, setSuggest] = useState<{ parent: string; names: string[] }>({ parent: "", names: [] });
+  const [suggest, setSuggest] = useState<Suggestion>(NO_SUGGESTION);
   const [pick, setPick] = useState(-1);
-  const folderCache = useRef<{ parent: string; names: string[] } | null>(null);
+  const [suggester] = useState(() => ({ current: createSuggester() }));
   const reqSeq = useRef(0);
 
   const focusList = () => {
@@ -52,8 +34,8 @@ export function AddressBar({ id, folder, current }: Props) {
 
   const restore = () => {
     setDraft(null);
-    folderCache.current = null;
-    setSuggest({ parent: "", names: [] });
+    suggester.current.reset();
+    setSuggest(NO_SUGGESTION);
     setPick(-1);
   };
 
@@ -89,29 +71,10 @@ export function AddressBar({ id, folder, current }: Props) {
 
   const updateSuggest = async (text: string) => {
     const seq = ++reqSeq.current;
-    const t = splitTyped(text);
-    if (!t) {
-      setSuggest({ parent: "", names: [] });
-      return;
-    }
-    let names: string[];
-    if (folderCache.current?.parent.toLowerCase() === t.parent.toLowerCase()) {
-      names = folderCache.current.names;
-    } else {
-      try {
-        const listing = await backend.listFolder(await listableParent(t.parent), false);
-        names = listing.entries
-          .filter((e) => e.isFolder)
-          .map((e) => e.name)
-          .sort(compareNames);
-        folderCache.current = { parent: t.parent, names };
-      } catch {
-        names = [];
-      }
-    }
+    const found = await suggester.current.suggest(text);
+    // Typed on since: a newer lookup is under way.
     if (seq !== reqSeq.current) return;
-    const lower = t.prefix.toLowerCase();
-    setSuggest({ parent: t.parent, names: names.filter((n) => n.toLowerCase().startsWith(lower)).slice(0, MAX_SUGGEST) });
+    setSuggest(found);
     setPick(-1);
   };
 

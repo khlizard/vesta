@@ -24,7 +24,7 @@ import { ListBase, type ViewProps } from "./pane/ListBase";
 import { buildLayout } from "./pane/layout";
 import { textMetrics } from "../model/fontSize";
 import { RenameInput } from "./pane/RenameInput";
-import { openPopup, type PopupItem } from "./popupBus";
+import { openPopup, type PopupItem } from "../state/popup";
 import "../styles/pane.css";
 
 const MIN_COL = 24;

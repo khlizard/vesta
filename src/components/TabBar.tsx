@@ -5,7 +5,7 @@ import { dragStarted } from "../model/input";
 import { computeLabels } from "../model/labels";
 import * as T from "../model/tabs";
 import { getState, useStore } from "../state/store";
-import { openPopup, type PopupItem } from "./popupBus";
+import { openPopup, type PopupItem } from "../state/popup";
 import "../styles/chrome.css";
 
 

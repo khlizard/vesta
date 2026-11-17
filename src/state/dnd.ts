@@ -12,7 +12,7 @@ import { setShown } from "../model/tabs";
 import { setMessage } from "./message";
 import { openDroppedFolders } from "./navigation";
 import { setTabs } from "./tabActions";
-import { openPopup, type PopupItem } from "../components/popupBus";
+import { openPopup, type PopupItem } from "./popup";
 import { dropFiles, dropFilesAs, saveDropped } from "./fileActions";
 import { getState } from "./store";
 

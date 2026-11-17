@@ -6,7 +6,7 @@ import { accessKeyTarget, endSelectable, labelParts, menuLabel, nextSelectable, 
 import { modsOf } from "../model/input";
 import type { Mods } from "../model/navigation";
 import { CommandIcon } from "./CommandIcon";
-import { accessKeyPressed, closePopup, isSeparator, usePopup, type PopupItem } from "./popupBus";
+import { accessKeyPressed, closePopup, isSeparator, usePopup, type PopupItem } from "../state/popup";
 import "../styles/chrome.css";
 
 const EMPTY_TEXT = "（なし）";
