@@ -16,7 +16,8 @@ vi.mock("../api/backend", () => ({
 import { backend } from "../api/backend";
 import type { FolderInfo } from "../api/types";
 import { toggleShown, type Tab } from "../model/tabs";
-import { setTabs, subscribe } from "./actions";
+import { subscribe } from "./startup";
+import { setTabs } from "./tabActions";
 import { emptyPane, getState, setState } from "./store";
 
 function tab(id: string, shown: boolean): Tab {

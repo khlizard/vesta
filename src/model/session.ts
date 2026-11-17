@@ -1,6 +1,7 @@
 // The shape of var/session.json. Spec: docs/spec/ui.md「ウィンドウ」, docs/spec/config.md
 
 import type { WindowPlacement } from "../api/types";
+import { sameLocation } from "./paths";
 import type { TabsState } from "./tabs";
 
 export interface SessionTab {
@@ -60,4 +61,19 @@ export function parseSession(raw: string): Session | null {
   };
   if (isPlacement(o.window)) session.window = o.window;
   return session;
+}
+
+/** Tab label and path for a saved location that did not resolve (an offline share, an unplugged drive). */
+export function placeholderFolder(location: string): { location: string; displayName: string; fsPath: string | null } {
+  const name = location.replace(/[\\/]+$/, "").split(/[\\/]/).pop();
+  return { location, displayName: name || location, fsPath: /^([A-Za-z]:|\\\\)/.test(location) ? location : null };
+}
+
+const MRU_MAX = 10;
+
+/** The closed-folder list with `locations` put in front, newest first, each place once. */
+export function addToMru(mru: string[], locations: string[]): string[] {
+  let out = mru;
+  for (const l of locations) out = [l, ...out.filter((m) => !sameLocation(m, l))];
+  return out.slice(0, MRU_MAX);
 }

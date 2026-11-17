@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef } from "react";
 import { focusTab, shownTabs } from "../model/tabs";
-import { setTabs } from "../state/actions";
+import { setTabs } from "../state/tabActions";
 import { initDnd } from "../state/dnd";
 import { getState, setState, useStore } from "../state/store";
 import { Pane } from "./Pane";

@@ -1,7 +1,7 @@
 // One pane: address bar + list. Spec: docs/spec/ui.md, tabs.md
 
 import { useEffect, useRef } from "react";
-import { goHistory } from "../state/actions";
+import { goHistory } from "../state/navigation";
 import { paneClientWidths } from "../state/columns";
 import { useStore } from "../state/store";
 import { AddressBar } from "./AddressBar";

@@ -7,6 +7,7 @@ import {
   focusTab,
   moveTab,
   newlyShown,
+  reuseTab,
   setShown,
   shownChanged,
   targetIds,
@@ -95,6 +96,17 @@ describe("newlyShown", () => {
     expect(newlyShown(s0, s0)).toEqual([]);
     expect(newlyShown(s0, toggleShown(s0, "b"))).toEqual([]);
     expect(newlyShown(s0, focusTab(s0, "b"))).toEqual([]);
+  });
+});
+
+describe("reuseTab", () => {
+  it("applies the action to the open tab instead of adding one", () => {
+    const s0 = state("a* b c", "a");
+    expect(shownIds(reuseTab(s0, "b", "open"))).toEqual(["b"]);
+    expect(shownIds(reuseTab(s0, "b", "append"))).toEqual(["a", "b"]);
+    expect(reuseTab(s0, "b", "switch").currentId).toBe("b");
+    expect(reuseTab(s0, "b", "replace").currentId).toBe("b");
+    expect(reuseTab(s0, "b", "goto")).toBe(s0);
   });
 });
 

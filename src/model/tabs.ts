@@ -296,3 +296,18 @@ export function applyHistory(
     return { ...t, ...folder, forward: t.forward.slice(0, -1), back: [...t.back, t.location] };
   });
 }
+
+/** Applies a new-tab action to a tab that is already open (OpenDups off): no second tab is made. */
+export function reuseTab(s: TabsState, id: string, action: Action): TabsState {
+  switch (action) {
+    case "open":
+      return clickTab(s, id);
+    case "append":
+      return setShown(s, [id], true);
+    case "switch":
+    case "replace":
+      return focusTab(s, id);
+    default:
+      return s;
+  }
+}

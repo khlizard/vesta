@@ -4,7 +4,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { formatBuildTime } from "../model/buildTime";
 import { isImeKey, modsOf } from "../model/input";
 import { PopupHost } from "./PopupMenu";
-import { openExternal, openInput } from "../state/actions";
+import { openExternal, openInput } from "../state/navigation";
 import { newItem } from "../state/fileActions";
 import { selectPattern } from "../state/selection";
 import { currentPaneId, setState, useStore } from "../state/store";

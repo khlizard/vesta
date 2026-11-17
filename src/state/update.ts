@@ -2,7 +2,8 @@
 
 import { backend } from "../api/backend";
 import { errorText } from "../model/input";
-import { flushState, setMessage } from "./actions";
+import { setMessage } from "./message";
+import { flushState } from "./session";
 import { mayClose } from "./busy";
 import { getState, setState } from "./store";
 

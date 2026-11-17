@@ -1,6 +1,6 @@
 // Tab bar. Spec: docs/spec/tabs.md
 import { useMemo, useRef, type MouseEvent, type PointerEvent } from "react";
-import { closeTabs, closeTarget, setTabs } from "../state/actions";
+import { closeTabs, closeTarget, setTabs } from "../state/tabActions";
 import { dragStarted } from "../model/input";
 import { computeLabels } from "../model/labels";
 import * as T from "../model/tabs";

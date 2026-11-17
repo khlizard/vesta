@@ -5,7 +5,9 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { backend } from "../api/backend";
 import { NO_MODS, type Mods } from "../model/navigation";
 import * as T from "../model/tabs";
-import * as A from "../state/actions";
+import { refreshPane } from "../state/loading";
+import { goHistory, goUp } from "../state/navigation";
+import * as A from "../state/tabActions";
 import * as F from "../state/fileActions";
 import * as S from "../state/selection";
 import { currentPane, currentPaneId, getState, setState, type Options } from "../state/store";
@@ -183,21 +185,21 @@ const COMMANDS: Record<string, CommandDef> = {
   "Current.Go.Back": {
     run: (_p, ctx) => {
       const id = cur();
-      if (id) return A.goHistory(id, "back", ctx.mods);
+      if (id) return goHistory(id, "back", ctx.mods);
     },
     enabled: () => !!curTab()?.back.length,
   },
   "Current.Go.Forward": {
     run: (_p, ctx) => {
       const id = cur();
-      if (id) return A.goHistory(id, "forward", ctx.mods);
+      if (id) return goHistory(id, "forward", ctx.mods);
     },
     enabled: () => !!curTab()?.forward.length,
   },
   "Current.Go.Up": {
     run: (_p, ctx) => {
       const id = cur();
-      if (id) return A.goUp(id, ctx.mods);
+      if (id) return goUp(id, ctx.mods);
     },
     enabled: () => !!curPane()?.folder?.parent,
   },
@@ -223,7 +225,7 @@ const COMMANDS: Record<string, CommandDef> = {
   "Current.AdjustToWindow": withPane((id) => adjustColumns([id], "window")),
   "Shown.AdjustToItem": { run: () => adjustColumns(T.shownTabs(getState().tabs).map((t) => t.id), "item") },
   "Shown.AdjustToWindow": { run: () => adjustColumns(T.shownTabs(getState().tabs).map((t) => t.id), "window") },
-  "Current.Refresh": withPane((id) => A.refreshPane(id)),
+  "Current.Refresh": withPane((id) => refreshPane(id)),
 
   // ウィンドウ
   "Menu.Show": toggleOption("MenuVisible"),

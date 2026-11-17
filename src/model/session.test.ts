@@ -1,6 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { buildSession, parseSession } from "./session";
+import { addToMru, buildSession, parseSession, placeholderFolder } from "./session";
 import type { TabsState } from "./tabs";
+
+describe("placeholderFolder", () => {
+  it("names the tab after the last part of a file-system path", () => {
+    expect(placeholderFolder("D:\\work\\src\\")).toEqual({ location: "D:\\work\\src\\", displayName: "src", fsPath: "D:\\work\\src\\" });
+    expect(placeholderFolder("\\\\nas\\share").displayName).toBe("share");
+    expect(placeholderFolder("\\\\nas\\share").fsPath).toBe("\\\\nas\\share");
+  });
+
+  it("has no path for a virtual location", () => {
+    const f = placeholderFolder("::{645FF040-5081-101B-9F08-00AA002F954E}");
+    expect(f.fsPath).toBeNull();
+    expect(f.displayName).toBe("::{645FF040-5081-101B-9F08-00AA002F954E}");
+  });
+});
+
+describe("addToMru", () => {
+  it("puts the newest first and keeps each place once", () => {
+    expect(addToMru(["C:\\a", "C:\\b"], ["c:\\B\\", "C:\\c"])).toEqual(["C:\\c", "c:\\B\\", "C:\\a"]);
+  });
+
+  it("keeps ten places", () => {
+    const many = Array.from({ length: 12 }, (_, i) => `C:\\${i}`);
+    expect(addToMru([], many)).toHaveLength(10);
+    expect(addToMru([], many)[0]).toBe("C:\\11");
+  });
+});
 
 const tab = (id: string, shown = true, locked = false) => ({
   id,

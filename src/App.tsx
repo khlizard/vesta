@@ -13,7 +13,7 @@ import { StatusBar } from "./components/StatusBar";
 import { TabBar } from "./components/TabBar";
 import { ToolBar } from "./components/ToolBar";
 import { currentTab } from "./model/tabs";
-import { startApp } from "./state/actions";
+import { startApp } from "./state/startup";
 import { getState, useStore } from "./state/store";
 import { startUpdateChecks } from "./state/update";
 import "./styles/base.css";

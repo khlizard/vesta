@@ -6,7 +6,8 @@ import { backend } from "../../api/backend";
 import type { Entry } from "../../api/types";
 import { dragStarted, errorText, modsOf } from "../../model/input";
 import { listKeyIsBound } from "../../commands/keys";
-import { goUp, openEntries, setMessage } from "../../state/actions";
+import { setMessage } from "../../state/message";
+import { goUp, openEntries } from "../../state/navigation";
 import { selectedLocations } from "../../state/fileActions";
 import {
   clickItem,

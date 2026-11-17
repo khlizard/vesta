@@ -16,7 +16,7 @@ import {
   visibleColumns,
 } from "../model/columns";
 import type { SortKey } from "../model/sort";
-import { setView } from "../state/actions";
+import { setView } from "../state/tabActions";
 import { cellText, fitWidth } from "../state/columns";
 import { ordered } from "../state/selection";
 import { getState, useStore } from "../state/store";

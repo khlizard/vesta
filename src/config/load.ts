@@ -4,7 +4,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { defineCommand, isKnownCommand } from "../commands/registry";
 import { errorText } from "../model/input";
-import { setMessage } from "../state/actions";
+import { setMessage } from "../state/message";
 import { useConfig } from "./store";
 import type { KeyBinding, MenuItem, UiConfig } from "./types";
 
