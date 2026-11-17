@@ -87,6 +87,10 @@ export interface Options {
   Columns: SortKey[];
   /** Details column widths (px), shared by all folders and panes (Vesta only). */
   ColumnWidths: Record<SortKey, number>;
+  /** Arrange many panes in two rows (Vesta only, experimental; docs/spec/tabs.md「2段に並べる」). */
+  TwoRows: boolean;
+  /** Panes per row before the second row starts. */
+  TwoRowsMax: number;
   MenuVisible: boolean;
   ToolVisible: boolean;
   LinkVisible: boolean;
@@ -108,6 +112,8 @@ export const DEFAULT_OPTIONS: Options = {
   FontSize: 12,
   Columns: [...DEFAULT_COLUMNS],
   ColumnWidths: DEFAULT_WIDTHS,
+  TwoRows: false,
+  TwoRowsMax: 6,
   MenuVisible: true,
   ToolVisible: true,
   LinkVisible: true,
@@ -131,6 +137,8 @@ export interface AppState {
   message: string | null;
   /** Pane widths as fractions, keyed by tab id; reset whenever the layout changes. */
   paneWidths: Record<string, number> | null;
+  /** Height of the upper row as a fraction, when the panes are in two rows; reset with paneWidths. */
+  paneRowSplit: number | null;
   dialog: Dialog | null;
   /** Version of a downloaded update waiting to be applied (docs/spec/update.md). */
   updateReady: string | null;
@@ -143,6 +151,7 @@ export const useStore = create<AppState>(() => ({
   mru: [],
   message: null,
   paneWidths: null,
+  paneRowSplit: null,
   dialog: null,
   updateReady: null,
 }));

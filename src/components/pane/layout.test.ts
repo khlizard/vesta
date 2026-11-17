@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Entry } from "../../api/types";
-import { resizePair, resolveFractions } from "./arrange";
+import { resizePair, resolveFractions, splitRows } from "./arrange";
 import { buildLayout, marqueeHits, normalizeBox, revealScroll, visibleRange } from "./layout";
 
 const entry = (name: string): Entry => ({
@@ -88,6 +88,20 @@ describe("revealScroll", () => {
 });
 
 describe("pane arrangement", () => {
+  it("keeps one row when off or within the limit", () => {
+    expect(splitRows(20, false, 6)).toEqual([20, 0]);
+    expect(splitRows(0, true, 6)).toEqual([0, 0]);
+    expect(splitRows(6, true, 6)).toEqual([6, 0]);
+  });
+  it("splits evenly past the limit, the upper row taking the odd pane", () => {
+    expect(splitRows(7, true, 6)).toEqual([4, 3]);
+    expect(splitRows(8, true, 6)).toEqual([4, 4]);
+    expect(splitRows(12, true, 6)).toEqual([6, 6]);
+    expect(splitRows(13, true, 6)).toEqual([7, 6]);
+    expect(splitRows(20, true, 6)).toEqual([10, 10]);
+    expect(splitRows(2, true, 1)).toEqual([1, 1]);
+    expect(splitRows(3, true, 0)).toEqual([2, 1]);
+  });
   it("falls back to equal widths", () => {
     expect(resolveFractions(["a", "b"], null)).toEqual([0.5, 0.5]);
     expect(resolveFractions(["a", "b"], { a: 1 })).toEqual([0.5, 0.5]);

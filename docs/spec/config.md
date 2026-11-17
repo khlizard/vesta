@@ -163,6 +163,8 @@
 | FontSize | 12 | 文字の大きさ（px）。11 / 12 / 14 / 16 から選ぶ（`Option.FontSize.11` など）。ほかの値は 12 にする。Vesta だけのオプション |
 | Columns | `["name","status","modified","type","size"]` | 詳細で表示する列と並び順（listing.md「列のカスタマイズ」）。ほかに `created`、`accessed`、`attributes`。Vesta だけのオプション |
 | ColumnWidths | 名前 220、状態 48、更新日時 130 など | 詳細の列幅（px）。すべてのフォルダ・ペインで共通。Vesta だけのオプション |
+| TwoRows | false | ペインが多いときに2段に並べる（tabs.md「2段に並べる」）。実験的な機能。Vesta だけのオプション |
+| TwoRowsMax | 6 | 1段に並べる数の上限（1〜50）。これを超えると2段にする。メニューからは変えられない。Vesta だけのオプション |
 | MenuVisible / ToolVisible / LinkVisible / StatusVisible | true | バーの表示 |
 
 - 読み込むときに型と値を確かめ、合わないものは既定にする。この版にないキーは捨てる

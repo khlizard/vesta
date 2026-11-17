@@ -275,6 +275,7 @@ const COMMANDS: Record<string, CommandDef> = {
   "Option.FontSize.12": fontSizeCmd(12),
   "Option.FontSize.14": fontSizeCmd(14),
   "Option.FontSize.16": fontSizeCmd(16),
+  "Option.TwoRows": toggleOption("TwoRows"),
 
   // ヘルプ
   "System.About": { run: () => setState({ dialog: { kind: "about" } }) },

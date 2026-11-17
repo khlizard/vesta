@@ -139,6 +139,7 @@ X は、対象のタブの組。`Current`（current）、`All`（すべて）、
 | `Option.FontSize.12` | 文字の大きさ 標準（Vesta だけ） | FontSize |
 | `Option.FontSize.14` | 文字の大きさ 大（Vesta だけ） | FontSize |
 | `Option.FontSize.16` | 文字の大きさ 特大（Vesta だけ） | FontSize |
+| `Option.TwoRows` | ペインが多いときに2段に並べる（実験的な機能、Vesta だけ） | TwoRows |
 | `Option.Reload` | 設定ファイル（usr/*.xml）を読み直す | |
 
 ## そのほか

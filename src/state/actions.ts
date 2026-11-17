@@ -348,7 +348,7 @@ export async function reopenClosed(mods: Mods = NO_MODS) {
 }
 
 export function setTabs(f: (s: T.TabsState) => T.TabsState) {
-  setState((s) => ({ tabs: f(s.tabs), paneWidths: null }));
+  setState((s) => ({ tabs: f(s.tabs), paneWidths: null, paneRowSplit: null }));
 }
 
 export function setView(tabId: string, f: (v: PaneState["view"]) => Partial<PaneState["view"]>, reload = false) {

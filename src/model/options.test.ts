@@ -32,6 +32,10 @@ describe("normalizeOptions", () => {
     expect(norm({ ThumbnailSize: 10000 }).ThumbnailSize).toBe(512);
     expect(norm({ ThumbnailSize: "big" }).ThumbnailSize).toBe(DEFAULT_OPTIONS.ThumbnailSize);
     expect(norm({ FontSize: 99 }).FontSize).toBe(12);
+    expect(norm({ TwoRowsMax: 0 }).TwoRowsMax).toBe(1);
+    expect(norm({ TwoRowsMax: 4.4 }).TwoRowsMax).toBe(4);
+    expect(norm({ TwoRowsMax: 999 }).TwoRowsMax).toBe(50);
+    expect(norm({ TwoRowsMax: "6" }).TwoRowsMax).toBe(DEFAULT_OPTIONS.TwoRowsMax);
   });
 
   it("drops removed options and repairs column widths", () => {

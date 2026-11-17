@@ -1,4 +1,15 @@
-// Pane width fractions. Spec: docs/spec/tabs.md「ペインの配置」
+// Pane rows and width fractions. Spec: docs/spec/tabs.md「ペインの配置」
+
+/**
+ * How many of `n` panes go in the upper and the lower row. One row unless `enabled` and `n`
+ * exceeds `max`; then the rows are even, the upper one taking the odd pane.
+ */
+export function splitRows(n: number, enabled: boolean, max: number): [number, number] {
+  const limit = Math.max(1, Math.floor(max));
+  if (!enabled || n <= limit) return [n, 0];
+  const top = Math.ceil(n / 2);
+  return [top, n - top];
+}
 
 export function resolveFractions(ids: string[], saved: Record<string, number> | null): number[] {
   const equal = ids.map(() => 1 / Math.max(1, ids.length));

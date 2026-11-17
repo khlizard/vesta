@@ -65,6 +65,8 @@
     <menu text="グループで表示(_G)"         command="Current.Grouping"/>
     <menu text="隠しファイルを表示(_H)"     command="Current.ShowAllFiles"   image="16"/>
     <menu/>
+    <menu text="ペインを2段に並べる(_2)"    command="Option.TwoRows"/>
+    <menu/>
     <menu text="列の幅(_W)">
       <menu text="中身に合わせる(_I)"       command="Current.AdjustToItem"/>
       <menu text="ペインの幅に合わせる(_P)" command="Current.AdjustToWindow"/>

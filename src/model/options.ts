@@ -8,6 +8,7 @@ import { normalizeFontSize } from "./fontSize";
 
 const INSERT = ["head", "tail", "prev", "next"];
 const THUMB_RANGE = [64, 512];
+const ROW_RANGE = [1, 50];
 const MIN_COLUMN_WIDTH = 24;
 
 /**
@@ -31,6 +32,10 @@ export function normalizeOptions<T extends object>(raw: unknown, defaults: T): T
     } else if (key === "ThumbnailSize") {
       if (typeof v === "number" && Number.isFinite(v)) {
         out[key] = Math.min(THUMB_RANGE[1], Math.max(THUMB_RANGE[0], Math.round(v)));
+      }
+    } else if (key === "TwoRowsMax") {
+      if (typeof v === "number" && Number.isFinite(v)) {
+        out[key] = Math.min(ROW_RANGE[1], Math.max(ROW_RANGE[0], Math.round(v)));
       }
     } else if (typeof d === "boolean") {
       if (typeof v === "boolean") out[key] = v;

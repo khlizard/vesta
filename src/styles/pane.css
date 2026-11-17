@@ -4,7 +4,14 @@
   flex: 1 1 0;
   min-height: 0;
   display: flex;
+  flex-direction: column;
   background: var(--face);
+}
+
+.pane-row {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
 }
 
 .pane {
@@ -22,7 +29,16 @@
   border-left: 1px solid var(--line);
 }
 
-.splitter:hover {
+.splitter-row {
+  flex: none;
+  height: 4px;
+  cursor: row-resize;
+  background: var(--face);
+  border-top: 1px solid var(--line);
+}
+
+.splitter:hover,
+.splitter-row:hover {
   background: var(--face-dark);
 }
 

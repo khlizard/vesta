@@ -10,7 +10,7 @@
 - シンプルな複数タブ型のファイラにする。使われない機能は足さない。そのかわり、設定ファイル（usr/*.xml）で変えられる範囲は広く保つ
 - 仕様は `docs/spec/` が正。実装する前に該当する仕様を読み、仕様を変えたら先に `docs/spec/` を直す
 - Avesta の挙動を確かめるときは `reference/Avestan/` を読む（git 管理外。なければ `git clone https://github.com/takechi/Avestan reference/Avestan`）
-- Windows 専用。表示モードは詳細と縮小版、ペインは横並びだけ
+- Windows 専用。表示モードは詳細と縮小版、ペインは横並びだけ（多いときに2段に分けるオプションがある）
 - 設定ファイルは Avesta と同じ XML 書式（`docs/spec/config.md`）
 - コマンド名は Avesta と同じ（`Current.Go.Up` など）。メニュー、ツールバー、キー操作はすべて `src/commands/` のコマンドを通す
 
