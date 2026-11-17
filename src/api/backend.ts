@@ -54,24 +54,3 @@ export const backend = {
   /** Applies the downloaded update and restarts the app. */
   updateRestart: () => invoke<void>("update_restart"),
 };
-
-/** URL of the icon for `location` (served by the `icon` URI scheme). */
-export function iconUrl(location: string, size = 16, item?: IconItem): string {
-  return `http://icon.localhost/?loc=${encodeURIComponent(location)}&size=${size}${item ? itemQuery(item) : ""}`;
-}
-
-/** What is known about a listed item; part of the URL so a changed item gets a new icon. */
-export interface IconItem {
-  isFolder: boolean;
-  modified: number | null;
-}
-
-/** `&k=d|f&m=<modified>`: a folder and a file of the same name (or a replaced file) get different URLs. */
-function itemQuery(item: IconItem): string {
-  return `&k=${item.isFolder ? "d" : "f"}&m=${item.modified ?? 0}`;
-}
-
-/** URL of the thumbnail for `location` (served by the `thumb` URI scheme). */
-export function thumbUrl(location: string, size: number, item: IconItem): string {
-  return `http://thumb.localhost/?loc=${encodeURIComponent(location)}&size=${size}${itemQuery(item)}`;
-}

@@ -1,8 +1,7 @@
 // Column width adjustment (AdjustToItem / AdjustToWindow).
 
 import type { Entry } from "../api/types";
-import { COLUMN_LABEL, visibleColumns } from "../model/columns";
-import { formatAttributes, formatDate, formatSizeColumn } from "../model/format";
+import { cellText, COLUMN_LABEL, visibleColumns } from "../model/columns";
 import type { SortKey } from "../model/sort";
 import { setOption } from "./options";
 import { getState } from "./store";
@@ -27,17 +26,6 @@ function measure(text: string, fontSize: number): number {
   return ctx.measureText(text).width;
 }
 
-export const cellText: Record<SortKey, (e: Entry) => string> = {
-  name: (e) => e.name,
-  status: () => "",
-  modified: (e) => formatDate(e.modified),
-  type: (e) => e.typeName,
-  size: (e) => (e.isFolder ? "" : formatSizeColumn(e.size)),
-  created: (e) => formatDate(e.created),
-  accessed: (e) => formatDate(e.accessed),
-  attributes: (e) => formatAttributes(e.attributes),
-};
-
 /** Columns drawn for a pane, from the `Columns` option. */
 export function paneColumns(syncRoot: boolean): SortKey[] {
   return visibleColumns(getState().options.Columns, syncRoot);
@@ -52,16 +40,13 @@ export function fitWidth(key: SortKey, entries: Entry[]): number {
   return Math.ceil(w + PADDING + (key === "name" ? ICON + ICON_MARGIN_EM * fontSize : 0));
 }
 
-/** Pane list widths, published by the pane components (px). */
-export const paneClientWidths = new Map<string, number>();
-
 /**
  * AdjustToItem / AdjustToWindow. Widths are shared by all panes (docs/spec/listing.md「列のカスタマイズ」):
  * "item" fits each column to the widest content of the given panes; "window" fits the name column
  * to the first given pane (the current one when it is among them).
  */
 export function adjustColumns(ids: string[], how: "item" | "window") {
-  const { panes, options, tabs } = getState();
+  const { panes, options, tabs, layout } = getState();
   const listed = ids.filter((id) => panes[id]);
   if (!listed.length) return;
   const widths = { ...options.ColumnWidths };
@@ -72,7 +57,7 @@ export function adjustColumns(ids: string[], how: "item" | "window") {
   } else {
     const id = listed.find((x) => x === tabs.currentId) ?? listed[0];
     const cols = paneColumns(!!panes[id].folder?.syncRoot);
-    const total = paneClientWidths.get(id) ?? 600;
+    const total = layout.listWidths[id] ?? 600;
     const others = cols.filter((c) => c !== "name").reduce((n, c) => n + widths[c], 0);
     widths.name = Math.max(80, total - others - 20);
   }

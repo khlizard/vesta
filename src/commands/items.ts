@@ -60,9 +60,10 @@ function currentContext() {
   };
 }
 
-export async function runItem(item: MenuItem, mods: Mods = NO_MODS) {
+/** Runs a configured item. `repeat`: it comes from a key that is being held down. */
+export async function runItem(item: MenuItem, mods: Mods = NO_MODS, repeat = false) {
   if (item.command) {
-    await runCommand(item.command, { mods });
+    await runCommand(item.command, { mods, repeat });
   } else if (item.navigate) {
     await openExternal(item.navigate, mods);
   } else if (item.path) {

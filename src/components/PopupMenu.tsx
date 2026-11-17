@@ -1,48 +1,36 @@
-// Nested popup menu (menu bar, tool bar drop-downs, link bar, tab context menu, key binding menus).
-import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
-import { commandChecked, commandEnabled } from "../commands/registry";
-import { runItem } from "../commands/items";
-import { accessKeyTarget, endSelectable, labelParts, menuLabel, nextSelectable, placeMenu } from "../model/menu";
+// The popup menu (menu bar, tool bar drop-downs, link bar, context menus, key binding menus).
+// Spec: docs/spec/ui.md「モード」
+//
+// The menu has the keyboard focus while it is open, so its keys come to it. Which item is
+// picked and which submenu is open is the menu's own business while it is on screen; what was
+// chosen is sent to the root.
+
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { modsOf } from "../model/input";
+import { accessKeyTarget, endSelectable, nextSelectable, placeMenu } from "../model/menu";
 import type { Mods } from "../model/navigation";
+import { popupView } from "../presenters/chrome";
+import {
+  accessKeyPressed,
+  hasSubmenu,
+  isSeparator,
+  itemAccessKey,
+  itemLabel,
+  itemState,
+  MISSING_MARK,
+  missingTitle,
+} from "../presenters/items";
+import { useView } from "../presenters/view";
+import { dispatch } from "../root/dispatch";
+import { POPUP_ATTR } from "../root/input";
+import type { PopupItem } from "../state/popup";
 import { CommandIcon } from "./CommandIcon";
-import { accessKeyPressed, closePopup, isSeparator, usePopup, type PopupItem } from "../state/popup";
 import "../styles/chrome.css";
 
 const EMPTY_TEXT = "（なし）";
-
-/** Shown in place of the icon of a link item whose path was not found. */
-export const MISSING_MARK = "×";
-
-/** Tooltip of a link item whose path was not found. */
-export function missingTitle(path: string | undefined): string {
-  return `見つかりません: ${path ?? ""}`;
-}
-
-/** Label split around the access key (`_X`) for underlined rendering. */
-export function splitLabel(item: { text?: string; literal?: boolean; execute?: string; navigate?: string; path?: string; command?: string }): {
-  before: string;
-  key: string;
-  after: string;
-} {
-  const raw = item.text || item.execute || item.navigate || item.path || item.command || "";
-  if (item.literal || !item.text) return { before: raw, key: "", after: "" };
-  return labelParts(raw);
-}
-
-function accessKeyOf(item: PopupItem): string | null {
-  if (item.literal) return null;
-  return menuLabel(item.text).accessKey;
-}
-
-const hasChildren = (item: PopupItem) => !!item.children?.length || !!item.loadChildren;
-
-function isDisabled(item: PopupItem): boolean {
-  if (item.disabled !== undefined) return item.disabled;
-  if (hasChildren(item)) return false;
-  if (item.command) return !commandEnabled(item.command);
-  return false;
-}
+const EMPTY: PopupItem = { text: EMPTY_TEXT, literal: true, disabled: true };
+/** Indent of a label per level (the ancestors of a folder), in px. */
+const INDENT = 12;
 
 interface MenuProps {
   items: PopupItem[];
@@ -50,14 +38,8 @@ interface MenuProps {
   y: number;
   /** Rect of the parent item (submenus); the menu opens beside it. */
   parentRect?: DOMRect;
-  /** Closes the whole popup tree. */
-  onClose: () => void;
   /** Submenus: closes only this menu. */
   onBack?: () => void;
-  /** Root menu of the menu bar: Left/Right switch to the neighbouring top-level menu. */
-  onSibling?: (dir: -1 | 1) => void;
-  /** Root menu: clicks on these elements are not "outside" clicks. */
-  ignoreOutside?: (target: Element) => boolean;
   selectFirst?: boolean;
 }
 
@@ -67,17 +49,13 @@ interface SubState {
   first: boolean;
 }
 
-export function PopupMenu(props: MenuProps) {
-  const { items, x, y, parentRect, onClose, onBack, onSibling, ignoreOutside, selectFirst } = props;
-  const list = items.length ? items : [{ text: EMPTY_TEXT, literal: true, onSelect: () => {}, separator: false } as PopupItem];
-  const empty = items.length === 0;
+function Menu({ items, x, y, parentRect, onBack, selectFirst }: MenuProps) {
+  const list = items.length ? items : [EMPTY];
+  const states = list.map(itemState);
   const rootRef = useRef<HTMLDivElement>(null);
   const itemEls = useRef<(HTMLDivElement | null)[]>([]);
-  const selectable = (i: number) => !isSeparator(list[i]) && !isDisabled(list[i]) && !empty;
-  const [active, setActive] = useState(() => {
-    if (!selectFirst) return -1;
-    return empty ? -1 : list.findIndex((it) => !isSeparator(it) && !isDisabled(it));
-  });
+  const selectable = (i: number) => !isSeparator(list[i]) && states[i].enabled;
+  const [active, setActive] = useState(() => (selectFirst ? endSelectable(list.length, 1, selectable) : -1));
   const [sub, setSub] = useState<SubState | null>(null);
 
   // Keep the menu inside the viewport.
@@ -94,6 +72,11 @@ export function PopupMenu(props: MenuProps) {
     el.style.top = `${at.top}px`;
   }, [x, y, parentRect]);
 
+  // The innermost open menu has the focus: when it opens, and again when its submenu closes.
+  useEffect(() => {
+    if (!sub) rootRef.current?.focus({ preventScroll: true });
+  }, [sub]);
+
   const openSub = (index: number, first: boolean) => {
     const el = itemEls.current[index];
     if (!el) return;
@@ -103,99 +86,77 @@ export function PopupMenu(props: MenuProps) {
 
   const activate = (index: number, mods: Mods) => {
     const item = list[index];
-    if (!item || isSeparator(item) || isDisabled(item) || empty) return;
-    if (hasChildren(item)) {
-      openSub(index, true);
-      return;
-    }
-    onClose();
-    if (item.onSelect) item.onSelect(mods);
-    else void runItem(item, mods);
+    if (!item || !selectable(index)) return;
+    if (hasSubmenu(item)) openSub(index, true);
+    else dispatch({ type: "menu.select", item, mods });
   };
 
-  // Keyboard: only the innermost open menu reacts.
-  useEffect(() => {
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Control" || e.key === "Shift" || e.key === "Alt" || e.key === "Meta") return;
+    e.preventDefault();
+    e.stopPropagation();
+    // A submenu that is still loading has not taken the focus yet; the keys wait for it.
     if (sub) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Control" || e.key === "Shift" || e.key === "Alt" || e.key === "Meta") return;
-      e.preventDefault();
-      e.stopPropagation();
-      const move = (dir: 1 | -1) => setActive(nextSelectable(list.length, active, dir, selectable));
-      switch (e.key) {
-        case "ArrowDown":
-          return move(1);
-        case "ArrowUp":
-          return move(-1);
-        case "ArrowRight":
-          if (active >= 0 && hasChildren(list[active]) && !isDisabled(list[active])) openSub(active, true);
-          else onSibling?.(1);
-          return;
-        case "ArrowLeft":
-          if (onBack) onBack();
-          else onSibling?.(-1);
-          return;
-        case "Escape":
-          if (onBack) onBack();
-          else onClose();
-          return;
-        case "Enter":
-          if (active >= 0) activate(active, modsOf(e));
-          return;
-        case "Home":
-          return setActive(endSelectable(list.length, 1, selectable));
-        case "End": {
-          const last = endSelectable(list.length, -1, selectable);
-          if (last >= 0) setActive(last);
-          return;
-        }
+    switch (e.key) {
+      case "ArrowDown":
+        return setActive(nextSelectable(list.length, active, 1, selectable));
+      case "ArrowUp":
+        return setActive(nextSelectable(list.length, active, -1, selectable));
+      case "ArrowRight":
+        if (active >= 0 && hasSubmenu(list[active]) && selectable(active)) openSub(active, true);
+        else dispatch({ type: "menu.sibling", dir: 1 });
+        return;
+      case "ArrowLeft":
+        if (onBack) onBack();
+        else dispatch({ type: "menu.sibling", dir: -1 });
+        return;
+      case "Escape":
+        if (onBack) onBack();
+        else dispatch({ type: "menu.close" });
+        return;
+      case "Enter":
+        if (active >= 0) activate(active, modsOf(e));
+        return;
+      case "Home":
+        return setActive(endSelectable(list.length, 1, selectable));
+      case "End": {
+        const last = endSelectable(list.length, -1, selectable);
+        if (last >= 0) setActive(last);
+        return;
       }
-      const k = accessKeyPressed(e);
-      const hit = k ? accessKeyTarget(list.map(accessKeyOf), k, active, selectable) : null;
-      if (hit && "run" in hit) activate(hit.run, modsOf(e));
-      else if (hit) setActive(hit.select);
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sub, active, list, onBack, onClose, onSibling]);
+    }
+    const k = accessKeyPressed(e);
+    const hit = k ? accessKeyTarget(list.map(itemAccessKey), k, active, selectable) : null;
+    if (hit && "run" in hit) activate(hit.run, modsOf(e));
+    else if (hit) setActive(hit.select);
+  };
 
-  // Root menu: close on outside click and window blur.
-  const isRoot = !onBack;
-  useEffect(() => {
-    if (!isRoot) return;
-    const down = (e: PointerEvent) => {
-      const t = e.target as Element | null;
-      if (!t || t.closest(".popup") || ignoreOutside?.(t)) return;
-      onClose();
-    };
-    window.addEventListener("pointerdown", down, true);
-    window.addEventListener("blur", onClose);
-    return () => {
-      window.removeEventListener("pointerdown", down, true);
-      window.removeEventListener("blur", onClose);
-    };
-  }, [isRoot, onClose, ignoreOutside]);
-
-  const style = { left: x, top: y };
   return (
     <>
-      <div className="popup" ref={rootRef} style={style} onContextMenu={(e) => e.preventDefault()}>
+      <div
+        className="popup"
+        ref={rootRef}
+        tabIndex={-1}
+        style={{ left: x, top: y }}
+        onKeyDown={onKeyDown}
+        onContextMenu={(e) => e.preventDefault()}
+        {...{ [POPUP_ATTR]: "" }}
+      >
         {list.map((item, i) => {
           if (isSeparator(item)) return <div key={i} className="popup-sep" />;
-          const disabled = isDisabled(item) || empty;
-          const checked = item.checked ?? (!!item.command && !hasChildren(item) && commandChecked(item.command));
-          const { before, key, after } = splitLabel(item);
-          const arrow = hasChildren(item);
+          const { enabled, checked } = states[i];
+          const { before, key, after } = itemLabel(item);
+          const arrow = hasSubmenu(item);
           return (
             <div
               key={i}
               ref={(el) => {
                 itemEls.current[i] = el;
               }}
-              className={`popup-item${i === active ? " active" : ""}${disabled ? " disabled" : ""}${item.missing ? " missing" : ""}`}
+              className={`popup-item${i === active ? " active" : ""}${enabled ? "" : " disabled"}${item.missing ? " missing" : ""}`}
               title={item.missing ? missingTitle(item.path) : undefined}
               onMouseEnter={() => {
-                if (disabled) return setSub(null);
+                if (!enabled) return setSub(null);
                 if (arrow) openSub(i, false);
                 else {
                   setActive(i);
@@ -203,12 +164,12 @@ export function PopupMenu(props: MenuProps) {
                 }
               }}
               onClick={(e) => activate(i, modsOf(e))}
-              onAuxClick={(e: ReactMouseEvent) => {
-                if (e.button === 1) activate(i, { ctrl: true, shift: e.shiftKey, alt: e.altKey });
+              onAuxClick={(e: MouseEvent) => {
+                if (e.button === 1) activate(i, { ...modsOf(e), ctrl: true });
               }}
               onContextMenu={(e) => {
                 e.preventDefault();
-                item.onContextMenu?.(e);
+                dispatch({ type: "menu.context", item, at: { x: e.clientX, y: e.clientY } });
               }}
             >
               <span className={`popup-icon${checked ? " checked" : ""}`}>
@@ -217,12 +178,15 @@ export function PopupMenu(props: MenuProps) {
                 ) : item.iconSrc ? (
                   <img src={item.iconSrc} width={16} height={16} alt="" draggable={false} />
                 ) : item.image !== undefined ? (
-                  <CommandIcon index={item.image} size={16} disabled={disabled} />
+                  <CommandIcon index={item.image} size={16} disabled={!enabled} />
                 ) : checked ? (
                   "✓"
                 ) : null}
               </span>
-              <span className="popup-label">
+              <span
+                className="popup-label"
+                style={{ paddingLeft: item.indent ? item.indent * INDENT : undefined, fontWeight: item.strong ? "bold" : undefined }}
+              >
                 {before}
                 {key && <u>{key}</u>}
                 {after}
@@ -232,21 +196,13 @@ export function PopupMenu(props: MenuProps) {
           );
         })}
       </div>
-      {sub && list[sub.index] && (
-        <SubMenu
-          item={list[sub.index]}
-          rect={sub.rect}
-          first={sub.first}
-          onClose={onClose}
-          onBack={() => setSub(null)}
-        />
-      )}
+      {sub && list[sub.index] && <SubMenu item={list[sub.index]} rect={sub.rect} first={sub.first} onBack={() => setSub(null)} />}
     </>
   );
 }
 
-function SubMenu(props: { item: PopupItem; rect: DOMRect; first: boolean; onClose: () => void; onBack: () => void }) {
-  const { item, rect, first, onClose, onBack } = props;
+function SubMenu(props: { item: PopupItem; rect: DOMRect; first: boolean; onBack: () => void }) {
+  const { item, rect, first, onBack } = props;
   const [loaded, setLoaded] = useState<PopupItem[] | null>(null);
   const load = item.loadChildren;
   useEffect(() => {
@@ -262,22 +218,13 @@ function SubMenu(props: { item: PopupItem; rect: DOMRect; first: boolean; onClos
   }, [load]);
   const children = load ? loaded : (item.children ?? []);
   if (!children) return null;
-  return (
-    <PopupMenu
-      items={children}
-      x={rect.right - 2}
-      y={rect.top - 3}
-      parentRect={rect}
-      onClose={onClose}
-      onBack={onBack}
-      selectFirst={first}
-    />
-  );
+  return <Menu items={children} x={rect.right - 2} y={rect.top - 3} parentRect={rect} onBack={onBack} selectFirst={first} />;
 }
 
-/** Renders the popup requested through `openPopup` (mounted once, inside `Dialogs`). */
+/** Draws the open popup menu, if any (mounted once, at the top of the window). */
 export function PopupHost() {
-  const popup = usePopup((s) => s.popup);
+  const popup = useView(popupView);
   if (!popup) return null;
-  return <PopupMenu key={`${popup.x},${popup.y}`} items={popup.items} x={popup.x} y={popup.y} onClose={closePopup} selectFirst />;
+  // A new popup is a new menu: nothing of the one before it (the picked item, an open submenu) stays.
+  return <Menu key={popup.seq} items={popup.items} x={popup.x} y={popup.y} selectFirst={!popup.byMouse} />;
 }

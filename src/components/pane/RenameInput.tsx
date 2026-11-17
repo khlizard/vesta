@@ -1,15 +1,20 @@
 // In-place rename editor. Spec: docs/spec/fileops.md
 
 import { useEffect, useRef } from "react";
-import type { Entry } from "../../api/types";
 import { isImeKey } from "../../model/input";
-import { rename } from "../../state/fileActions";
-import { updatePane, useStore } from "../../state/store";
+import type { Entry } from "../../presenters/list";
+import { dispatch } from "../../root/dispatch";
 
-export function RenameInput({ id, entry }: { id: string; entry: Entry }) {
+interface Props {
+  id: string;
+  entry: Pick<Entry, "location" | "name" | "isFolder">;
+  /** Leave the extension out of the text selected at first. */
+  skipExt: boolean;
+}
+
+export function RenameInput({ id, entry, skipExt }: Props) {
   const ref = useRef<HTMLInputElement>(null);
   const done = useRef(false);
-  const skipExt = useStore((s) => s.options.RenameExtension);
 
   useEffect(() => {
     const el = ref.current;
@@ -21,14 +26,12 @@ export function RenameInput({ id, entry }: { id: string; entry: Entry }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const finish = (commit: boolean) => {
+  // Told once: the blur that follows Enter or Escape is not a second end.
+  const finish = (commit: boolean, byKey: boolean) => {
     const el = ref.current;
     if (done.current || !el) return;
     done.current = true;
-    const value = el.value;
-    el.closest<HTMLElement>("[data-pane-list]")?.focus({ preventScroll: true });
-    updatePane(id, () => ({ renaming: null }));
-    if (commit) void rename(id, entry.location, value);
+    dispatch({ type: "rename.end", id, item: entry.location, name: commit ? el.value : null, refocus: byKey });
   };
 
   return (
@@ -43,13 +46,13 @@ export function RenameInput({ id, entry }: { id: string; entry: Entry }) {
         if (isImeKey(e)) return;
         if (e.key === "Enter") {
           e.preventDefault();
-          finish(true);
+          finish(true, true);
         } else if (e.key === "Escape") {
           e.preventDefault();
-          finish(false);
+          finish(false, true);
         }
       }}
-      onBlur={() => finish(true)}
+      onBlur={() => finish(true, false)}
       onPointerDown={(e) => e.stopPropagation()}
       onDoubleClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.stopPropagation()}

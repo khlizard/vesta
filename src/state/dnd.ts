@@ -1,20 +1,10 @@
-// Drop coordinator: what is dropped from Explorer, a browser or our own drag arrives through the
-// "drag-drop" event of the window's drop target (src-tauri/src/droptarget/).
+// Decisions about drops: what a point is over, which drops do nothing, what the right-button
+// menu offers. The window's drop events themselves are handled in src/root/drop.ts.
 // Spec: docs/spec/fileops.md, docs/spec/tabs.md
-//
-// The hit-testing is split into pure functions (tested in dnd.test.ts) and a thin DOM/Tauri layer.
 
-import { listen } from "@tauri-apps/api/event";
-import { backend } from "../api/backend";
-import { errorText } from "../model/input";
 import { normPath, splitByParent } from "../model/paths";
-import { setShown } from "../model/tabs";
-import { setMessage } from "./message";
-import { openDroppedFolders } from "./navigation";
-import { setTabs } from "./tabActions";
-import { openPopup, type PopupItem } from "./popup";
-import { dropFiles, dropFilesAs, saveDropped } from "./fileActions";
-import { getState } from "./store";
+import type { PopupItem } from "./popup";
+import { dropFilesAs } from "./fileActions";
 
 /** Position in physical pixels inside the webview. */
 interface DragPosition {
@@ -26,7 +16,7 @@ interface DragPosition {
  * Payload of the "drag-drop" event. `saving`: the drag has no paths (an image or a link from a
  * browser); on drop its data is written to temporary files, and `paths` are those files.
  */
-type DragDropPayload =
+export type DragDropPayload =
   | { type: "enter"; paths: string[]; position: DragPosition; saving: boolean }
   | { type: "over"; position: DragPosition }
   | {
@@ -154,129 +144,5 @@ export function createHoverTimer(
       }, delayMs);
     },
     cancel,
-  };
-}
-
-// ---------------------------------------------------------------- DOM / Tauri layer
-
-function attrsOf(el: Element): DropAttrs {
-  return {
-    folder: el.getAttribute("data-drop-folder"),
-    tab: el.getAttribute("data-drop-tab"),
-    pane: el.getAttribute("data-drop-pane"),
-  };
-}
-
-function hitTest(pos: { x: number; y: number }): { target: DropTarget; element: Element } | null {
-  const css = toCssPoint(pos, window.devicePixelRatio);
-  const start = document.elementFromPoint(css.x, css.y);
-  const els: Element[] = [];
-  for (let el: Element | null = start; el; el = el.parentElement) els.push(el);
-  const { tabs, panes } = getState();
-  const target = resolveTarget(
-    els.map(attrsOf),
-    (id) => tabs.tabs.find((t) => t.id === id)?.location ?? null,
-    (id) => panes[id]?.folder?.location ?? tabs.tabs.find((t) => t.id === id)?.location ?? null,
-  );
-  return target ? { target, element: els[target.index] } : null;
-}
-
-/**
- * The drop target highlight: one frame on top of everything, placed over the target element.
- * (A class on the target itself is hidden by its children, e.g. a pane under its list.)
- */
-function dropOverlay(): HTMLElement {
-  let el = document.getElementById("drop-overlay");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "drop-overlay";
-    el.className = "drop-overlay";
-    document.body.appendChild(el);
-  }
-  return el;
-}
-
-function showOverlay(target: Element | null) {
-  const o = dropOverlay();
-  if (!target) {
-    o.style.display = "none";
-    return;
-  }
-  const r = target.getBoundingClientRect();
-  Object.assign(o.style, {
-    display: "block",
-    left: `${r.left}px`,
-    top: `${r.top}px`,
-    width: `${r.width}px`,
-    height: `${r.height}px`,
-  });
-}
-
-/** Subscribes to drag & drop events once. Returns an unsubscribe function. */
-export async function initDnd(): Promise<() => void> {
-  // Paths of the current drag (only the enter event carries them).
-  let dragged: string[] = [];
-  const hover = createHoverTimer(HOVER_SHOW_MS, (tabId) => {
-    setTabs((s) => setShown(s, [tabId], true));
-  });
-  const clear = () => {
-    showOverlay(null);
-    hover.cancel();
-    dragged = [];
-  };
-
-  const unlisten = await listen<DragDropPayload>("drag-drop", (event) => {
-    const p = event.payload;
-    if (p.type === "leave") {
-      clear();
-      return;
-    }
-    if (p.type === "enter") dragged = p.paths;
-    const hit = hitTest(p.position);
-    if (p.type === "enter" || p.type === "over") {
-      // Re-placed on every move: the list may scroll under the pointer.
-      showOverlay(hit && !isNoopDrop(dragged, hit.target.location) ? hit.element : null);
-      const tab = hit?.target.kind === "tab" ? hit.target : null;
-      const hidden = tab && getState().tabs.tabs.find((t) => t.id === tab.tabId)?.shown === false;
-      hover.set(tab && hidden ? tab.tabId : null);
-      return;
-    }
-    // drop
-    clear();
-    if (p.error) setMessage(`ドロップしたものを保存できません: ${p.error}`);
-    if (!p.paths.length) return;
-    if (!hit) {
-      // On a bar: folders open in tabs. Saved data (temporary files) has nowhere to go.
-      if (!p.saving) void backend.keyState().then((mods) => openDroppedFolders(p.paths, mods));
-      return;
-    }
-    const dest = hit.target.location;
-    if (isSelfDrop(p.paths, dest)) return;
-    if (p.rightButton && !p.saving) {
-      // The Shell's own menu, so that drag-and-drop extensions (FastCopy, archivers) are in it.
-      // Our menu is the fallback where the Shell has no drop target for the folder.
-      backend.rightDrop(p.paths, dest, p.position.x, p.position.y).catch(() => {
-        const at = toCssPoint(p.position, window.devicePixelRatio);
-        openPopup(rightDropItems(p.paths, dest), at.x, at.y);
-      });
-      return;
-    }
-    void (async () => {
-      try {
-        if (p.saving) {
-          await saveDropped(p.paths, dest);
-          return;
-        }
-        const mods = await backend.keyState();
-        await dropFiles(p.paths, dest, mods);
-      } catch (e) {
-        setMessage(errorText(e));
-      }
-    })();
-  });
-
-  return () => {
-    unlisten();
-    clear();
   };
 }

@@ -1,11 +1,7 @@
 // Key bindings (keyboard-form.xml / keyboard-folder.xml). Spec: docs/spec/config.md
 
-import { openPopup } from "../state/popup";
 import { useConfig } from "../config/store";
 import type { KeyBinding } from "../config/types";
-import { modsOf } from "../model/input";
-import { getState } from "../state/store";
-import { runItem } from "./items";
 
 type KeyLike = Pick<KeyboardEvent, "code" | "key">;
 type ModLike = Pick<KeyboardEvent, "ctrlKey" | "shiftKey" | "altKey" | "metaKey">;
@@ -114,13 +110,6 @@ export function matchBinding(bindings: KeyBinding[], mods: string, key: string):
   return bindings.find((b) => canonicalMods(b.modifier) === m && canonicalKey(b.key) === k);
 }
 
-function popupPosition(): { x: number; y: number } {
-  const list = document.activeElement?.closest("[data-pane-list]");
-  const r = list?.getBoundingClientRect();
-  if (r) return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-}
-
 /**
  * Keys the WebView would act on by itself (reload, print, find, zoom, history, caret browsing...).
  * The window is an app, not a page: these must do nothing unless a binding uses them.
@@ -144,37 +133,11 @@ export function blockBrowserShortcuts(e: KeyboardEvent) {
   if (isBrowserShortcut(modifierString(e), keyName(e))) e.preventDefault();
 }
 
-/** The binding a key event triggers: keyboard-folder.xml first when the focus is in a list. */
-function bindingFor(e: KeyboardEvent, folderScope: boolean): KeyBinding | undefined {
+/** The binding a key press triggers: keyboard-folder.xml first when the focus is in a list. */
+export function bindingFor(e: KeyLike & ModLike, folderScope: boolean): KeyBinding | undefined {
   const key = keyName(e);
   if (!key) return undefined;
   const mods = modifierString(e);
   const { keyForm, keyFolder } = useConfig.getState();
   return (folderScope ? matchBinding(keyFolder, mods, key) : undefined) ?? matchBinding(keyForm, mods, key);
-}
-
-/**
- * True when a key pressed in a list has a binding. The list's built-in keys (arrows, Enter,
- * Space...) then stay out of the way, so a settings file can reassign any of them.
- */
-export function listKeyIsBound(e: KeyboardEvent): boolean {
-  return !getState().dialog && !!bindingFor(e, true);
-}
-
-export function handleGlobalKeyDown(e: KeyboardEvent) {
-  if (getState().dialog) return;
-  const t = e.target;
-  const inText = t instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName);
-  const folderScope = !!document.activeElement?.closest("[data-pane-list]");
-  const binding = inText ? undefined : bindingFor(e, folderScope);
-  if (!binding) return;
-  e.preventDefault();
-  const item = binding.item;
-  if (item.children?.length) {
-    const { x, y } = popupPosition();
-    openPopup(item.children, x, y);
-    return;
-  }
-  const m = modsOf(e);
-  void runItem(item, m);
 }

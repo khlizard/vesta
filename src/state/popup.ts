@@ -1,6 +1,6 @@
 // Popup menu model shared by the popup component and non-React callers (key bindings).
-import type { MouseEvent } from "react";
-import { create } from "zustand";
+import { focusPane } from "./focus";
+import { getState, setState } from "./store";
 import type { MenuItem } from "../config/types";
 import type { Mods } from "../model/navigation";
 
@@ -16,11 +16,16 @@ export interface PopupItem extends Omit<MenuItem, "children"> {
   /** Overrides the check mark / disabled look otherwise derived from `command`. */
   checked?: boolean;
   disabled?: boolean;
+  /** Levels to indent the label by (a folder under its ancestors). */
+  indent?: number;
+  /** Drawn in bold (the folder the pane is in, among its ancestors). */
+  strong?: boolean;
   /** Link item whose `path` was not found: drawn greyed with a × in place of the icon. */
   missing?: boolean;
   /** Replaces `runItem` when the item is chosen. */
   onSelect?: (mods: Mods) => void;
-  onContextMenu?: (e: MouseEvent) => void;
+  /** Right-click on the item, at this client point. */
+  onContextMenu?: (at: { x: number; y: number }) => void;
 }
 
 export interface PopupRequest {
@@ -29,18 +34,28 @@ export interface PopupRequest {
   y: number;
   /** Who opened it (e.g. a link bar button), so a bar can switch menus on hover. */
   owner?: string;
+  /** Opened with the mouse: no item is selected until the pointer or a key picks one. */
+  byMouse?: boolean;
+  /** Counts the popups opened so far: a new one replaces the menu on screen even at the same place. */
+  seq: number;
 }
 
-export const usePopup = create<{ popup: PopupRequest | null }>(() => ({ popup: null }));
+/** Owner prefix of the popups opened from the menu bar. */
+export const MENU_OWNER = "menu:";
 
-/** Opens a popup menu at screen (client) position (x, y). Replaces any open popup. */
-export function openPopup(items: PopupItem[], x: number, y: number, owner?: string) {
-  usePopup.setState({ popup: { items, x, y, owner } });
+let opened = 0;
+
+/**
+ * Opens a popup menu at client position (x, y). Replaces any open popup. The menu bar stops
+ * being highlighted: the keys now belong to the menu.
+ */
+export function openPopup(items: PopupItem[], x: number, y: number, owner?: string, byMouse = false) {
+  setState({ popup: { items, x, y, owner, byMouse, seq: ++opened }, menuBarHot: null });
 }
 
 /** Owner of the open popup, or null when none is open. */
 export function popupOwner(): string | null {
-  const p = usePopup.getState().popup;
+  const p = getState().popup;
   return p ? (p.owner ?? "") : null;
 }
 
@@ -52,8 +67,11 @@ export function switchesOnHover(openOwner: string | null, owner: string, group: 
   return hasMenu && openOwner !== null && openOwner.startsWith(group) && openOwner !== owner;
 }
 
+/** Closes the popup. The keyboard focus, which the menu had, goes back to the current pane. */
 export function closePopup() {
-  usePopup.setState({ popup: null });
+  if (!getState().popup) return;
+  setState({ popup: null });
+  focusPane();
 }
 
 export function isSeparator(item: PopupItem): boolean {

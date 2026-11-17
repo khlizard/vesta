@@ -11,13 +11,17 @@ import { goHistory, goUp } from "../state/navigation";
 import * as A from "../state/tabActions";
 import * as F from "../state/fileActions";
 import * as S from "../state/selection";
-import { currentPane, currentPaneId, getState, setState, type Options } from "../state/store";
+import { openDialog } from "../state/dialogs";
+import { focusPane } from "../state/focus";
+import { currentPane, currentPaneId, getState, type Options } from "../state/store";
 import { adjustColumns } from "../state/columns";
 import { setFontSize, setOption } from "../state/options";
 import { restartForUpdate } from "../state/update";
 
 export interface CommandContext {
   mods: Mods;
+  /** The command comes from a key that is being held down. */
+  repeat?: boolean;
 }
 
 interface Parsed {
@@ -37,6 +41,11 @@ export function parseCommand(text: string): Parsed {
 
 interface CommandDef {
   run: (p: Parsed, ctx: CommandContext) => unknown;
+  /**
+   * Changes files: it is not run again by a held-down key. (That only one such operation runs
+   * at a time is seen to where they are carried out: state/exclusive.ts.)
+   */
+  exclusive?: boolean;
   checked?: (p: Parsed) => boolean;
   enabled?: (p: Parsed) => boolean;
 }
@@ -117,16 +126,15 @@ const withSelection = (f: (id: string, ctx: CommandContext) => unknown): Command
   enabled: hasSelection,
 });
 
-function focusAddressBar() {
-  window.dispatchEvent(new CustomEvent("vesta:focus-address", { detail: cur() }));
-}
+/** Marks a command as one that changes files. */
+const fileOp = (def: CommandDef): CommandDef => ({ ...def, exclusive: true });
 
 const COMMANDS: Record<string, CommandDef> = {
   // ファイル
-  "File.Open": { run: () => setState({ dialog: { kind: "location" } }) },
+  "File.Open": { run: () => openDialog("location") },
   "File.MRU": { run: (_p, ctx) => A.reopenClosed(ctx.mods), enabled: () => getState().mru.length > 0 },
-  "Current.NewFolder": withPane((id) => F.newFolder(id)),
-  "Current.New": withPane(() => setState({ dialog: { kind: "newFile", initial: "新しいテキスト ドキュメント.txt" } })),
+  "Current.NewFolder": fileOp(withPane((id) => F.newFolder(id))),
+  "Current.New": withPane(() => openDialog("newFile", "新しいテキスト ドキュメント.txt")),
   "Current.Close": closeCmd("current"),
   "All.Close": closeCmd("all"),
   "Left.Close": closeCmd("left"),
@@ -155,21 +163,21 @@ const COMMANDS: Record<string, CommandDef> = {
     },
     enabled: (p) => !!tabAt(p.index),
   },
-  "RecycleBin.Empty": { run: () => backend.openItems(["::{645FF040-5081-101B-9F08-00AA002F954E}"], "empty") },
+  "RecycleBin.Empty": fileOp({ run: () => backend.openItems(["::{645FF040-5081-101B-9F08-00AA002F954E}"], "empty") }),
   "System.Exit": { run: () => getCurrentWindow().close() },
   // Vesta only (docs/spec/update.md): apply the downloaded update and restart.
   "System.Update": { run: () => restartForUpdate(), enabled: () => !!getState().updateReady },
 
   // 編集
-  "Current.Undo": { run: () => F.undo() },
+  "Current.Undo": fileOp({ run: () => F.undo() }),
   "Current.Cut": withSelection((id) => F.copyOrCut(id, true)),
   "Current.Copy": withSelection((id) => F.copyOrCut(id, false)),
-  "Current.Paste": withPane((id) => F.paste(id)),
-  "Current.Copy.Here": withSelection((id) => F.duplicate(id)),
-  "Current.Delete": withSelection((id) => F.recycle(id)),
-  "Current.Bury": withSelection((id) => F.bury(id)),
-  "Current.MoveToOther": withSelection((id) => F.toOther(id, "move")),
-  "Current.CopyToOther": withSelection((id) => F.toOther(id, "copy")),
+  "Current.Paste": fileOp(withPane((id) => F.paste(id))),
+  "Current.Copy.Here": fileOp(withSelection((id) => F.duplicate(id))),
+  "Current.Delete": fileOp(withSelection((id) => F.recycle(id))),
+  "Current.Bury": fileOp(withSelection((id) => F.bury(id))),
+  "Current.MoveToOther": fileOp(withSelection((id) => F.toOther(id, "move"))),
+  "Current.CopyToOther": fileOp(withSelection((id) => F.toOther(id, "copy"))),
   "Current.Copy.Path": withPane((id) => F.copyNames(id, "path")),
   "Current.Copy.Name": withPane((id) => F.copyNames(id, "name")),
   "Current.Copy.Base": withPane((id) => F.copyNames(id, "base")),
@@ -178,7 +186,7 @@ const COMMANDS: Record<string, CommandDef> = {
   "Current.SelectAll": withPane((id) => S.selectAll(id)),
   "Current.SelectNone": withPane((id) => S.selectNone(id)),
   "Current.SelectReverse": withPane((id) => S.selectReverse(id)),
-  "Current.SelectPattern": withPane(() => setState({ dialog: { kind: "pattern", initial: "*" } })),
+  "Current.SelectPattern": withPane(() => openDialog("pattern", "*")),
 
   // 移動
   "Current.Go.Back": {
@@ -202,10 +210,8 @@ const COMMANDS: Record<string, CommandDef> = {
     },
     enabled: () => !!curPane()?.folder?.parent,
   },
-  "Current.Go.Location": withPane(() =>
-    setState({ dialog: { kind: "goLocation", initial: curPane()?.folder?.fsPath ?? curPane()?.folder?.location } }),
-  ),
-  "Address.Focus": withPane(() => focusAddressBar()),
+  "Current.Go.Location": withPane(() => openDialog("goLocation", curPane()?.folder?.fsPath ?? curPane()?.folder?.location)),
+  "Address.Focus": withPane((id) => focusPane("address", id)),
 
   // 表示
   "Current.Mode.Details": mode("details"),
@@ -277,7 +283,7 @@ const COMMANDS: Record<string, CommandDef> = {
   "Option.Reload": { run: () => reloadUiConfig() },
 
   // ヘルプ
-  "System.About": { run: () => setState({ dialog: { kind: "about" } }) },
+  "System.About": { run: () => openDialog("about") },
 };
 
 /** Every command name the app has (indexed ones as `Tab[].Show`). */
@@ -300,6 +306,8 @@ export async function runCommand(text: string, ctx: CommandContext = { mods: NO_
       continue;
     }
     if (def.enabled && !def.enabled(p)) continue;
+    // One press, one file operation: holding the key down does not repeat it.
+    if (def.exclusive && ctx.repeat) continue;
     await def.run(p, ctx);
   }
 }

@@ -1,38 +1,23 @@
-// Shared scroller for the details and thumbnail views: virtualisation, mouse and keyboard handling.
+// Shared scroller for the details and thumbnail views: virtualisation, and the mouse and keys
+// of the list, told to the root as they happen.
 // Specs: docs/spec/listing.md「選択」「マウス」, docs/spec/fileops.md
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { backend } from "../../api/backend";
-import type { Entry } from "../../api/types";
-import { dragStarted, errorText, modsOf } from "../../model/input";
-import { edgeScrollSpeed, isTyping, keyStep, openTargets, pageStep, pressOnItem, typeLetter } from "../../model/selection";
-import { listKeyIsBound } from "../../commands/keys";
-import { setMessage } from "../../state/message";
-import { goUp, openEntries } from "../../state/navigation";
-import { selectedLocations } from "../../state/fileActions";
-import {
-  clickItem,
-  jumpToPrefix,
-  moveCursor,
-  ordered,
-  prepareContext,
-  selectedEntries,
-  setCursor,
-  setSelection,
-  toggleCursorItem,
-} from "../../state/selection";
-import { getState, type PaneState } from "../../state/store";
-import { runMenuVerb } from "./menu";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { dragStarted, modsOf } from "../../model/input";
+import { edgeScrollSpeed, pageStep } from "../../model/selection";
+import type { Entry, ListModel } from "../../presenters/list";
+import { dispatch, isListKey } from "../../root/dispatch";
+import { LIST_ATTR } from "../../root/input";
 import { marqueeHits, normalizeBox, revealScroll, sameSet, visibleRange, type Box, type Layout } from "./layout";
 import { trackPointer } from "./pointer";
 
 export interface ViewProps {
   id: string;
-  pane: PaneState;
-  current: boolean;
 }
 
 interface ListBaseProps extends ViewProps {
+  /** What the list shows (presenters/list.ts). */
+  view: ListModel;
   className?: string;
   headerHeight: number;
   header?: ReactNode;
@@ -46,29 +31,26 @@ interface ListBaseProps extends ViewProps {
   /** Left/Right move the cursor (thumbnail view). */
   horizontalKeys: boolean;
   renderItem: (e: Entry, col: number) => ReactNode;
-  /** Ctrl+wheel over the list: 1 = wheel up, -1 = down. Without it Ctrl+wheel only scrolls. */
-  onCtrlWheel?: (dir: 1 | -1) => void;
 }
 
 const EDGE = 24;
 /** Wheel delta of one mouse notch; touchpads send smaller deltas that add up to it. */
 const WHEEL_NOTCH = 100;
 const GROUP_HEIGHT_CLASS = "group-row";
+const LIST_MARK = { [LIST_ATTR]: "" };
 
 export function ListBase(props: ListBaseProps) {
-  const { id, pane, current, className, headerHeight, header, contentWidth, itemHeight, layoutFor, itemBox, horizontalKeys, renderItem, onCtrlWheel } = props;
+  const { id, view, className, headerHeight, header, contentWidth, itemHeight, layoutFor, itemBox, horizontalKeys, renderItem } = props;
+  const { selected, cursor, folder, loading, current, focusSeq, wantsFocus } = view;
   const scrollerRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
-  /** A right-button drag is running or has just ended: its context menu event is ignored. */
-  const rightDragging = useRef(false);
   const [vp, setVp] = useState({ top: 0, width: 0, height: 0 });
   const [marquee, setMarquee] = useState<Box | null>(null);
-  const typeAhead = useRef({ text: "", at: 0 });
 
   const layout = useMemo(() => layoutFor(vp.width), [layoutFor, vp.width]);
-  const latest = useRef({ layout, itemBox, headerHeight });
+  const latest = useRef({ layout, itemBox, headerHeight, selected, wantsFocus });
   useLayoutEffect(() => {
-    latest.current = { layout, itemBox, headerHeight };
+    latest.current = { layout, itemBox, headerHeight, selected, wantsFocus };
   });
 
   useLayoutEffect(() => {
@@ -84,10 +66,6 @@ export function ListBase(props: ListBaseProps) {
   }, []);
 
   // Ctrl+wheel: a non-passive listener so the page neither zooms nor scrolls.
-  const ctrlWheel = useRef(onCtrlWheel);
-  useLayoutEffect(() => {
-    ctrlWheel.current = onCtrlWheel;
-  });
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -95,26 +73,22 @@ export function ListBase(props: ListBaseProps) {
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
-      const f = ctrlWheel.current;
-      if (!f) return;
       acc += e.deltaY;
       while (Math.abs(acc) >= WHEEL_NOTCH) {
         const dir = acc < 0 ? 1 : -1;
         acc += dir * WHEEL_NOTCH;
-        f(dir);
+        dispatch({ type: "list.zoom", id, dir });
       }
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, []);
+  }, [id]);
 
   // New folder: back to the top. Cursor change: keep it visible.
-  const folderLoc = pane.folder?.location;
   useEffect(() => {
     if (scrollerRef.current) scrollerRef.current.scrollTop = 0;
-  }, [folderLoc]);
+  }, [folder]);
 
-  const cursor = pane.cursor;
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el || !cursor) return;
@@ -126,14 +100,23 @@ export function ListBase(props: ListBaseProps) {
     if (next !== el.scrollTop) el.scrollTop = next;
   }, [cursor]);
 
-  // Focus the list of the current pane after navigation/loading.
-  const loading = pane.loading;
-  useEffect(() => {
-    if (!current || loading || getState().dialog) return;
+  /** Takes the keyboard focus, unless something is being typed somewhere. */
+  const takeFocus = useCallback(() => {
     const a = document.activeElement as HTMLElement | null;
     if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA")) return;
     scrollerRef.current?.focus({ preventScroll: true });
-  }, [current, loading, folderLoc]);
+  }, []);
+
+  // Focus the list of the current pane after navigation/loading (whether it may is the presenter's call).
+  useEffect(() => {
+    if (latest.current.wantsFocus) takeFocus();
+  }, [current, loading, folder, takeFocus]);
+
+  // The root asks for the focus (a menu or dialog closed, the address bar was left, a rename
+  // ended): it is taken wherever it is now, a text field included.
+  useEffect(() => {
+    if (focusSeq) scrollerRef.current?.focus({ preventScroll: true });
+  }, [focusSeq]);
 
   const [from, to] = visibleRange(layout.rows, vp.top - 120, vp.top + vp.height + 120);
 
@@ -158,8 +141,8 @@ export function ListBase(props: ListBaseProps) {
   const startMarquee = (e: React.PointerEvent, additive: boolean) => {
     const body = bodyRef.current;
     if (!body) return;
-    const base = additive ? new Set(getState().panes[id]?.selected) : new Set<string>();
-    if (!additive) setSelection(id, []);
+    // What was selected at the press stays selected under an additive marquee.
+    const base = additive ? new Set(latest.current.selected) : new Set<string>();
     const r0 = body.getBoundingClientRect();
     const sx = e.clientX - r0.left;
     const sy = e.clientY - r0.top;
@@ -179,7 +162,7 @@ export function ListBase(props: ListBaseProps) {
       setMarquee(box);
       const L = latest.current;
       const next = new Set([...base, ...marqueeHits(L.layout, L.itemBox, box)]);
-      if (!sameSet(next, getState().panes[id]?.selected)) setSelection(id, [...next]);
+      if (!sameSet(next, L.selected)) dispatch({ type: "list.marquee", id, items: [...next] });
     };
 
     const tick = () => {
@@ -224,81 +207,45 @@ export function ListBase(props: ListBaseProps) {
     );
   };
 
-  const startItemGesture = (e: React.PointerEvent, loc: string, collapse: boolean) => {
+  // A press on an item becomes a drag once the pointer has travelled far enough; a right-button
+  // drag ends with the copy / move / shortcut menu of the drop target. A press that does not
+  // move stays a click (the right button's then opens the context menu as usual).
+  const startItemGesture = (e: React.PointerEvent, item: string, button: "left" | "right") => {
     const sx = e.clientX;
     const sy = e.clientY;
     const stop = trackPointer(
       (ev) => {
         if (!dragStarted(ev.clientX - sx, ev.clientY - sy)) return;
         stop();
-        const locs = selectedLocations(id);
-        backend
-          .startDrag(locs.length ? locs : [loc])
-          .catch((err) => setMessage(errorText(err)))
-          .finally(() => setMarquee(null));
+        dispatch({ type: "list.drag", id, item, button });
       },
       () => {
-        if (collapse) clickItem(id, loc, { ctrl: false, shift: false });
+        if (button === "left") dispatch({ type: "list.release", id, item });
       },
-    );
-  };
-
-  // Right-button drag: the drop target shows the copy / move / shortcut menu. A right click that
-  // does not move stays a click, and the context menu opens as usual.
-  const startRightGesture = (e: React.PointerEvent, loc: string) => {
-    const sx = e.clientX;
-    const sy = e.clientY;
-    const stop = trackPointer(
-      (ev) => {
-        if (!dragStarted(ev.clientX - sx, ev.clientY - sy)) return;
-        stop();
-        if (!getState().panes[id]?.selected.has(loc)) clickItem(id, loc, { ctrl: false, shift: false });
-        const locs = selectedLocations(id);
-        rightDragging.current = true;
-        backend
-          .startDrag(locs.length ? locs : [loc])
-          .catch((err) => setMessage(errorText(err)))
-          // The button is released inside the drag; a context menu event may still follow it.
-          .finally(() => setTimeout(() => (rightDragging.current = false), 100));
-      },
-      () => {},
-      2,
+      button === "left" ? 1 : 2,
     );
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button === 2 && !ignoreTarget(e)) {
-      const loc = itemAt(e.target);
-      if (loc) startRightGesture(e, loc);
+      const item = itemAt(e.target);
+      if (item) startItemGesture(e, item, "right");
       return;
     }
     if (e.button !== 0 || ignoreTarget(e)) return;
-    const loc = itemAt(e.target);
-    const additive = e.ctrlKey;
-    if (loc) {
-      const p = getState().panes[id];
-      const collapse = !!p && pressOnItem(p, loc, modsOf(e)) === "wait";
-      if (!collapse) clickItem(id, loc, modsOf(e));
-      else setCursor(id, loc);
-      // Dragging an unselected item with Ctrl toggles it off; only drag when it ends up selected.
-      if (getState().panes[id]?.selected.has(loc)) startItemGesture(e, loc, collapse);
+    const item = itemAt(e.target);
+    if (item) {
+      dispatch({ type: "list.press", id, item, mods: { ctrl: e.ctrlKey, shift: e.shiftKey } });
+      startItemGesture(e, item, "left");
     } else {
-      startMarquee(e, additive);
+      dispatch({ type: "list.pressEmpty", id, additive: e.ctrlKey });
+      startMarquee(e, e.ctrlKey);
     }
   };
 
   const onDoubleClick = (e: React.MouseEvent) => {
     if (e.button !== 0 || ignoreTarget(e)) return;
-    const loc = itemAt(e.target);
-    if (!loc) {
-      void goUp(id, modsOf(e));
-      return;
-    }
-    const p = getState().panes[id];
-    if (!p) return;
-    const sel = selectedEntries(p);
-    const item = ordered(p).entries.find((x) => x.location === loc);
-    void openEntries(id, openTargets(sel, item, loc), modsOf(e));
+    dispatch({ type: "list.doubleClick", id, item: itemAt(e.target), mods: modsOf(e) });
   };
 
   const onMouseDown = (e: React.MouseEvent) => {
@@ -308,62 +255,29 @@ export function ListBase(props: ListBaseProps) {
 
   const onAuxClick = (e: React.MouseEvent) => {
     if (e.button !== 1 || ignoreTarget(e)) return;
-    // Empty space goes up; a middle click on an item does nothing.
-    if (!itemAt(e.target)) void goUp(id);
+    dispatch({ type: "list.middleClick", id, item: itemAt(e.target) });
   };
 
   const onContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (rightDragging.current || ignoreTarget(e)) return;
-    const folder = getState().panes[id]?.folder;
-    if (!folder) return;
-    const loc = itemAt(e.target);
-    prepareContext(id, loc);
-    const items = loc ? selectedLocations(id) : [];
-    backend
-      .showContextMenu(folder.location, items, e.clientX, e.clientY)
-      .then((verb) => runMenuVerb(id, verb))
-      .catch((err) => setMessage(errorText(err)));
+    // The header and the rename box have their own; the scroll bars have none.
+    if (ignoreTarget(e)) return;
+    dispatch({ type: "list.context", id, item: itemAt(e.target), at: { x: e.clientX, y: e.clientY } });
   };
 
   // ------------------------------------------------------------ keyboard
 
+  // A key with a binding never gets here: the root takes it first (root/input.ts).
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.defaultPrevented) return;
-    // A key with a binding belongs to the binding (keys.ts runs it); the built-in list keys stay out.
-    if (listKeyIsBound(e.nativeEvent)) return;
     if ((e.target as HTMLElement).tagName === "INPUT") return;
-    const p = getState().panes[id];
-    if (!p) return;
     const columns = layout.columns;
     const bodyH = (scrollerRef.current?.clientHeight ?? 0) - headerHeight;
-    const step = keyStep(e.key, { columns, page: pageStep(bodyH, itemHeight, columns), horizontal: horizontalKeys });
-    if (step !== null) {
-      e.preventDefault();
-      moveCursor(id, step, modsOf(e));
-      return;
-    }
-    if (e.key === "Enter" && !e.altKey) {
-      e.preventDefault();
-      const sel = selectedEntries(p);
-      const cur = ordered(p).entries.find((x) => x.location === p.cursor);
-      const targets = sel.length ? sel : cur ? [cur] : [];
-      if (targets.length) void openEntries(id, targets, modsOf(e));
-      return;
-    }
-    const now = Date.now();
-    if (e.key === " " && !isTyping(typeAhead.current, now)) {
-      e.preventDefault();
-      toggleCursorItem(id);
-      return;
-    }
-    if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
-      e.preventDefault();
-      const cur = ordered(p).entries.find((x) => x.location === p.cursor);
-      const typed = typeLetter(typeAhead.current, e.key, now, cur?.name);
-      typeAhead.current = typed.next;
-      if (typed.prefix !== null) jumpToPrefix(id, typed.prefix);
-    }
+    const grid = { columns, page: pageStep(bodyH, itemHeight, columns), horizontal: horizontalKeys };
+    const mods = modsOf(e);
+    if (!isListKey(e.key, mods, grid)) return;
+    e.preventDefault();
+    dispatch({ type: "list.key", id, key: e.key, mods, grid });
   };
 
   // ------------------------------------------------------------ render
@@ -373,7 +287,7 @@ export function ListBase(props: ListBaseProps) {
     <div
       ref={scrollerRef}
       className={`list ${className ?? ""}`}
-      data-pane-list=""
+      {...LIST_MARK}
       tabIndex={0}
       onScroll={(e) => {
         const top = e.currentTarget.scrollTop;

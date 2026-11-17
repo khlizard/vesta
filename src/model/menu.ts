@@ -55,6 +55,44 @@ export function accessKeyTarget(
   return { select: hits.find((i) => i > active) ?? hits[0] };
 }
 
+/** What a key does while the menu bar is highlighted (after Alt alone). */
+export type BarKeyResult =
+  /** Highlight this item instead. */
+  | { hot: number }
+  /** Open this item's menu. */
+  | { open: number }
+  /** Stop highlighting the bar. */
+  | { leave: true };
+
+/**
+ * A key pressed while item `hot` of the menu bar is highlighted. `accessKeys` are the access
+ * keys of the bar's items. Null when the key means nothing to the bar.
+ */
+export function menuBarKey(hot: number, accessKeys: (string | null)[], key: string, ctrl: boolean): BarKeyResult | null {
+  const n = accessKeys.length;
+  if (n === 0) return null;
+  switch (key) {
+    case "ArrowRight":
+      return { hot: (hot + 1) % n };
+    case "ArrowLeft":
+      return { hot: (hot - 1 + n) % n };
+    case "ArrowDown":
+    case "ArrowUp":
+    case "Enter":
+      return { open: hot };
+    case "Escape":
+      return { leave: true };
+  }
+  const i = barItemFor(accessKeys, key, ctrl);
+  return i < 0 ? null : { open: i };
+}
+
+/** The menu bar item whose access key a pressed letter is; -1 when none (or Ctrl is held). */
+export function barItemFor(accessKeys: (string | null)[], key: string, ctrl: boolean): number {
+  if (key.length !== 1 || ctrl) return -1;
+  return accessKeys.indexOf(key.toLowerCase());
+}
+
 /**
  * Where a menu of `size` goes so that it stays in the viewport. It is asked for at (x, y); one
  * that would pass the right edge moves to the left of its parent item (`parentLeft`, submenus)

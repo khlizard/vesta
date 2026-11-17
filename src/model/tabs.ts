@@ -297,6 +297,68 @@ export function applyHistory(
   });
 }
 
+/** What an item of a tab's context menu does. */
+export type TabMenuAction =
+  | { kind: "close" }
+  | { kind: "show" }
+  | { kind: "lock" }
+  /** Closes `target`; `relative` ones (left, right, others) are counted from the clicked tab. */
+  | { kind: "closeTarget"; target: CloseTarget; relative: boolean };
+
+export interface TabMenuEntry {
+  text: string;
+  action: TabMenuAction;
+  checked?: boolean;
+  disabled?: boolean;
+}
+
+/** The context menu of tab `id`; null entries are separators. Empty when the tab is gone. */
+export function tabMenu(s: TabsState, id: string): (TabMenuEntry | null)[] {
+  const tab = s.tabs.find((t) => t.id === id);
+  if (!tab) return [];
+  // Relative targets ("left of current") are computed as if this tab were current.
+  const focused = focusTab(s, id);
+  const none = (target: CloseTarget) => targetIds(focused, target).length === 0;
+  const rel = (text: string, target: CloseTarget): TabMenuEntry => ({
+    text,
+    action: { kind: "closeTarget", target, relative: true },
+    disabled: none(target),
+  });
+  const abs = (text: string, target: CloseTarget, disabled = false): TabMenuEntry => ({
+    text,
+    action: { kind: "closeTarget", target, relative: false },
+    disabled,
+  });
+  return [
+    { text: "閉じる(_C)", action: { kind: "close" } },
+    { text: "表示(_S)", action: { kind: "show" }, checked: tab.shown },
+    { text: "ナビゲートロック(_L)", action: { kind: "lock" }, checked: tab.locked },
+    null,
+    rel("左側を閉じる(_E)", "left"),
+    rel("右側を閉じる(_R)", "right"),
+    rel("他を閉じる(_O)", "others"),
+    abs("表示中を閉じる(_W)", "shown"),
+    abs("非表示を閉じる(_H)", "hidden", none("hidden")),
+    abs("すべて閉じる(_A)", "all"),
+  ];
+}
+
+/** The tabs after a tab menu action on tab `id`, and the tabs it closes (to be closed by the caller). */
+export function applyTabMenu(s: TabsState, id: string, action: TabMenuAction): { state: TabsState; close: string[] } {
+  switch (action.kind) {
+    case "close":
+      return { state: s, close: [id] };
+    case "show":
+      return { state: setShown(s, [id], "toggle"), close: [] };
+    case "lock":
+      return { state: toggleLock(s, id), close: [] };
+    case "closeTarget": {
+      const state = action.relative ? focusTab(s, id) : s;
+      return { state, close: targetIds(state, action.target) };
+    }
+  }
+}
+
 /** Applies a new-tab action to a tab that is already open (OpenDups off): no second tab is made. */
 export function reuseTab(s: TabsState, id: string, action: Action): TabsState {
   switch (action) {

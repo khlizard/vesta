@@ -1,55 +1,35 @@
 // Tool bar (tool.xml): 24px icons, flat buttons, split buttons and drop-downs.
 import type { MouseEvent } from "react";
 import { Ellipsis } from "lucide-react";
-import { iconUrl } from "../api/backend";
-import { commandChecked, commandEnabled } from "../commands/registry";
-import { runItem } from "../commands/items";
-import { toolContent } from "../config/icons";
-import { useConfig } from "../config/store";
-import type { MenuItem } from "../config/types";
 import { modsOf } from "../model/input";
-import { menuLabel } from "../model/menu";
-import { useStore } from "../state/store";
+import { toolBarView, type ToolEntry } from "../presenters/toolBar";
+import { useView } from "../presenters/view";
+import { dispatch } from "../root/dispatch";
 import { CommandIcon } from "./CommandIcon";
-import { isSeparator, openPopup, type PopupItem } from "../state/popup";
 import "../styles/chrome.css";
 
-function dropDown(e: MouseEvent<HTMLElement>, items: PopupItem[]) {
-  const r = e.currentTarget.parentElement?.getBoundingClientRect() ?? e.currentTarget.getBoundingClientRect();
-  openPopup(items, r.left, r.bottom);
+type ToolButtonView = Exclude<ToolEntry, { kind: "separator" }>;
+
+/** Asks for the drop-down of a button, under the left edge of its group. */
+function dropDown(e: MouseEvent<HTMLElement>, b: ToolButtonView) {
+  const r = (e.currentTarget.parentElement ?? e.currentTarget).getBoundingClientRect();
+  dispatch({ type: "menu.open", items: b.menu, at: { x: r.left, y: r.bottom } });
 }
 
-function tooltip(item: MenuItem): string {
-  return menuLabel(item.text).label || item.command || "";
-}
-
-function ToolButton({ item, mru }: { item: MenuItem; mru: string[] }) {
-  const isMru = item.command === "File.MRU";
-  const hasChildren = !!item.children?.length;
-  const split = isMru || (hasChildren && !!item.command);
-  const dropOnly = hasChildren && !item.command;
-  const enabled = item.command ? commandEnabled(item.command) : true;
-  const checked = !!item.command && commandChecked(item.command);
-
-  const kind = toolContent(item.image, item.text);
+function ToolButton({ b }: { b: ToolButtonView }) {
   const content =
-    kind === "icon" ? (
-      <CommandIcon index={item.image!} size={24} disabled={!enabled} />
-    ) : kind === "text" ? (
-      <span className="tb-text">{item.text}</span>
+    b.content === "icon" ? (
+      <CommandIcon index={b.image} size={24} disabled={!b.enabled} />
+    ) : b.content === "text" ? (
+      <span className="tb-text">{b.text}</span>
     ) : (
-      <Ellipsis className={enabled ? "cmd-icon" : "cmd-icon disabled"} size={24} strokeWidth={1.75} aria-hidden="true" />
+      <Ellipsis className={b.enabled ? "cmd-icon" : "cmd-icon disabled"} size={24} strokeWidth={1.75} aria-hidden="true" />
     );
 
-  const items = (): PopupItem[] =>
-    isMru
-      ? mru.map((loc) => ({ text: loc, literal: true, path: loc, iconSrc: iconUrl(loc) }))
-      : (item.children ?? []);
-
-  if (dropOnly) {
+  if (b.kind === "drop") {
     return (
       <div className="tb-group">
-        <button type="button" className="tb-btn tb-drop" title={tooltip(item)} onClick={(e) => dropDown(e, items())}>
+        <button type="button" className="tb-btn tb-drop" title={b.title} onClick={(e) => dropDown(e, b)}>
           {content}
           <span className="tb-arrow">▼</span>
         </button>
@@ -60,18 +40,18 @@ function ToolButton({ item, mru }: { item: MenuItem; mru: string[] }) {
     <div className="tb-group">
       <button
         type="button"
-        className={`tb-btn${checked ? " pressed" : ""}${split ? " tb-main" : ""}`}
-        title={tooltip(item)}
-        disabled={!enabled}
-        onClick={(e) => void runItem(item, modsOf(e))}
+        className={`tb-btn${b.checked ? " pressed" : ""}${b.kind === "split" ? " tb-main" : ""}`}
+        title={b.title}
+        disabled={!b.enabled}
+        onClick={(e) => dispatch({ type: "item", item: b.item, mods: modsOf(e) })}
         onAuxClick={(e) => {
-          if (e.button === 1) void runItem(item, { ...modsOf(e), ctrl: true });
+          if (e.button === 1) dispatch({ type: "item", item: b.item, mods: modsOf(e), middle: true });
         }}
       >
         {content}
       </button>
-      {split && (
-        <button type="button" className="tb-btn tb-split" tabIndex={-1} onClick={(e) => dropDown(e, items())}>
+      {b.kind === "split" && (
+        <button type="button" className="tb-btn tb-split" tabIndex={-1} onClick={(e) => dropDown(e, b)}>
           <span className="tb-arrow">▼</span>
         </button>
       )}
@@ -80,15 +60,11 @@ function ToolButton({ item, mru }: { item: MenuItem; mru: string[] }) {
 }
 
 export function ToolBar() {
-  const tool = useConfig((s) => s.tool);
-  // Checked/enabled state is derived from the whole store, so re-render on any change.
-  const mru = useStore((s) => s.mru);
-  useStore();
+  const entries = useView(toolBarView);
   return (
+    // The list keeps the keyboard focus when a button is pressed.
     <div className="toolbar" onMouseDown={(e) => e.preventDefault()}>
-      {tool.map((item, i) =>
-        isSeparator(item) ? <div key={i} className="tb-sep" /> : <ToolButton key={i} item={item} mru={mru} />,
-      )}
+      {entries.map((b, i) => (b.kind === "separator" ? <div key={i} className="tb-sep" /> : <ToolButton key={i} b={b} />))}
     </div>
   );
 }

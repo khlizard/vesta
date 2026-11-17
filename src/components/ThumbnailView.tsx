@@ -1,14 +1,10 @@
 // Thumbnail view. Spec: docs/spec/listing.md「表示モード」
 
-import { useCallback } from "react";
-import { iconUrl, thumbUrl } from "../api/backend";
-import type { Entry } from "../api/types";
-import { textMetrics } from "../model/fontSize";
+import { useCallback, useMemo } from "react";
+import { iconUrl, thumbUrl } from "../api/urls";
 import { cx } from "../model/input";
-import { stepThumbnailSize } from "../model/thumbSize";
-import { setOption } from "../state/options";
-import { ordered } from "../state/selection";
-import { getState, useStore } from "../state/store";
+import { listView, type Entry } from "../presenters/list";
+import { useView } from "../presenters/view";
 import { ListBase, type ViewProps } from "./pane/ListBase";
 import { buildLayout } from "./pane/layout";
 import { RenameInput } from "./pane/RenameInput";
@@ -18,13 +14,12 @@ const PAD = 4;
 const CELL_PAD_X = 16;
 const CELL_PAD_Y = 8;
 
-export function ThumbnailView({ id, pane, current }: ViewProps) {
-  const size = useStore((s) => s.options.ThumbnailSize);
+export function ThumbnailView({ id }: ViewProps) {
+  const v = useView(useMemo(() => listView(id), [id]));
+  const { ord, thumbSize: size } = v;
   // The label and group header follow the text size (model/fontSize.ts).
-  const text = textMetrics(useStore((s) => s.options.FontSize));
-  const LABEL_H = text.thumbLabel;
-  const GROUP_H = text.group;
-  const ord = ordered(pane);
+  const LABEL_H = v.thumbLabelHeight;
+  const GROUP_H = v.groupHeight;
   const cellW = size + CELL_PAD_X;
   const cellH = size + CELL_PAD_Y + LABEL_H;
 
@@ -35,11 +30,11 @@ export function ThumbnailView({ id, pane, current }: ViewProps) {
   const itemBox = useCallback((col: number) => ({ left: PAD + col * cellW, width: cellW }), [cellW]);
 
   const renderItem = (e: Entry, col: number) => {
-    const selected = pane.selected.has(e.location);
+    const selected = v.selected.has(e.location);
     return (
       <div
         key={e.location}
-        className={cx("tcell", selected && "selected", pane.cursor === e.location && "cursor", e.hidden && "dim")}
+        className={cx("tcell", selected && "selected", v.cursor === e.location && "cursor", e.hidden && "dim")}
         style={{ left: PAD + col * cellW, width: cellW, height: cellH }}
         data-item={e.location}
         data-drop-folder={e.isFolder ? e.location : undefined}
@@ -59,7 +54,11 @@ export function ThumbnailView({ id, pane, current }: ViewProps) {
             }}
           />
         </div>
-        {pane.renaming === e.location ? <RenameInput id={id} entry={e} /> : <div className="tlabel">{e.name}</div>}
+        {v.renaming === e.location ? (
+          <RenameInput id={id} entry={e} skipExt={v.renameSkipExt} />
+        ) : (
+          <div className="tlabel">{e.name}</div>
+        )}
       </div>
     );
   };
@@ -67,8 +66,7 @@ export function ThumbnailView({ id, pane, current }: ViewProps) {
   return (
     <ListBase
       id={id}
-      pane={pane}
-      current={current}
+      view={v}
       className="thumbs"
       headerHeight={0}
       itemHeight={cellH}
@@ -76,7 +74,6 @@ export function ThumbnailView({ id, pane, current }: ViewProps) {
       itemBox={itemBox}
       horizontalKeys
       renderItem={renderItem}
-      onCtrlWheel={(dir) => void setOption("ThumbnailSize", stepThumbnailSize(getState().options.ThumbnailSize, dir))}
     />
   );
 }

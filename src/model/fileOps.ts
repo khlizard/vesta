@@ -83,6 +83,30 @@ export function renameTo(location: string, typed: string): string | null {
   return !name || name === leaf(location) ? null : name;
 }
 
+/**
+ * The command for a verb the Shell context menu hands back (the menu leaves these to the app).
+ * `shift` is whether Shift is held: Delete then removes for good. Null for a verb the Shell
+ * has already carried out, or none.
+ */
+export function verbCommand(verb: string | null, shift: boolean): string | null {
+  switch (verb) {
+    case "rename":
+      return "Current.Rename";
+    case "delete":
+      return shift ? "Current.Bury" : "Current.Delete";
+    case "cut":
+      return "Current.Cut";
+    case "copy":
+      return "Current.Copy";
+    case "paste":
+      return "Current.Paste";
+    case "properties":
+      return "Current.Property";
+    default:
+      return null;
+  }
+}
+
 /** The status bar text for the result of an operation, or null when there is nothing to say. */
 export function resultMessage(r: Pick<OpResult, "aborted" | "done" | "replaced">): string | null {
   if (r.aborted) return r.done ? "一部の項目は処理されませんでした" : "操作を中止しました";

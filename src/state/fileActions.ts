@@ -19,7 +19,7 @@ import {
 import { shownTabs } from "../model/tabs";
 import { reloadPane } from "./loading";
 import { setMessage } from "./message";
-import { beginFileOp, endFileOp } from "./busy";
+import { exclusive } from "./exclusive";
 import { selectedEntries } from "./selection";
 import { getState, updatePane } from "./store";
 
@@ -52,12 +52,17 @@ interface SelectAfter {
 
 /**
  * Runs the operations in order (stopping at the first error or cancel), then reloads the shown
- * panes. True when every operation ran to the end.
+ * panes. True when every operation ran to the end. One call runs at a time (`exclusive`); a
+ * call that is turned away does nothing and gives false.
  */
 async function run(ops: FileOp | FileOp[], after?: SelectAfter): Promise<boolean> {
+  const done = await exclusive(() => runNow(ops, after));
+  return done ?? false;
+}
+
+async function runNow(ops: FileOp | FileOp[], after?: SelectAfter): Promise<boolean> {
   let created: string | undefined;
   let complete = true;
-  beginFileOp();
   try {
     for (const op of Array.isArray(ops) ? ops : [ops]) {
       const r = await backend.fileOp(op);
@@ -73,8 +78,6 @@ async function run(ops: FileOp | FileOp[], after?: SelectAfter): Promise<boolean
   } catch (e) {
     complete = false;
     setMessage(errorText(e));
-  } finally {
-    endFileOp();
   }
   // Watchers reload changed folders; reload shown panes too in case the folder is not watchable.
   const select = after && created;
@@ -183,17 +186,16 @@ export async function saveDropped(paths: string[], dest: string) {
 }
 
 export async function undo() {
-  // Counts as a running operation: undoing a big move takes as long as the move did.
-  beginFileOp();
-  try {
-    const msg = await backend.undo();
-    setMessage(msg ?? "元に戻す操作はありません");
-  } catch (e) {
-    setMessage(errorText(e));
-  } finally {
-    endFileOp();
-  }
-  await reloadShown();
+  // A file operation like the others: undoing a big move takes as long as the move did.
+  await exclusive(async () => {
+    try {
+      const msg = await backend.undo();
+      setMessage(msg ?? "元に戻す操作はありません");
+    } catch (e) {
+      setMessage(errorText(e));
+    }
+    await reloadShown();
+  });
 }
 
 export async function copyNames(id: string | null, what: "path" | "name" | "base") {

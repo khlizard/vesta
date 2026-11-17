@@ -3,6 +3,9 @@
 import { create } from "zustand";
 import type { DiskFree, Entry, FolderInfo } from "../api/types";
 import { DEFAULT_COLUMNS } from "../model/columns";
+import { OPEN_GATE, type Gate } from "../model/gate";
+import { modeOf, type Mode } from "../model/mode";
+import type { PopupRequest } from "./popup";
 import type { SortKey } from "../model/sort";
 import { EMPTY_TABS, type InsertPosition, type TabsState } from "../model/tabs";
 
@@ -125,6 +128,8 @@ export type DialogKind = "location" | "goLocation" | "newFile" | "pattern" | "ab
 export interface Dialog {
   kind: DialogKind;
   initial?: string;
+  /** Earlier inputs to pick from (File.Open), newest first. */
+  history?: string[];
 }
 
 export interface AppState {
@@ -142,6 +147,58 @@ export interface AppState {
   dialog: Dialog | null;
   /** Version of a downloaded update waiting to be applied (docs/spec/update.md). */
   updateReady: string | null;
+
+  // What the mode is read from (model/mode.ts, docs/spec/ui.md「モード」), with `dialog` above
+  // and each pane's `renaming`.
+  /** The open popup menu (menu bar, bars, context menus). */
+  popup: PopupRequest | null;
+  /** Menu bar item highlighted for keyboard use (after Alt alone). */
+  menuBarHot: number | null;
+  /** The pane whose address bar is being typed in. */
+  addressEditing: string | null;
+  /** A Shell context menu or a drag started here has the input. */
+  native: boolean;
+  /** Folder names offered for the path being typed in the address bar of `paneId`. */
+  suggest: { paneId: string; parent: string; names: string[] } | null;
+  /** Version of the app, for the About dialog. */
+  appVersion: string;
+
+  /** Where the keyboard focus should go; a view that is the target takes it when `seq` changes. */
+  focus: FocusRequest | null;
+  /** File operations run one at a time (model/gate.ts). */
+  gate: Gate;
+  /** Frame around what a drag is over, in client px. */
+  dropFrame: Frame | null;
+  /** Where the link bar items point, by their `path`; null: not found. Missing: not looked up yet. */
+  linkTargets: Record<string, LinkTarget | null>;
+  /** Sizes the views report, for the decisions that need them. */
+  layout: {
+    /** Left and bottom edge of each menu bar item: where its menu opens. */
+    menuBar: { x: number; y: number }[];
+    /** Client width of each pane's list (px). */
+    listWidths: Record<string, number>;
+  };
+}
+
+/** Where a link bar item points. */
+export interface LinkTarget {
+  location: string;
+  isFolder: boolean;
+  /** Location of the containing folder (for the Shell context menu). */
+  parent: string;
+}
+
+export interface FocusRequest {
+  paneId: string;
+  target: "list" | "address";
+  seq: number;
+}
+
+export interface Frame {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
 }
 
 export const useStore = create<AppState>(() => ({
@@ -154,6 +211,17 @@ export const useStore = create<AppState>(() => ({
   paneRowSplit: null,
   dialog: null,
   updateReady: null,
+  popup: null,
+  menuBarHot: null,
+  addressEditing: null,
+  native: false,
+  suggest: null,
+  appVersion: "",
+  focus: null,
+  gate: OPEN_GATE,
+  dropFrame: null,
+  linkTargets: {},
+  layout: { menuBar: [], listWidths: {} },
 }));
 
 export const getState = useStore.getState;
@@ -164,6 +232,28 @@ export function updatePane(id: string, f: (p: PaneState) => Partial<PaneState>) 
     const p = s.panes[id];
     if (!p) return s;
     return { panes: { ...s.panes, [id]: { ...p, ...f(p) } } };
+  });
+}
+
+/** The pane with an item being renamed in place, if any. */
+function renamingPane(s: AppState): string | null {
+  for (const id in s.panes) if (s.panes[id].renaming) return id;
+  return null;
+}
+
+/** The mode the window is in (docs/spec/ui.md「モード」). */
+export function modeIn(s: AppState): Mode {
+  const renaming = renamingPane(s);
+  return modeOf({
+    dialog: s.dialog !== null,
+    popupOwner: s.popup ? (s.popup.owner ?? "") : null,
+    native: s.native,
+    editing: renaming
+      ? { paneId: renaming, field: "rename" }
+      : s.addressEditing
+        ? { paneId: s.addressEditing, field: "address" }
+        : null,
+    menuBarHot: s.menuBarHot !== null,
   });
 }
 

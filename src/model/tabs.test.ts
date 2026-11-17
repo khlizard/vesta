@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   addTab,
+  applyTabMenu,
+  tabMenu,
   clickTab,
   closeTabs,
   cycleCurrent,
@@ -226,6 +228,45 @@ describe("adding tabs", () => {
     expect(shownIds(s)).toEqual(["n"]);
     expect(s.tabs[0]).toMatchObject({ shown: false, locked: false });
     expect(s.currentId).toBe("n");
+  });
+});
+
+describe("tab menu", () => {
+  const texts = (s: TabsState, id: string) => tabMenu(s, id).map((e) => (e ? `${e.text}${e.disabled ? " x" : ""}${e.checked ? " v" : ""}` : "-"));
+
+  it("lists the actions, with what cannot be done disabled", () => {
+    expect(texts(state("a* b! c", "a"), "a")).toEqual([
+      "閉じる(_C)",
+      "表示(_S) v",
+      "ナビゲートロック(_L)",
+      "-",
+      "左側を閉じる(_E) x",
+      "右側を閉じる(_R)",
+      "他を閉じる(_O)",
+      "表示中を閉じる(_W)",
+      "非表示を閉じる(_H)",
+      "すべて閉じる(_A)",
+    ]);
+    expect(texts(state("a* b!", "a"), "b")[2]).toBe("ナビゲートロック(_L) v");
+    expect(texts(state("a*", "a"), "a")[8]).toBe("非表示を閉じる(_H) x");
+    expect(tabMenu(state("a*", "a"), "gone")).toEqual([]);
+  });
+
+  it("counts left and right from the clicked tab, which becomes current", () => {
+    const s = state("a* b c d", "a");
+    const left = applyTabMenu(s, "c", { kind: "closeTarget", target: "left", relative: true });
+    expect(left.close).toEqual(["a", "b"]);
+    expect(left.state.currentId).toBe("c");
+    const shown = applyTabMenu(s, "c", { kind: "closeTarget", target: "shown", relative: false });
+    expect(shown.close).toEqual(["a"]);
+    expect(shown.state).toBe(s);
+  });
+
+  it("closes, shows and locks the clicked tab", () => {
+    const s = state("a* b", "a");
+    expect(applyTabMenu(s, "b", { kind: "close" })).toEqual({ state: s, close: ["b"] });
+    expect(shownIds(applyTabMenu(s, "b", { kind: "show" }).state)).toEqual(["a", "b"]);
+    expect(applyTabMenu(s, "b", { kind: "lock" }).state.tabs[1].locked).toBe(true);
   });
 });
 

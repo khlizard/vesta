@@ -9,6 +9,19 @@ export interface LabelSource {
   fsPath: string | null;
 }
 
+/**
+ * The title of the window: `Vesta - {name} / {path}` for the current tab, `Vesta` without one.
+ * `folder` is what the tab's pane has loaded; until then the tab's own name and location stand in.
+ * Spec: docs/spec/ui.md「ウィンドウ」
+ */
+export function windowTitle(
+  tab: { displayName: string; location: string } | null,
+  folder: { displayName: string; fsPath: string | null } | null,
+): string {
+  if (!tab) return "Vesta";
+  return `Vesta - ${folder?.displayName ?? tab.displayName} / ${folder?.fsPath ?? folder?.displayName ?? tab.location}`;
+}
+
 function parts(src: LabelSource): string[] | null {
   if (!src.fsPath) return null;
   const p = src.fsPath.replace(/\\+$/, "");

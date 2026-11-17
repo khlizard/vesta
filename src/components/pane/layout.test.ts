@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Entry } from "../../api/types";
-import { resizePair, resolveFractions, splitRows } from "./arrange";
+import { resizePair, resolveFractions, splitRows } from "../../model/arrange";
 import { buildLayout, marqueeHits, normalizeBox, revealScroll, visibleRange } from "./layout";
 
 const entry = (name: string): Entry => ({

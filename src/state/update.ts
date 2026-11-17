@@ -4,7 +4,7 @@ import { backend } from "../api/backend";
 import { errorText } from "../model/input";
 import { setMessage } from "./message";
 import { flushState } from "./session";
-import { mayClose } from "./busy";
+import { mayClose } from "./exclusive";
 import { getState, setState } from "./store";
 
 const FIRST_CHECK_MS = 5_000;

@@ -5,7 +5,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { backend } from "../api/backend";
 import { sameLocation } from "../model/paths";
 import * as T from "../model/tabs";
-import { mayClose } from "./busy";
+import { mayClose } from "./exclusive";
 import { loadViews } from "./folderViews";
 import { reloadPane } from "./loading";
 import { openExternal } from "./navigation";

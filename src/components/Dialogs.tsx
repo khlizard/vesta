@@ -1,53 +1,29 @@
-// Modal dialogs driven by `dialog` in the store, plus the popup host.
+// Modal dialogs: which one is open, and what it holds, comes from the root's state.
+// Spec: docs/spec/ui.md「モード」
+
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { getVersion } from "@tauri-apps/api/app";
 import { formatBuildTime } from "../model/buildTime";
 import { isImeKey, modsOf } from "../model/input";
-import { PopupHost } from "./PopupMenu";
-import { openExternal, openInput } from "../state/navigation";
-import { newItem } from "../state/fileActions";
-import { selectPattern } from "../state/selection";
-import { currentPaneId, setState, useStore } from "../state/store";
 import { NO_MODS, type Mods } from "../model/navigation";
+import { dialogView, type DialogVM } from "../presenters/chrome";
+import { useView } from "../presenters/view";
+import { dispatch } from "../root/dispatch";
 import "../styles/chrome.css";
 
-const close = () => setState({ dialog: null });
-
-/** Inputs given to File.Open during this session, newest first (max 20). */
-let locationHistory: string[] = [];
-
-function remember(text: string) {
-  locationHistory = [text, ...locationHistory.filter((h) => h !== text)].slice(0, 20);
-}
-
-function Frame(props: { title: string; onOk?: () => void; okText?: string; children: ReactNode }) {
-  const hasOk = !!props.onOk;
-  useEffect(() => {
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === "Escape" || (!hasOk && e.key === "Enter")) {
-        e.preventDefault();
-        close();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [hasOk]);
+function Frame(props: { title: string; onOk?: () => void; children: ReactNode }) {
   return (
+    // Nothing behind the dialog is pressed through it.
     <div className="dlg-overlay" onMouseDown={(e) => e.stopPropagation()}>
-      <div
-        className="dlg"
-        role="dialog"
-        aria-label={props.title}
-      >
+      <div className="dlg" role="dialog" aria-label={props.title}>
         <div className="dlg-title">{props.title}</div>
         <div className="dlg-body">{props.children}</div>
         <div className="dlg-buttons">
           {props.onOk && (
             <button type="button" className="dlg-btn default" onClick={props.onOk}>
-              {props.okText ?? "OK"}
+              OK
             </button>
           )}
-          <button type="button" className="dlg-btn" onClick={close}>
+          <button type="button" className="dlg-btn" onClick={() => dispatch({ type: "dialog.close" })}>
             {props.onOk ? "キャンセル" : "閉じる"}
           </button>
         </div>
@@ -56,37 +32,29 @@ function Frame(props: { title: string; onOk?: () => void; okText?: string; child
   );
 }
 
-interface TextDialogProps {
-  title: string;
-  label: string;
-  initial: string;
-  /** Selects only this many leading characters initially (default: everything). */
-  selectLength?: number;
-  history?: string[];
-  onConfirm: (text: string, mods: Mods) => void;
-}
-
-function TextDialog({ title, label, initial, selectLength, history, onConfirm }: TextDialogProps) {
-  const [text, setText] = useState(initial);
+function TextDialog({ vm }: { vm: Extract<DialogVM, { kind: "text" }> }) {
+  // The text being typed is the dialog's own until it is confirmed.
+  const [text, setText] = useState(vm.initial);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const el = input.current;
     if (!el) return;
     el.focus();
-    el.setSelectionRange(0, selectLength ?? el.value.length);
-  }, [selectLength]);
+    el.setSelectionRange(0, vm.selectLength ?? el.value.length);
+  }, [vm.selectLength]);
 
-  const ok = (mods: Mods) => onConfirm(text, mods);
+  const confirm = (value: string, mods: Mods) => dispatch({ type: "dialog.confirm", text: value, mods });
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    // Enter that confirms a Japanese conversion is not the end of the input.
     if (e.key === "Enter" && !isImeKey(e)) {
       e.preventDefault();
-      ok(modsOf(e));
+      confirm(text, modsOf(e));
     }
   };
   return (
-    <Frame title={title} onOk={() => ok(NO_MODS)}>
+    <Frame title={vm.title} onOk={() => confirm(text, NO_MODS)}>
       <label className="dlg-label">
-        {label}
+        {vm.label}
         <input
           ref={input}
           className="dlg-input"
@@ -96,16 +64,16 @@ function TextDialog({ title, label, initial, selectLength, history, onConfirm }:
           onKeyDown={onKeyDown}
         />
       </label>
-      {history && history.length > 0 && (
+      {vm.history.length > 0 && (
         <ul className="dlg-history">
-          {history.map((h) => (
+          {vm.history.map((h) => (
             <li
               key={h}
               onClick={() => {
                 setText(h);
                 input.current?.focus();
               }}
-              onDoubleClick={() => onConfirm(h, NO_MODS)}
+              onDoubleClick={() => confirm(h, NO_MODS)}
             >
               {h}
             </li>
@@ -116,23 +84,12 @@ function TextDialog({ title, label, initial, selectLength, history, onConfirm }:
   );
 }
 
-function AboutDialog() {
-  const [version, setVersion] = useState("");
-  useEffect(() => {
-    let alive = true;
-    getVersion().then(
-      (v) => alive && setVersion(v),
-      () => {},
-    );
-    return () => {
-      alive = false;
-    };
-  }, []);
+function AboutDialog({ vm }: { vm: Extract<DialogVM, { kind: "about" }> }) {
   return (
-    <Frame title="バージョン情報">
+    <Frame title={vm.title}>
       <div className="dlg-about">
         <div className="dlg-about-name">Vesta</div>
-        <div>バージョン {version}</div>
+        <div>バージョン {vm.version}</div>
         <div>ビルド {formatBuildTime(__BUILD_TIME__)}</div>
         <p>
           タブ型ファイラ Avesta を参考に、使いやすい形でリメイクしたものです。
@@ -147,62 +104,8 @@ function AboutDialog() {
 }
 
 export function Dialogs() {
-  const dialog = useStore((s) => s.dialog);
-  return (
-    <>
-      <PopupHost />
-      {dialog?.kind === "location" && (
-        <TextDialog
-          title="開く"
-          label="開く場所:"
-          initial=""
-          history={locationHistory}
-          onConfirm={(text, mods) => {
-            const input = text.trim() || "HOME";
-            remember(input);
-            close();
-            void openExternal(input, mods);
-          }}
-        />
-      )}
-      {dialog?.kind === "goLocation" && (
-        <TextDialog
-          title="場所を指定"
-          label="移動する場所:"
-          initial={dialog.initial ?? ""}
-          onConfirm={(text, mods) => {
-            close();
-            void openInput(text.trim() || "HOME", mods, currentPaneId());
-          }}
-        />
-      )}
-      {dialog?.kind === "newFile" && (
-        <TextDialog
-          title="新規作成"
-          label="名前（拡張子がなければフォルダ）:"
-          initial={dialog.initial ?? ""}
-          selectLength={
-            (dialog.initial ?? "").lastIndexOf(".") > 0 ? (dialog.initial ?? "").lastIndexOf(".") : undefined
-          }
-          onConfirm={(text) => {
-            close();
-            void newItem(currentPaneId(), text);
-          }}
-        />
-      )}
-      {dialog?.kind === "pattern" && (
-        <TextDialog
-          title="パターンを指定して選択"
-          label="パターン (; 区切り):"
-          initial={dialog.initial ?? "*"}
-          onConfirm={(text) => {
-            close();
-            const id = currentPaneId();
-            if (id) selectPattern(id, text);
-          }}
-        />
-      )}
-      {dialog?.kind === "about" && <AboutDialog />}
-    </>
-  );
+  const vm = useView(dialogView);
+  if (!vm) return null;
+  // `key`: a dialog opened anew starts from its own initial text.
+  return vm.kind === "about" ? <AboutDialog vm={vm} /> : <TextDialog key={vm.title} vm={vm} />;
 }

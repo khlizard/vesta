@@ -1,36 +1,22 @@
-// Link bar items (link.xml): resolving their paths and building their menus.
+// Link bar items (link.xml): resolving their paths, building their menus, acting on them.
 // Spec: docs/spec/config.md「link.xml」
 
-import type { MouseEvent } from "react";
-import { backend, iconUrl } from "../api/backend";
+import { backend } from "../api/backend";
+import { iconUrl } from "../api/urls";
 import { linkAction, runItem } from "../commands/items";
 import { useConfig } from "../config/store";
 import type { MenuItem } from "../config/types";
 import type { Mods } from "../model/navigation";
 import { compareNames } from "../model/sort";
-import { isSeparator, type PopupItem } from "./popup";
+import { isSeparator, openPopup, popupOwner, switchesOnHover, type PopupItem } from "./popup";
+import { getState, setState, type LinkTarget } from "./store";
 
-/** Where a link item points. */
-export interface LinkTarget {
-  location: string;
-  isFolder: boolean;
-  /** Location of the containing folder (for the Shell context menu). */
-  parent: string;
-}
+/** Owner prefix of popups opened from the link bar. */
+export const LINK_OWNER = "link:";
 
-/**
- * Resolved link paths, per loaded settings: reloading the settings (Option.Reload) starts a
- * new cache, so an edited or re-created target is looked up again.
- */
-const caches = new WeakMap<MenuItem[], Map<string, Promise<LinkTarget | null>>>();
-function cache(): Map<string, Promise<LinkTarget | null>> {
-  const link = useConfig.getState().link;
-  let m = caches.get(link);
-  if (!m) {
-    m = new Map();
-    caches.set(link, m);
-  }
-  return m;
+/** The buttons of the link bar: link.xml without its separators. */
+export function linkButtons(link: MenuItem[]): MenuItem[] {
+  return link.filter((i) => !isSeparator(i));
 }
 
 function parentOfFile(location: string): string {
@@ -38,25 +24,37 @@ function parentOfFile(location: string): string {
   return i > 0 ? location.slice(0, i) : "DESKTOP";
 }
 
-/** Resolves a link path (alias, env var, UNC...) once and caches the result. Null when it is not found. */
-export function resolveLink(path: string): Promise<LinkTarget | null> {
-  const resolved = cache();
-  let p = resolved.get(path);
-  if (!p) {
-    p = backend.resolveLocation(path).then(
-      (r): LinkTarget =>
-        r.kind === "folder"
-          ? { location: r.folder.location, isFolder: true, parent: r.folder.parent ?? "DESKTOP" }
-          : { location: r.location, isFolder: false, parent: parentOfFile(r.location) },
-      () => {
-        // Not kept: the drive may be back the next time it is asked for.
-        resolved.delete(path);
-        return null;
-      },
-    );
-    resolved.set(path, p);
-  }
-  return p;
+/** Looks a link path up now (alias, env var, UNC...) and notes the answer in the store. Null: not found. */
+async function resolveLink(path: string): Promise<LinkTarget | null> {
+  const target = await backend.resolveLocation(path).then(
+    (r): LinkTarget =>
+      r.kind === "folder"
+        ? { location: r.folder.location, isFolder: true, parent: r.folder.parent ?? "DESKTOP" }
+        : { location: r.location, isFolder: false, parent: parentOfFile(r.location) },
+    () => null,
+  );
+  setState((s) => ({ linkTargets: { ...s.linkTargets, [path]: target } }));
+  return target;
+}
+
+/** The target of a link path: the one found before, else looked up (again: the drive may be back). */
+async function targetOf(path: string | undefined): Promise<LinkTarget | null> {
+  if (!path) return null;
+  return getState().linkTargets[path] ?? resolveLink(path);
+}
+
+/** Looks up every path of the link bar afresh (at startup, and after the settings are read again). */
+export async function resolveLinks() {
+  setState({ linkTargets: {} });
+  const paths = new Set<string>();
+  const walk = (items: MenuItem[]) => {
+    for (const it of items) {
+      if (it.path) paths.add(it.path);
+      if (it.children) walk(it.children);
+    }
+  };
+  walk(linkButtons(useConfig.getState().link));
+  await Promise.all([...paths].map(resolveLink));
 }
 
 /** Whether a link item opens a menu instead of acting on a click. */
@@ -64,15 +62,12 @@ export function linkHasMenu(cfg: MenuItem, target: LinkTarget | null | undefined
   return !!cfg.children?.length || (!!target?.isFolder && cfg.depth !== 0);
 }
 
-/** Opens what a link item points to. */
-export function runLink(cfg: MenuItem, target: LinkTarget, mods: Mods) {
-  return runItem(linkAction(target.location, target.isFolder, cfg.args), mods);
-}
-
-/** The Shell context menu of a link target, at the pointer. */
-export function showLinkMenu(e: MouseEvent, parent: string, location: string) {
-  e.preventDefault();
-  void backend.showContextMenu(parent, [location], e.clientX, e.clientY).catch(() => {});
+/** The Shell context menu of a link target, at client point (x, y). */
+function showLinkMenu(at: { x: number; y: number }, parent: string, location: string): Promise<void> {
+  return backend.showContextMenu(parent, [location], at.x, at.y).then(
+    () => {},
+    () => {},
+  );
 }
 
 const SEP: PopupItem = { separator: true };
@@ -90,7 +85,7 @@ async function expandFolder(location: string, depth: number | undefined, include
       literal: true,
       iconSrc: iconUrl(e.location),
       onSelect: (mods: Mods) => void runItem({ path: e.location }, mods),
-      onContextMenu: (ev) => showLinkMenu(ev, location, e.location),
+      onContextMenu: (at) => void showLinkMenu(at, location, e.location),
     };
     if (e.isFolder && next !== 0) item.loadChildren = () => expandFolder(e.location, next, includeFiles);
     return item;
@@ -100,7 +95,7 @@ async function expandFolder(location: string, depth: number | undefined, include
 /** Builds the popup item for a link.xml entry (children first, then the folder contents). */
 async function buildItem(cfg: MenuItem): Promise<PopupItem> {
   if (isSeparator(cfg)) return SEP;
-  const target = cfg.path ? await resolveLink(cfg.path) : null;
+  const target = await targetOf(cfg.path);
   const staticChildren = cfg.children ? await Promise.all(cfg.children.map(buildItem)) : [];
   const item: PopupItem = { text: cfg.text };
   if (cfg.path && !target) {
@@ -111,8 +106,8 @@ async function buildItem(cfg: MenuItem): Promise<PopupItem> {
   }
   if (target) {
     item.iconSrc = iconUrl(target.location);
-    item.onSelect = (mods) => void runLink(cfg, target, mods);
-    item.onContextMenu = (ev) => showLinkMenu(ev, target.parent, target.location);
+    item.onSelect = (mods) => void runItem(linkAction(target.location, target.isFolder, cfg.args), mods);
+    item.onContextMenu = (at) => void showLinkMenu(at, target.parent, target.location);
   }
   if (target?.isFolder && cfg.depth !== 0) {
     item.loadChildren = async () => {
@@ -125,8 +120,41 @@ async function buildItem(cfg: MenuItem): Promise<PopupItem> {
   return item;
 }
 
-/** The menu a link bar button drops down. */
-export async function linkMenuItems(cfg: MenuItem): Promise<PopupItem[]> {
+/** Bumped on every open request, so only the latest of several slow folder listings opens. */
+let openSeq = 0;
+
+/** Opens the menu of link button `index` at `at`. `hover`: only while another link menu is still open. */
+async function openLinkMenu(index: number, cfg: MenuItem, at: { x: number; y: number }, hover: boolean) {
+  const seq = ++openSeq;
   const item = await buildItem(cfg);
-  return item.loadChildren ? item.loadChildren() : (item.children ?? []);
+  const items = item.loadChildren ? await item.loadChildren() : (item.children ?? []);
+  if (seq !== openSeq) return;
+  if (hover && !popupOwner()?.startsWith(LINK_OWNER)) return;
+  openPopup(items, at.x, at.y, `${LINK_OWNER}${index}`);
+}
+
+const button = (index: number): MenuItem | undefined => linkButtons(useConfig.getState().link)[index];
+
+/** A link bar button was clicked: its menu opens, or what it points to. */
+export async function clickLink(index: number, mods: Mods, at: { x: number; y: number }) {
+  const cfg = button(index);
+  if (!cfg) return;
+  const target = await targetOf(cfg.path);
+  if (linkHasMenu(cfg, target)) await openLinkMenu(index, cfg, at, false);
+  else if (target) await runItem(linkAction(target.location, target.isFolder, cfg.args), mods);
+}
+
+/** The pointer came over a link bar button: while another link menu is open, switch to this one's. */
+export function hoverLink(index: number, at: { x: number; y: number }) {
+  const cfg = button(index);
+  if (!cfg) return;
+  const hasMenu = linkHasMenu(cfg, cfg.path ? getState().linkTargets[cfg.path] : null);
+  if (switchesOnHover(popupOwner(), `${LINK_OWNER}${index}`, LINK_OWNER, hasMenu)) void openLinkMenu(index, cfg, at, true);
+}
+
+/** Right-click on a link bar button: the Shell menu of what it points to. Ends when the menu has closed. */
+export async function contextLink(index: number, at: { x: number; y: number }) {
+  const cfg = button(index);
+  const target = cfg?.path ? getState().linkTargets[cfg.path] : null;
+  if (target) await showLinkMenu(at, target.parent, target.location);
 }

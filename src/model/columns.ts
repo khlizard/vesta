@@ -1,7 +1,21 @@
 // Details view columns: which are shown and in what order.
 // Spec: docs/spec/listing.md「詳細の列」「列のカスタマイズ」
 
+import type { Entry } from "../api/types";
+import { formatAttributes, formatDate, formatSizeColumn } from "./format";
 import type { SortKey } from "./sort";
+
+/** The text of each column's cell (`status` shows an icon instead). */
+export const cellText: Record<SortKey, (e: Entry) => string> = {
+  name: (e) => e.name,
+  status: () => "",
+  modified: (e) => formatDate(e.modified),
+  type: (e) => e.typeName,
+  size: (e) => (e.isFolder ? "" : formatSizeColumn(e.size)),
+  created: (e) => formatDate(e.created),
+  accessed: (e) => formatDate(e.accessed),
+  attributes: (e) => formatAttributes(e.attributes),
+};
 
 export const COLUMN_LABEL: Record<SortKey, string> = {
   name: "名前",
