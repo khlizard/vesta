@@ -12,8 +12,11 @@ import type {
   Resolved,
   WindowPlacement,
 } from "./types";
+import type { UiConfig } from "../config/types";
 
 export const backend = {
+  /** usr/*.xml as read by the backend; `warnings` names the files that fell back to the built-in ones. */
+  uiConfig: () => invoke<{ config: UiConfig; warnings: string[]; usrDir: string }>("get_ui_config"),
   listFolder: (location: string, showHidden: boolean) =>
     invoke<Listing>("list_folder", { location, showHidden }),
   resolveLocation: (input: string) => invoke<Resolved>("resolve_location", { input }),

@@ -3,6 +3,7 @@
 
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { backend } from "../api/backend";
+import { reloadUiConfig } from "../config/load";
 import { NO_MODS, type Mods } from "../model/navigation";
 import * as T from "../model/tabs";
 import { refreshPane } from "../state/loading";
@@ -14,8 +15,6 @@ import { currentPane, currentPaneId, getState, setState, type Options } from "..
 import { adjustColumns } from "../state/columns";
 import { setFontSize, setOption } from "../state/options";
 import { restartForUpdate } from "../state/update";
-
-export { loadOptions, setOption } from "../state/options";
 
 export interface CommandContext {
   mods: Mods;
@@ -275,15 +274,11 @@ const COMMANDS: Record<string, CommandDef> = {
   "Option.FontSize.14": fontSizeCmd(14),
   "Option.FontSize.16": fontSizeCmd(16),
   "Option.TwoRows": toggleOption("TwoRows"),
+  "Option.Reload": { run: () => reloadUiConfig() },
 
   // ヘルプ
   "System.About": { run: () => setState({ dialog: { kind: "about" } }) },
 };
-
-/** Registers or replaces a command (used by modules that own UI-specific commands). */
-export function defineCommand(name: string, def: CommandDef) {
-  COMMANDS[name] = def;
-}
 
 /** Every command name the app has (indexed ones as `Tab[].Show`). */
 export function commandNames(): string[] {

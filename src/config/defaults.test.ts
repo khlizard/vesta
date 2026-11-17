@@ -1,7 +1,6 @@
 // The default usr/*.xml (src-tauri/resources/usr) must only use commands Vesta has.
 import { describe, expect, it } from "vitest";
 import { isKnownCommand } from "../commands/registry";
-import "./load"; // defines Option.Reload
 
 const files = import.meta.glob<string>("../../src-tauri/resources/usr/*.xml", {
   query: "?raw",

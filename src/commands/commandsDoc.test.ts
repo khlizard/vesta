@@ -1,7 +1,6 @@
 // docs/spec/commands.md must list exactly the commands the app has.
 import { describe, expect, it } from "vitest";
 import { commandNames, isKnownCommand, parseCommand } from "./registry";
-import "../config/load"; // defines Option.Reload
 
 const docs = import.meta.glob<string>("../../docs/spec/commands.md", { query: "?raw", import: "default", eager: true });
 const doc = Object.values(docs)[0] ?? "";

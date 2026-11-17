@@ -5,7 +5,17 @@ import type { FileOp } from "../api/types";
 import { errorText } from "../model/input";
 import type { Mods } from "../model/navigation";
 import { newItemKind } from "../model/newItem";
-import { dropKind, resultMessage, transferOps, type TransferKind } from "../model/fileOps";
+import {
+  copiedMessage,
+  copyLines,
+  dropKind,
+  nextShown,
+  pasteDest,
+  renameTo,
+  resultMessage,
+  transferOps,
+  type TransferKind,
+} from "../model/fileOps";
 import { shownTabs } from "../model/tabs";
 import { reloadPane } from "./loading";
 import { setMessage } from "./message";
@@ -88,12 +98,9 @@ export async function copyOrCut(id: string | null, cut: boolean) {
 
 export async function paste(id: string | null) {
   const p = paneOf(id);
-  let dest = folderPath(id);
-  if (!p || !dest) return;
-  if (getState().options.PasteInFolder) {
-    const sel = selectedEntries(p);
-    if (sel.length === 1 && sel[0].isFolder) dest = sel[0].location;
-  }
+  const folder = folderPath(id);
+  if (!p || !folder) return;
+  const dest = pasteDest(folder, selectedEntries(p), getState().options.PasteInFolder);
   const clip = await backend.clipboardGetFiles().catch(() => null);
   if (!clip || !clip.paths.length) {
     setMessage("貼り付けるファイルがありません");
@@ -122,17 +129,9 @@ export async function duplicate(id: string | null) {
   if (sources.length) await run({ kind: "duplicate", sources });
 }
 
-/** Next shown pane to the right (wrapping), for MoveToOther / CopyToOther. */
-function otherPaneId(id: string | null): string | null {
-  const shown = shownTabs(getState().tabs);
-  if (shown.length < 2) return null;
-  const i = shown.findIndex((t) => t.id === id);
-  return shown[(i + 1) % shown.length].id;
-}
-
 export async function toOther(id: string | null, kind: "copy" | "move") {
   const sources = selectedLocations(id);
-  const dest = folderPath(otherPaneId(id));
+  const dest = folderPath(nextShown(shownTabs(getState().tabs).map((t) => t.id), id));
   if (!sources.length) return;
   if (!dest) {
     setMessage("ほかに表示中のペインがありません");
@@ -159,10 +158,8 @@ export async function newItem(id: string | null, name: string) {
 
 /** Renames `location`; the renamed item stays selected in pane `id`. */
 export async function rename(id: string, location: string, newName: string) {
-  const name = newName.trim();
-  const old = location.split("\\").pop();
-  if (!name || name === old) return;
-  await run({ kind: "rename", path: location, newName: name }, { paneId: id });
+  const name = renameTo(location, newName);
+  if (name) await run({ kind: "rename", path: location, newName: name }, { paneId: id });
 }
 
 /** Drop of `paths` onto `dest` (folder location). Decides copy/move/link from modifiers and drives. */
@@ -206,25 +203,15 @@ export async function copyNames(id: string | null, what: "path" | "name" | "base
     if (f) locs = [f];
   }
   const p = paneOf(id);
-  const nameOf = (loc: string) =>
-    p?.entries.find((e) => e.location === loc)?.name ?? loc.split("\\").pop() ?? loc;
-  const text = locs
-    .map((l) => {
-      if (what === "path") return l;
-      const n = nameOf(l);
-      if (what === "name") return n;
-      const dot = n.lastIndexOf(".");
-      return dot > 0 ? n.slice(0, dot) : n;
-    })
-    .join("\r\n");
-  if (!text) return;
+  const lines = copyLines(locs, what, (loc) => p?.entries.find((e) => e.location === loc)?.name);
+  if (!lines.join("")) return;
   try {
-    await backend.clipboardSetText(text);
+    await backend.clipboardSetText(lines.join("\r\n"));
   } catch (e) {
     setMessage(errorText(e));
     return;
   }
-  setMessage(text.split("\r\n")[0] + (locs.length > 1 ? ` ほか ${locs.length - 1} 件` : "") + " をコピーしました", 2000);
+  setMessage(copiedMessage(lines), 2000);
 }
 
 export async function properties(id: string | null) {

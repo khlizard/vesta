@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { loadOptions, setOption } from "./commands/registry";
+import { loadOptions, setOption } from "./state/options";
 import { blockBrowserShortcuts, handleGlobalKeyDown, loadKeyboardLayout } from "./commands/keys";
 import { Dialogs } from "./components/Dialogs";
 import { loadUiConfig } from "./config/load";

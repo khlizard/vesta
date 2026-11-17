@@ -1,18 +1,12 @@
 // Loads usr/*.xml through the backend and drops items the app does not implement.
 // Spec: docs/spec/config.md
 
-import { invoke } from "@tauri-apps/api/core";
-import { defineCommand, isKnownCommand } from "../commands/registry";
+import { backend } from "../api/backend";
+import { isKnownCommand } from "../commands/registry";
 import { errorText } from "../model/input";
 import { setMessage } from "../state/message";
 import { useConfig } from "./store";
 import type { KeyBinding, MenuItem, UiConfig } from "./types";
-
-interface UiConfigResponse {
-  config: UiConfig;
-  warnings: string[];
-  usrDir: string;
-}
 
 /** True when the item can do something in this app. */
 function usable(item: MenuItem): boolean {
@@ -80,7 +74,7 @@ export function unknownCommands(c: UiConfig): string[] {
 /** Loads the settings. Returns the unknown command names (items using them are left out). */
 export async function loadUiConfig(): Promise<string[]> {
   try {
-    const r = await invoke<UiConfigResponse>("get_ui_config");
+    const r = await backend.uiConfig();
     useConfig.setState(pruneConfig(r.config));
     for (const w of r.warnings) console.warn(w);
     if (r.warnings.length) setMessage(`設定ファイルの一部を読めませんでした: ${r.warnings[0]}`);
@@ -96,15 +90,14 @@ export async function loadUiConfig(): Promise<string[]> {
   }
 }
 
-defineCommand("Option.Reload", {
-  run: async () => {
-    const unknown = await loadUiConfig();
-    // At startup unknown commands are only logged (settings copied from Avesta have many).
-    // After a reload the user has just edited a file, so a mistyped name is worth showing.
-    if (unknown.length) {
-      setMessage(`設定ファイルを読み直しました。使えないコマンド ${unknown.length} 件：${unknown.slice(0, 3).join("、")}${unknown.length > 3 ? " ほか" : ""}`, 8000);
-    } else {
-      setMessage("設定ファイルを読み直しました", 2000);
-    }
-  },
-});
+/** `Option.Reload`: reads usr/*.xml again and says how it went. */
+export async function reloadUiConfig() {
+  const unknown = await loadUiConfig();
+  // At startup unknown commands are only logged (settings copied from Avesta have many).
+  // After a reload the user has just edited a file, so a mistyped name is worth showing.
+  if (unknown.length) {
+    setMessage(`設定ファイルを読み直しました。使えないコマンド ${unknown.length} 件：${unknown.slice(0, 3).join("、")}${unknown.length > 3 ? " ほか" : ""}`, 8000);
+  } else {
+    setMessage("設定ファイルを読み直しました", 2000);
+  }
+}

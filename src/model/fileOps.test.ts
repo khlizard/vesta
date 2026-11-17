@@ -1,5 +1,60 @@
 import { describe, expect, it } from "vitest";
-import { dropKind, resultMessage, transferOps } from "./fileOps";
+import { copiedMessage, copyLines, dropKind, nextShown, pasteDest, renameTo, resultMessage, transferOps } from "./fileOps";
+
+describe("pasteDest", () => {
+  const dir = { location: "C:\\work\\sub", isFolder: true };
+  const file = { location: "C:\\work\\a.txt", isFolder: false };
+
+  it("is the pane's folder unless PasteInFolder has one folder selected", () => {
+    expect(pasteDest("C:\\work", [dir], false)).toBe("C:\\work");
+    expect(pasteDest("C:\\work", [dir], true)).toBe("C:\\work\\sub");
+    expect(pasteDest("C:\\work", [file], true)).toBe("C:\\work");
+    expect(pasteDest("C:\\work", [dir, file], true)).toBe("C:\\work");
+    expect(pasteDest("C:\\work", [], true)).toBe("C:\\work");
+  });
+});
+
+describe("nextShown", () => {
+  it("is the pane to the right, wrapping", () => {
+    expect(nextShown(["a", "b", "c"], "a")).toBe("b");
+    expect(nextShown(["a", "b", "c"], "c")).toBe("a");
+  });
+
+  it("is nothing with a single pane, and the first pane when the current one is not shown", () => {
+    expect(nextShown(["a"], "a")).toBeNull();
+    expect(nextShown(["a", "b"], null)).toBe("a");
+    expect(nextShown(["a", "b"], "x")).toBe("a");
+  });
+});
+
+describe("copyLines / copiedMessage", () => {
+  const locs = ["C:\\work\\a.tar.gz", "C:\\work\\.gitignore", "C:\\work\\readme"];
+  const unknown = () => undefined;
+
+  it("gives paths, names, or names without the extension", () => {
+    expect(copyLines(locs, "path", unknown)).toEqual(locs);
+    expect(copyLines(locs, "name", unknown)).toEqual(["a.tar.gz", ".gitignore", "readme"]);
+    expect(copyLines(locs, "base", unknown)).toEqual(["a.tar", ".gitignore", "readme"]);
+  });
+
+  it("prefers the listed name (virtual items have no path to take it from)", () => {
+    expect(copyLines(["::{GUID}"], "name", () => "ごみ箱")).toEqual(["ごみ箱"]);
+  });
+
+  it("names the first line and counts the rest", () => {
+    expect(copiedMessage(["a"])).toBe("a をコピーしました");
+    expect(copiedMessage(["a", "b", "c"])).toBe("a ほか 2 件 をコピーしました");
+  });
+});
+
+describe("renameTo", () => {
+  it("is the trimmed name, or nothing when it is empty or unchanged", () => {
+    expect(renameTo("C:\\work\\a.txt", " b.txt ")).toBe("b.txt");
+    expect(renameTo("C:\\work\\a.txt", "a.txt")).toBeNull();
+    expect(renameTo("C:\\work\\a.txt", "  ")).toBeNull();
+    expect(renameTo("C:\\work\\a.txt", "A.txt")).toBe("A.txt");
+  });
+});
 
 const none = { ctrl: false, shift: false, alt: false };
 const a = "C:/work/a.txt".replace(/\//g, "\\");
