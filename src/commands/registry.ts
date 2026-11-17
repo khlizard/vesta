@@ -8,7 +8,7 @@ import * as T from "../model/tabs";
 import * as A from "../state/actions";
 import * as F from "../state/fileActions";
 import * as S from "../state/selection";
-import { getState, setState, type Options } from "../state/store";
+import { currentPane, currentPaneId, getState, setState, type Options } from "../state/store";
 import { adjustColumns } from "../state/columns";
 import { setFontSize, setOption } from "../state/options";
 import { restartForUpdate } from "../state/update";
@@ -40,11 +40,8 @@ interface CommandDef {
   enabled?: (p: Parsed) => boolean;
 }
 
-const cur = () => getState().tabs.currentId;
-const curPane = () => {
-  const id = cur();
-  return id ? getState().panes[id] ?? null : null;
-};
+const cur = currentPaneId;
+const curPane = currentPane;
 const curTab = () => T.currentTab(getState().tabs);
 
 function showArg(arg: string | null): boolean | "toggle" {

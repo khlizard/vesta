@@ -1,6 +1,7 @@
 // Menu bar (menu.xml). Alt alone highlights the bar; Alt+key opens a menu.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { menuLabel, runItem } from "../commands/items";
+import { runItem } from "../commands/items";
+import { menuLabel } from "../model/menu";
 import { useConfig } from "../config/store";
 import { NO_MODS } from "../model/navigation";
 import { getState } from "../state/store";

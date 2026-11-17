@@ -1,5 +1,7 @@
 // Tab labels with DistinguishTab. Spec: docs/spec/tabs.md「ラベル」
 
+import { sameLocation } from "./paths";
+
 export interface LabelSource {
   id: string;
   location: string;
@@ -34,7 +36,7 @@ export function computeLabels(tabs: LabelSource[], distinguish: boolean): Map<st
       continue;
     }
     const others = split.filter(
-      (o) => o.t.id !== t.id && o.ps && o.t.location.toLowerCase() !== t.location.toLowerCase(),
+      (o) => o.t.id !== t.id && o.ps && !sameLocation(o.t.location, t.location),
     );
     let n = 1;
     while (n < ps.length) {

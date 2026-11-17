@@ -6,7 +6,7 @@ import { errorText } from "../model/input";
 import { NO_MODS, type Mods } from "../model/navigation";
 import { openExternal, setMessage } from "../state/actions";
 import { selectedEntries } from "../state/selection";
-import { getState } from "../state/store";
+import { currentPane } from "../state/store";
 import { runCommand } from "./registry";
 
 /**
@@ -52,9 +52,7 @@ export function linkAction(location: string, isFolder: boolean, args: string | u
 }
 
 function currentContext() {
-  const s = getState();
-  const id = s.tabs.currentId;
-  const p = id ? s.panes[id] : null;
+  const p = currentPane();
   return {
     selected: p ? selectedEntries(p).map((e) => e.location) : [],
     current: p?.folder?.fsPath ?? null,
@@ -88,12 +86,4 @@ export async function runItem(item: MenuItem, mods: Mods = NO_MODS) {
       setMessage(`${program}: ${errorText(e)}`);
     }
   }
-}
-
-/** Removes `_` access-key markers and `{*}` for display; returns the text and the access key. */
-export function menuLabel(text: string | undefined): { label: string; accessKey: string | null } {
-  const t = (text ?? "").replace("{*}", "");
-  const i = t.indexOf("_");
-  if (i < 0 || i === t.length - 1) return { label: t, accessKey: null };
-  return { label: t.slice(0, i) + t.slice(i + 1), accessKey: t[i + 1].toLowerCase() };
 }

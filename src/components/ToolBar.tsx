@@ -8,6 +8,7 @@ import { toolContent } from "../config/icons";
 import { useConfig } from "../config/store";
 import type { MenuItem } from "../config/types";
 import { modsOf } from "../model/input";
+import { menuLabel } from "../model/menu";
 import { useStore } from "../state/store";
 import { CommandIcon } from "./CommandIcon";
 import { isSeparator, openPopup, type PopupItem } from "./popupBus";
@@ -19,7 +20,7 @@ function dropDown(e: MouseEvent<HTMLElement>, items: PopupItem[]) {
 }
 
 function tooltip(item: MenuItem): string {
-  return item.text?.replace("{*}", "").replace("_", "") || item.command || "";
+  return menuLabel(item.text).label || item.command || "";
 }
 
 function ToolButton({ item, mru }: { item: MenuItem; mru: string[] }) {

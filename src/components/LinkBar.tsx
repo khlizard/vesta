@@ -1,7 +1,8 @@
 // Link bar (link.xml). Spec: docs/spec/config.md「link.xml」
 import { useEffect, useState, type MouseEvent } from "react";
 import { backend, iconUrl } from "../api/backend";
-import { linkAction, menuLabel, runItem } from "../commands/items";
+import { linkAction, runItem } from "../commands/items";
+import { menuLabel } from "../model/menu";
 import { useConfig } from "../config/store";
 import type { MenuItem } from "../config/types";
 import { modsOf } from "../model/input";

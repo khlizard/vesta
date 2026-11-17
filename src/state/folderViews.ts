@@ -2,6 +2,8 @@
 // Spec: docs/spec/listing.md「フォルダごとの表示設定」
 
 import { backend } from "../api/backend";
+import { saveLater } from "../model/pacing";
+import { normPath } from "../model/paths";
 import { DEFAULT_VIEW, type ViewSettings } from "./store";
 
 /** Saved settings over the defaults, keeping only known fields (older files also stored column widths). */
@@ -18,13 +20,10 @@ interface Saved {
 }
 
 let views = new Map<string, Saved>();
-let saveTimer: ReturnType<typeof setTimeout> | undefined;
-
-const key = (location: string) => location.replace(/\\+$/, "").toLowerCase();
 
 /** Ancestor keys of a location, nearest first (file-system paths only). */
 export function ancestorKeys(location: string): string[] {
-  const k = key(location);
+  const k = normPath(location);
   const out = [k];
   let i = k.lastIndexOf("\\");
   while (i > 0) {
@@ -47,7 +46,7 @@ export function getViewFor(location: string, now = Date.now()): ViewSettings {
       // 7 days after the last change. Once a day is enough to note.
       if (now - v.used > TOUCH_AFTER_MS) {
         v.used = now;
-        scheduleSave();
+        save.soon();
       }
       return viewOf(v.view);
     }
@@ -55,14 +54,9 @@ export function getViewFor(location: string, now = Date.now()): ViewSettings {
   return DEFAULT_VIEW;
 }
 
-function scheduleSave() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveViews, 2000);
-}
-
 export function rememberView(location: string, view: ViewSettings) {
-  views.set(key(location), { view, used: Date.now() });
-  scheduleSave();
+  views.set(normPath(location), { view, used: Date.now() });
+  save.soon();
 }
 
 export async function loadViews() {
@@ -81,6 +75,9 @@ export async function loadViews() {
   }
 }
 
-export async function saveViews() {
-  await backend.writeState("folders", JSON.stringify(Object.fromEntries(views))).catch(() => {});
-}
+const save = saveLater(2000, () =>
+  backend.writeState("folders", JSON.stringify(Object.fromEntries(views))).catch(() => {}),
+);
+
+/** Writes folders.json now (before the window closes). */
+export const saveViews = save.now;

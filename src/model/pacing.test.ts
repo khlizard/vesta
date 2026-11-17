@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { oneAtATime, within } from "./pacing";
+import { oneAtATime, saveLater, within } from "./pacing";
 
 afterEach(() => vi.useRealTimers());
 
@@ -88,5 +88,30 @@ describe("oneAtATime", () => {
     await call("a");
     await call("a");
     expect(n).toBe(3);
+  });
+});
+
+describe("saveLater", () => {
+  it("writes once, after the last request has settled", async () => {
+    vi.useFakeTimers();
+    const write = vi.fn(async () => {});
+    const save = saveLater(500, write);
+    save.soon();
+    await vi.advanceTimersByTimeAsync(400);
+    save.soon();
+    await vi.advanceTimersByTimeAsync(400);
+    expect(write).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(write).toHaveBeenCalledTimes(1);
+  });
+
+  it("writes at once when asked, and drops the pending write", async () => {
+    vi.useFakeTimers();
+    const write = vi.fn(async () => {});
+    const save = saveLater(500, write);
+    save.soon();
+    await save.now();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(write).toHaveBeenCalledTimes(1);
   });
 });

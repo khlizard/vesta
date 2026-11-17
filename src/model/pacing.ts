@@ -54,3 +54,22 @@ export function oneAtATime<A>(
     return state.done;
   };
 }
+
+/**
+ * A write that is asked for often but only needs to happen once things settle: `soon` runs
+ * `write` `ms` after the last call, `now` runs it at once (before closing or restarting).
+ */
+export function saveLater(ms: number, write: () => Promise<void>): { soon: () => void; now: () => Promise<void> } {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const now = () => {
+    clearTimeout(timer);
+    return write();
+  };
+  return {
+    soon: () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => void now(), ms);
+    },
+    now,
+  };
+}

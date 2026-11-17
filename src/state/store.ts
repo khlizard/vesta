@@ -167,6 +167,13 @@ export function updatePane(id: string, f: (p: PaneState) => Partial<PaneState>) 
   });
 }
 
+/** Id of the current tab, which is also the id of its pane. */
 export function currentPaneId(): string | null {
   return getState().tabs.currentId;
+}
+
+/** The pane of the current tab. */
+export function currentPane(): PaneState | null {
+  const s = getState();
+  return (s.tabs.currentId && s.panes[s.tabs.currentId]) || null;
 }

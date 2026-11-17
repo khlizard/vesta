@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { backend, iconUrl } from "../api/backend";
 import type { FolderInfo } from "../api/types";
 import { compareNames } from "../model/sort";
-import { navigate, setMessage } from "../state/actions";
+import { navigate, openInput, setMessage } from "../state/actions";
 import { dragStarted, errorText, isImeKey, modsOf } from "../model/input";
 import type { Mods } from "../model/navigation";
 import { trackPointer } from "./pane/pointer";
@@ -117,15 +117,9 @@ export function AddressBar({ id, folder, current }: Props) {
   const commit = async (value: string, mods: Mods) => {
     const input = value.trim();
     if (!input) return;
-    try {
-      const r = await backend.resolveLocation(input);
-      if (r.kind === "folder") await navigate(id, r.folder.location, mods);
-      else await backend.openItems([r.location]);
-      restore();
-      focusList();
-    } catch (e) {
-      setMessage(`${input}: ${errorText(e)}`);
-    }
+    if (!(await openInput(input, mods, id))) return;
+    restore();
+    focusList();
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

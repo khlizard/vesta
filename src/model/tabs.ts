@@ -5,6 +5,7 @@
 // - `currentId` is a shown tab (or null when there are no tabs)
 
 import type { Action } from "./navigation";
+import { normPath } from "./paths";
 
 export type InsertPosition = "head" | "tail" | "prev" | "next";
 
@@ -152,7 +153,7 @@ export function targetIds(s: TabsState, target: CloseTarget): string[] {
       const seen = new Set<string>();
       const dups: string[] = [];
       for (const t of s.tabs) {
-        const k = t.location.toLowerCase();
+        const k = normPath(t.location);
         if (seen.has(k)) dups.push(t.id);
         else seen.add(k);
       }

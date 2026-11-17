@@ -3,6 +3,9 @@
 /** Normalized form for comparing locations. */
 export const normPath = (p: string) => p.replace(/[\\/]+$/, "").toLowerCase();
 
+/** Whether two locations name the same place. */
+export const sameLocation = (a: string, b: string) => normPath(a) === normPath(b);
+
 /**
  * `items` without later repeats of a location. A folder listing can name an item twice when
  * the folder changes while it is read; rows are keyed by location, and a repeated key leaves

@@ -7,8 +7,8 @@ import { backend } from "../api/backend";
 import type { Entry, FolderInfo, WindowPlacement } from "../api/types";
 import { errorText } from "../model/input";
 import { externalAction, inPaneAction, NO_MODS, type Action, type Mods } from "../model/navigation";
-import { oneAtATime, within } from "../model/pacing";
-import { uniqueByLocation } from "../model/paths";
+import { oneAtATime, saveLater, within } from "../model/pacing";
+import { sameLocation, uniqueByLocation } from "../model/paths";
 import { buildSession, parseSession } from "../model/session";
 import * as T from "../model/tabs";
 import { mayClose } from "./busy";
@@ -28,8 +28,6 @@ export function setMessage(text: string | null, ms = 5000) {
   if (text) messageTimer = setTimeout(() => setState({ message: null }), ms);
 }
 
-const sameLocation = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
-
 // ---------------------------------------------------------------- loading
 
 /**
@@ -38,7 +36,7 @@ const sameLocation = (a: string, b: string) => a.toLowerCase() === b.toLowerCase
  * bar. When the folder the pane already shows (or a tab that never loaded) cannot be read, the
  * pane is emptied and shows the error itself: a list of what used to be there would be wrong.
  */
-export async function loadInto(
+async function loadInto(
   tabId: string,
   location: string,
   opts: { select?: string | null; keepSelection?: boolean } = {},
@@ -177,9 +175,9 @@ function reuseTab(s: T.TabsState, id: string, action: Action): T.TabsState {
 }
 
 /** Opens `folder` in a new tab (or an existing one) according to `action`. */
-export async function openInTab(folder: FolderInfo, action: Action, opts: { forceNew?: boolean } = {}) {
+async function openInTab(folder: FolderInfo, action: Action) {
   const st = getState();
-  if (!opts.forceNew && !st.options.OpenDups) {
+  if (!st.options.OpenDups) {
     const existing = st.tabs.tabs.find((t) => sameLocation(t.location, folder.location));
     if (existing) {
       setState({ tabs: reuseTab(st.tabs, existing.id, action) });
@@ -195,18 +193,28 @@ export async function openInTab(folder: FolderInfo, action: Action, opts: { forc
   return tab.id;
 }
 
-/** Opens user input from outside a pane (link bar, File.Open, MRU, command line). */
-export async function openExternal(input: string, mods: Mods = NO_MODS) {
+/**
+ * Opens what the user typed or a settings file names: a file is run, a folder is opened. With
+ * `paneId` the folder opens from that pane (address bar, Current.Go.Location); without, from
+ * outside every pane (link bar, File.Open, MRU, command line). False when it could not be opened;
+ * the reason is then in the status bar.
+ */
+export async function openInput(input: string, mods: Mods = NO_MODS, paneId?: string | null): Promise<boolean> {
   try {
     const r = await backend.resolveLocation(input);
-    if (r.kind === "file") {
-      await backend.openItems([r.location]);
-      return;
-    }
-    await openInTab(r.folder, externalAction(mods));
+    if (r.kind === "file") await backend.openItems([r.location]);
+    else if (paneId) await navigate(paneId, r.folder.location, mods, "goto", r.folder);
+    else await openInTab(r.folder, externalAction(mods));
+    return true;
   } catch (e) {
     setMessage(`${input}: ${errorText(e)}`);
+    return false;
   }
+}
+
+/** Opens user input from outside a pane. */
+export async function openExternal(input: string, mods: Mods = NO_MODS) {
+  await openInput(input, mods);
 }
 
 /**
@@ -226,13 +234,16 @@ export async function openDroppedFolders(paths: string[], mods: Mods = NO_MODS) 
 
 type NavKind = "goto" | "back" | "forward" | "up";
 
-/** Moves pane `tabId` to `location` following the in-pane action table. */
+/**
+ * Moves pane `tabId` to `location` following the in-pane action table. `known` is the folder at
+ * `location` when the caller has already resolved it.
+ */
 export async function navigate(
   tabId: string,
   location: string,
   mods: Mods = NO_MODS,
   kind: NavKind = "goto",
-  select: string | null = null,
+  known?: FolderInfo,
 ) {
   const tab = getState().tabs.tabs.find((t) => t.id === tabId);
   if (!tab) return;
@@ -240,7 +251,7 @@ export async function navigate(
   if (action === "goto" || action === "gotoAlways") {
     if (kind === "goto" && sameLocation(tab.location, location)) return;
     const prev = tab.location;
-    const folder = await loadInto(tabId, location, { select: select ?? (kind === "up" ? prev : null) });
+    const folder = await loadInto(tabId, location, { select: kind === "up" ? prev : null });
     if (!folder) return;
     const info = { location: folder.location, displayName: folder.displayName, fsPath: folder.fsPath };
     setState((s) => ({
@@ -252,6 +263,10 @@ export async function navigate(
     return;
   }
   try {
+    if (known) {
+      await openInTab(known, action);
+      return;
+    }
     const r = await backend.resolveLocation(location);
     if (r.kind === "folder") await openInTab(r.folder, action);
   } catch (e) {
@@ -378,7 +393,6 @@ function syncWatches(fresh = false) {
   void backend.watchFolders(locs, fresh).catch(() => {});
 }
 
-let saveTimer: ReturnType<typeof setTimeout> | undefined;
 /** The last known place of the window: from session.json at startup, then from each save. */
 let lastWindow: WindowPlacement | null = null;
 
@@ -388,26 +402,19 @@ let lastWindow: WindowPlacement | null = null;
  */
 let sessionReady = false;
 
-function scheduleSave() {
-  clearTimeout(saveTimer);
-  if (!sessionReady) return;
-  saveTimer = setTimeout(saveSession, 1000);
-}
-
-/** Writes session.json now: the tabs, the closed folders and where the window is. */
-export async function saveSession() {
-  clearTimeout(saveTimer);
+/** session.json: the tabs, the closed folders and where the window is. */
+const session = saveLater(1000, async () => {
   if (!sessionReady) return;
   lastWindow = (await backend.windowPlacement().catch(() => null)) ?? lastWindow;
   const s = getState();
   await backend.writeState("session", JSON.stringify(buildSession(s.tabs, s.mru, lastWindow))).catch(() => {});
-}
+});
 
 const FLUSH_LIMIT_MS = 2000;
 
 /** Writes everything that is waiting to be saved (before the window closes or the app restarts). */
 export async function flushState() {
-  const all = Promise.all([saveSession(), saveOptions(), saveViews()]).catch(() => {});
+  const all = Promise.all([session.now(), saveOptions(), saveViews()]).catch(() => {});
   // A stuck write must not keep the window from closing.
   await Promise.race([all, new Promise((done) => setTimeout(done, FLUSH_LIMIT_MS))]);
 }
@@ -507,8 +514,8 @@ export async function startApp() {
  */
 async function watchWindow() {
   const win = getCurrentWindow();
-  await win.onMoved(scheduleSave).catch(() => {});
-  await win.onResized(scheduleSave).catch(() => {});
+  await win.onMoved(session.soon).catch(() => {});
+  await win.onResized(session.soon).catch(() => {});
   // The window is destroyed after this handler returns, unless the close is cancelled.
   await win
     .onCloseRequested(async (event) => {
@@ -546,11 +553,6 @@ export function subscribe(): () => void {
       }
     }
     if (s.tabs !== before.tabs || s.panes !== before.panes) syncWatches();
-    if (s.tabs !== before.tabs || s.mru !== before.mru) scheduleSave();
+    if (s.tabs !== before.tabs || s.mru !== before.mru) session.soon();
   });
-}
-
-/** Pane id for the current tab. */
-export function current(): string | null {
-  return getState().tabs.currentId;
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { expandArgs, linkAction, menuLabel, normalizeExecute, quote } from "./items";
+import { labelParts, menuLabel } from "../model/menu";
+import { expandArgs, linkAction, normalizeExecute, quote } from "./items";
 
 describe("expandArgs", () => {
   const sel = ["C:\\a b.txt", "C:\\c.txt"];
@@ -23,6 +24,8 @@ describe("menuLabel", () => {
     expect(menuLabel("ファイル(_F)")).toEqual({ label: "ファイル(F)", accessKey: "f" });
     expect(menuLabel("ごみ箱を空にする(_E)...{*}")).toEqual({ label: "ごみ箱を空にする(E)...", accessKey: "e" });
     expect(menuLabel("fav")).toEqual({ label: "fav", accessKey: null });
+    expect(menuLabel("a_")).toEqual({ label: "a_", accessKey: null });
+    expect(labelParts("ファイル(_F)")).toEqual({ before: "ファイル(", key: "F", after: ")" });
   });
 });
 

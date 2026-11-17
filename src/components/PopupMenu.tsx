@@ -1,7 +1,8 @@
 // Nested popup menu (menu bar, tool bar drop-downs, link bar, tab context menu, key binding menus).
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { commandChecked, commandEnabled } from "../commands/registry";
-import { menuLabel, runItem } from "../commands/items";
+import { runItem } from "../commands/items";
+import { labelParts, menuLabel } from "../model/menu";
 import { modsOf } from "../model/input";
 import type { Mods } from "../model/navigation";
 import { CommandIcon } from "./CommandIcon";
@@ -26,10 +27,7 @@ export function splitLabel(item: { text?: string; literal?: boolean; execute?: s
 } {
   const raw = item.text || item.execute || item.navigate || item.path || item.command || "";
   if (item.literal || !item.text) return { before: raw, key: "", after: "" };
-  const t = raw.replace("{*}", "");
-  const i = t.indexOf("_");
-  if (i < 0 || i === t.length - 1) return { before: t, key: "", after: "" };
-  return { before: t.slice(0, i), key: t[i + 1], after: t.slice(i + 2) };
+  return labelParts(raw);
 }
 
 function accessKeyOf(item: PopupItem): string | null {

@@ -2,10 +2,9 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { formatBuildTime } from "../model/buildTime";
-import { backend } from "../api/backend";
-import { errorText, isImeKey, modsOf } from "../model/input";
+import { isImeKey, modsOf } from "../model/input";
 import { PopupHost } from "./PopupMenu";
-import { navigate, openExternal, setMessage } from "../state/actions";
+import { openExternal, openInput } from "../state/actions";
 import { newItem } from "../state/fileActions";
 import { selectPattern } from "../state/selection";
 import { currentPaneId, setState, useStore } from "../state/store";
@@ -147,18 +146,6 @@ function AboutDialog() {
   );
 }
 
-async function goLocation(text: string, mods: Mods) {
-  close();
-  const id = currentPaneId();
-  try {
-    const r = await backend.resolveLocation(text.trim() || "HOME");
-    if (r.kind === "file") await backend.openItems([r.location]);
-    else if (id) await navigate(id, r.folder.location, mods);
-  } catch (e) {
-    setMessage(`${text}: ${errorText(e)}`);
-  }
-}
-
 export function Dialogs() {
   const dialog = useStore((s) => s.dialog);
   return (
@@ -183,7 +170,10 @@ export function Dialogs() {
           title="場所を指定"
           label="移動する場所:"
           initial={dialog.initial ?? ""}
-          onConfirm={(text, mods) => void goLocation(text, mods)}
+          onConfirm={(text, mods) => {
+            close();
+            void openInput(text.trim() || "HOME", mods, currentPaneId());
+          }}
         />
       )}
       {dialog?.kind === "newFile" && (
