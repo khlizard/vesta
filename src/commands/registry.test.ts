@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ancestorKeys } from "../state/folderViews";
-import { patternToRegExp } from "../state/selection";
+import { patternToRegExp } from "../model/selection";
 import { parseCommand } from "./registry";
 
 describe("parseCommand", () => {

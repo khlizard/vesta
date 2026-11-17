@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode }
 import { backend } from "../../api/backend";
 import type { Entry } from "../../api/types";
 import { dragStarted, errorText, modsOf } from "../../model/input";
+import { edgeScrollSpeed, isTyping, keyStep, openTargets, pageStep, pressOnItem, typeLetter } from "../../model/selection";
 import { listKeyIsBound } from "../../commands/keys";
 import { setMessage } from "../../state/message";
 import { goUp, openEntries } from "../../state/navigation";
@@ -16,9 +17,11 @@ import {
   ordered,
   prepareContext,
   selectedEntries,
+  setCursor,
   setSelection,
+  toggleCursorItem,
 } from "../../state/selection";
-import { getState, updatePane, type PaneState } from "../../state/store";
+import { getState, type PaneState } from "../../state/store";
 import { runMenuVerb } from "./menu";
 import { marqueeHits, normalizeBox, revealScroll, sameSet, visibleRange, type Box, type Layout } from "./layout";
 import { trackPointer } from "./pointer";
@@ -188,7 +191,7 @@ export function ListBase(props: ListBaseProps) {
       const bottom = sr.top + el.clientHeight - EDGE;
       const left = sr.left + EDGE;
       const right = sr.left + el.clientWidth - EDGE;
-      const speed = (d: number) => Math.min(40, 3 + Math.floor(d / 3));
+      const speed = edgeScrollSpeed;
       let dy = 0;
       let dx = 0;
       if (py < top) dy = -speed(top - py);
@@ -273,10 +276,10 @@ export function ListBase(props: ListBaseProps) {
     const loc = itemAt(e.target);
     const additive = e.ctrlKey;
     if (loc) {
-      const selected = getState().panes[id]?.selected.has(loc) ?? false;
-      const collapse = selected && !e.ctrlKey && !e.shiftKey;
-      if (!collapse) clickItem(id, loc, { ctrl: e.ctrlKey, shift: e.shiftKey });
-      else updatePane(id, () => ({ cursor: loc }));
+      const p = getState().panes[id];
+      const collapse = !!p && pressOnItem(p, loc, modsOf(e)) === "wait";
+      if (!collapse) clickItem(id, loc, modsOf(e));
+      else setCursor(id, loc);
       // Dragging an unselected item with Ctrl toggles it off; only drag when it ends up selected.
       if (getState().panes[id]?.selected.has(loc)) startItemGesture(e, loc, collapse);
     } else {
@@ -295,7 +298,7 @@ export function ListBase(props: ListBaseProps) {
     if (!p) return;
     const sel = selectedEntries(p);
     const item = ordered(p).entries.find((x) => x.location === loc);
-    void openEntries(id, sel.some((x) => x.location === loc) ? sel : item ? [item] : [], modsOf(e));
+    void openEntries(id, openTargets(sel, item, loc), modsOf(e));
   };
 
   const onMouseDown = (e: React.MouseEvent) => {
@@ -332,40 +335,12 @@ export function ListBase(props: ListBaseProps) {
     if ((e.target as HTMLElement).tagName === "INPUT") return;
     const p = getState().panes[id];
     if (!p) return;
-    const cols = layout.columns;
+    const columns = layout.columns;
     const bodyH = (scrollerRef.current?.clientHeight ?? 0) - headerHeight;
-    const page = Math.max(1, Math.floor(bodyH / itemHeight) - 1) * cols;
-    const mods = { ctrl: e.ctrlKey, shift: e.shiftKey };
-    let delta: number | "home" | "end" | null = null;
-    switch (e.key) {
-      case "ArrowUp":
-        delta = -cols;
-        break;
-      case "ArrowDown":
-        delta = cols;
-        break;
-      case "ArrowLeft":
-        if (horizontalKeys) delta = -1;
-        break;
-      case "ArrowRight":
-        if (horizontalKeys) delta = 1;
-        break;
-      case "PageUp":
-        delta = -page;
-        break;
-      case "PageDown":
-        delta = page;
-        break;
-      case "Home":
-        delta = "home";
-        break;
-      case "End":
-        delta = "end";
-        break;
-    }
-    if (delta !== null) {
+    const step = keyStep(e.key, { columns, page: pageStep(bodyH, itemHeight, columns), horizontal: horizontalKeys });
+    if (step !== null) {
       e.preventDefault();
-      moveCursor(id, delta, mods);
+      moveCursor(id, step, modsOf(e));
       return;
     }
     if (e.key === "Enter" && !e.altKey) {
@@ -376,29 +351,18 @@ export function ListBase(props: ListBaseProps) {
       if (targets.length) void openEntries(id, targets, modsOf(e));
       return;
     }
-    const ta = typeAhead.current;
-    const typing = Date.now() - ta.at < 1000 && ta.text !== "";
-    if (e.key === " " && !typing) {
+    const now = Date.now();
+    if (e.key === " " && !isTyping(typeAhead.current, now)) {
       e.preventDefault();
-      const loc = p.cursor;
-      if (!loc) return;
-      updatePane(id, (x) => {
-        const selected = new Set(x.selected);
-        if (selected.has(loc)) selected.delete(loc);
-        else selected.add(loc);
-        return { selected, anchor: loc };
-      });
+      toggleCursorItem(id);
       return;
     }
     if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
       e.preventDefault();
-      ta.text = (typing ? ta.text : "") + e.key;
-      ta.at = Date.now();
-      // Repeating one letter cycles through the items starting with it.
-      const prefix = [...ta.text].every((c) => c === ta.text[0]) ? ta.text[0] : ta.text;
       const cur = ordered(p).entries.find((x) => x.location === p.cursor);
-      if (prefix.length > 1 && cur?.name.toLowerCase().startsWith(prefix.toLowerCase())) return;
-      jumpToPrefix(id, prefix);
+      const typed = typeLetter(typeAhead.current, e.key, now, cur?.name);
+      typeAhead.current = typed.next;
+      if (typed.prefix !== null) jumpToPrefix(id, typed.prefix);
     }
   };
 
