@@ -19,7 +19,7 @@ import {
 } from "../../state/selection";
 import { getState, updatePane, type PaneState } from "../../state/store";
 import { runMenuVerb } from "./menu";
-import { marqueeHits, normalizeBox, revealScroll, sameSet, visibleRange, type Box, type ItemsRow, type Layout } from "./layout";
+import { marqueeHits, normalizeBox, revealScroll, sameSet, visibleRange, type Box, type Layout } from "./layout";
 import { trackPointer } from "./pointer";
 
 export interface ViewProps {
@@ -41,7 +41,7 @@ interface ListBaseProps extends ViewProps {
   itemBox: (col: number) => { left: number; width: number };
   /** Left/Right move the cursor (thumbnail view). */
   horizontalKeys: boolean;
-  renderItem: (e: Entry, col: number, row: ItemsRow) => ReactNode;
+  renderItem: (e: Entry, col: number) => ReactNode;
   /** Ctrl+wheel over the list: 1 = wheel up, -1 = down. Without it Ctrl+wheel only scrolls. */
   onCtrlWheel?: (dir: 1 | -1) => void;
 }
@@ -409,7 +409,6 @@ export function ListBase(props: ListBaseProps) {
       ref={scrollerRef}
       className={`list ${className ?? ""}`}
       data-pane-list=""
-      data-pane-id={id}
       tabIndex={0}
       onScroll={(e) => {
         const top = e.currentTarget.scrollTop;
@@ -433,7 +432,7 @@ export function ListBase(props: ListBaseProps) {
             </div>
           ) : (
             <div key={row.entries[0].location} className="list-row" style={{ top: row.top, height: row.height, width: widthStyle }}>
-              {row.entries.map((e, col) => renderItem(e, col, row))}
+              {row.entries.map((e, col) => renderItem(e, col))}
             </div>
           ),
         )}

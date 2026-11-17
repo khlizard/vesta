@@ -14,6 +14,7 @@
   --text: #000000;
   --text-dim: #6d6d6d;      /* inactive tab text */
   --text-locked: #c00000;   /* locked tab text */
+  --text-disabled: #8a8a8a; /* menu items and buttons that cannot be used */
   --window: #ffffff;
   --select: #cce8ff;        /* selected item */
   --select-border: #99d1ff;
@@ -22,6 +23,11 @@
   --accent: #0078d7;
   --icon: #22426f;          /* bar and menu icons (the app icon's navy, lightened) */
   --icon-disabled: #a8b0bd;
+  --shadow-popup: 2px 2px 3px rgba(0, 0, 0, 0.25);
+  /* Layers above the panes: lists dropped from a pane, then menus and the drop frame, then dialogs. */
+  --z-pane-menu: 50;
+  --z-popup: 1000;
+  --z-dialog: 2000;
   color-scheme: light;
 }
 

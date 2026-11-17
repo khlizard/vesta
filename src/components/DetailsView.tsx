@@ -255,7 +255,7 @@ export function DetailsView({ id, pane, current }: ViewProps) {
     return (
       <div
         key={e.location}
-        className={cx("drow", fullRow && "fullrow", fullRow && selected && "selected", fullRow && isCursor && "cursor", e.hidden && "dim")}
+        className={cx("drow", fullRow && selected && "selected", fullRow && isCursor && "cursor", e.hidden && "dim")}
         style={{ width: total }}
         {...(fullRow ? itemAttrs : {})}
       >

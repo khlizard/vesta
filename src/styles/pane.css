@@ -87,7 +87,7 @@
   position: absolute;
   inset: 0;
   padding: 24px 16px;
-  color: var(--text-dim, #666);
+  color: var(--text-dim);
   text-align: center;
   overflow: hidden;
   pointer-events: none;
@@ -115,7 +115,7 @@
 /* Drop target highlight during drag & drop (positioned by src/state/dnd.ts). */
 .drop-overlay {
   position: fixed;
-  z-index: 1000;
+  z-index: var(--z-popup);
   display: none;
   box-sizing: border-box;
   border: 2px solid var(--accent);
@@ -183,7 +183,7 @@
 
 .address-menu {
   position: absolute;
-  z-index: 50;
+  z-index: var(--z-pane-menu);
   left: 2px;
   /* Just under the box, whatever the text size. */
   top: calc(100% - 1px);
@@ -193,7 +193,7 @@
   overflow: auto;
   background: var(--window);
   border: 1px solid var(--edge-dark);
-  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-popup);
 }
 
 .address-item {
@@ -266,7 +266,7 @@
 .marquee {
   position: absolute;
   z-index: 5;
-  background: rgba(0, 120, 215, 0.2);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
   border: 1px solid var(--accent);
   pointer-events: none;
 }
@@ -326,7 +326,7 @@
   top: 0;
   width: 2px;
   height: 100%;
-  background: var(--accent, #1f6fd0);
+  background: var(--accent);
   pointer-events: none;
   z-index: 2;
 }

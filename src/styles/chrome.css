@@ -46,12 +46,12 @@ button {
 /* ---- popup menu ---- */
 .popup {
   position: fixed;
-  z-index: 1000;
+  z-index: var(--z-popup);
   min-width: 160px;
   padding: 2px;
   background: #f2f2f2;
-  border: 1px solid #a0a0a0;
-  box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--edge-dark);
+  box-shadow: var(--shadow-popup);
   max-height: 100vh;
   overflow-y: auto;
 }
@@ -66,12 +66,12 @@ button {
   background: var(--select);
 }
 .popup-item.disabled {
-  color: #8a8a8a;
+  color: var(--text-disabled);
 }
 /* Link item whose path was not found. */
 .popup-item.missing,
 .link-btn.missing {
-  color: #8a8a8a;
+  color: var(--text-disabled);
 }
 .popup-icon {
   flex: none;
@@ -140,7 +140,7 @@ button {
   border-color: var(--select-border);
 }
 .tb-btn:disabled {
-  color: #8a8a8a;
+  color: var(--text-disabled);
 }
 .tb-btn.tb-main {
   min-width: 26px;
@@ -292,7 +292,7 @@ button {
   border-color: var(--select-border);
 }
 .status-btn:disabled {
-  color: #9a9a9a;
+  color: var(--text-disabled);
 }
 /* Update ready (docs/spec/update.md). */
 .status-update {
@@ -319,7 +319,7 @@ button {
 .dlg-overlay {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: var(--z-dialog);
   display: flex;
   align-items: flex-start;
   justify-content: center;
