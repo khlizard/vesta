@@ -6,6 +6,7 @@ import {
   cycleCurrent,
   focusTab,
   moveTab,
+  newlyShown,
   setShown,
   targetIds,
   toggleLock,
@@ -69,6 +70,30 @@ describe("tab clicks", () => {
     const s = toggleLock(state("a* b", "a"), "b");
     expect(s.tabs[1]).toMatchObject({ shown: true, locked: true });
     expect(toggleLock(s, "b").tabs[1].locked).toBe(false);
+  });
+});
+
+describe("newlyShown", () => {
+  it("lists the tab that ctrl+click brought into view", () => {
+    const s0 = state("a* b c", "a");
+    expect(newlyShown(s0, toggleShown(s0, "b"))).toEqual(["b"]);
+  });
+
+  it("lists the tab a plain click switched to, not the one it hid", () => {
+    const s0 = state("a* b", "a");
+    expect(newlyShown(s0, clickTab(s0, "b"))).toEqual(["b"]);
+  });
+
+  it("leaves out a tab that was just added", () => {
+    const s0 = state("a* b", "a");
+    expect(newlyShown(s0, addTab(s0, tab("n"), "append", "tail"))).toEqual([]);
+  });
+
+  it("is empty when no hidden tab became shown", () => {
+    const s0 = state("a* b* c", "a");
+    expect(newlyShown(s0, s0)).toEqual([]);
+    expect(newlyShown(s0, toggleShown(s0, "b"))).toEqual([]);
+    expect(newlyShown(s0, focusTab(s0, "b"))).toEqual([]);
   });
 });
 

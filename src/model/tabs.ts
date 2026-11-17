@@ -36,6 +36,14 @@ export function shownTabs(s: TabsState): Tab[] {
   return s.tabs.filter((t) => t.shown);
 }
 
+/** Ids of tabs that were hidden in `prev` and are shown in `next`. Tabs added since `prev` do not count. */
+export function newlyShown(prev: TabsState, next: TabsState): string[] {
+  const hidden = new Set(prev.tabs.filter((t) => !t.shown).map((t) => t.id));
+  return shownTabs(next)
+    .filter((t) => hidden.has(t.id))
+    .map((t) => t.id);
+}
+
 /** Restores the invariants. `preferIndex` is where to look for a new current tab. */
 export function normalize(s: TabsState, preferIndex = 0): TabsState {
   if (s.tabs.length === 0) return EMPTY_TABS;

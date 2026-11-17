@@ -524,24 +524,25 @@ async function watchWindow() {
     .catch(() => {});
 }
 
-function subscribe() {
+/** Reacts to store changes: reloads panes that come into view, follows them with the watcher, saves the session. */
+export function subscribe(): () => void {
   let prevTabs = getState().tabs;
   let prevPanes = getState().panes;
   let prevMru = getState().mru;
-  useStore.subscribe((s) => {
-    if (s.tabs !== prevTabs) {
-      // A hidden pane is not watched, so its list may be old: read it again when it is shown.
-      const was = new Set(T.shownTabs(prevTabs).map((t) => t.id));
-      const known = new Set(prevTabs.tabs.map((t) => t.id));
-      for (const t of T.shownTabs(s.tabs)) {
-        if (known.has(t.id) && !was.has(t.id)) void reloadPane(t.id);
-      }
-    }
-    if (s.tabs !== prevTabs || s.panes !== prevPanes) syncWatches();
-    if (s.tabs !== prevTabs || s.mru !== prevMru) scheduleSave();
+  return useStore.subscribe((s) => {
+    // Remember the new state before acting on it: the work below changes the store, which calls
+    // this listener again from inside. It must then see this change as already handled, or it
+    // would start the same reload over and over.
+    const before = { tabs: prevTabs, panes: prevPanes, mru: prevMru };
     prevTabs = s.tabs;
     prevPanes = s.panes;
     prevMru = s.mru;
+    if (s.tabs !== before.tabs) {
+      // A hidden pane is not watched, so its list may be old: read it again when it is shown.
+      for (const id of T.newlyShown(before.tabs, s.tabs)) void reloadPane(id);
+    }
+    if (s.tabs !== before.tabs || s.panes !== before.panes) syncWatches();
+    if (s.tabs !== before.tabs || s.mru !== before.mru) scheduleSave();
   });
 }
 
