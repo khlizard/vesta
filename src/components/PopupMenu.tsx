@@ -2,7 +2,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { commandChecked, commandEnabled } from "../commands/registry";
 import { runItem } from "../commands/items";
-import { labelParts, menuLabel } from "../model/menu";
+import { accessKeyTarget, endSelectable, labelParts, menuLabel, nextSelectable, placeMenu } from "../model/menu";
 import { modsOf } from "../model/input";
 import type { Mods } from "../model/navigation";
 import { CommandIcon } from "./CommandIcon";
@@ -84,14 +84,14 @@ export function PopupMenu(props: MenuProps) {
   useLayoutEffect(() => {
     const el = rootRef.current;
     if (!el) return;
-    const w = el.offsetWidth;
-    const h = el.offsetHeight;
-    let left = x;
-    let top = y;
-    if (left + w > window.innerWidth) left = parentRect ? parentRect.left - w + 2 : window.innerWidth - w;
-    if (top + h > window.innerHeight) top = Math.max(0, window.innerHeight - h);
-    el.style.left = `${Math.max(0, left)}px`;
-    el.style.top = `${top}px`;
+    const at = placeMenu(
+      { x, y },
+      { width: el.offsetWidth, height: el.offsetHeight },
+      { width: window.innerWidth, height: window.innerHeight },
+      parentRect?.left,
+    );
+    el.style.left = `${at.left}px`;
+    el.style.top = `${at.top}px`;
   }, [x, y, parentRect]);
 
   const openSub = (index: number, first: boolean) => {
@@ -120,17 +120,7 @@ export function PopupMenu(props: MenuProps) {
       if (e.key === "Control" || e.key === "Shift" || e.key === "Alt" || e.key === "Meta") return;
       e.preventDefault();
       e.stopPropagation();
-      const move = (dir: 1 | -1) => {
-        const n = list.length;
-        let i = active;
-        for (let k = 0; k < n; k++) {
-          i = (i + dir + n) % n;
-          if (selectable(i)) {
-            setActive(i);
-            return;
-          }
-        }
-      };
+      const move = (dir: 1 | -1) => setActive(nextSelectable(list.length, active, dir, selectable));
       switch (e.key) {
         case "ArrowDown":
           return move(1);
@@ -152,20 +142,17 @@ export function PopupMenu(props: MenuProps) {
           if (active >= 0) activate(active, modsOf(e));
           return;
         case "Home":
-          return setActive(list.findIndex((_, i) => selectable(i)));
+          return setActive(endSelectable(list.length, 1, selectable));
         case "End": {
-          for (let i = list.length - 1; i >= 0; i--) {
-            if (selectable(i)) return setActive(i);
-          }
+          const last = endSelectable(list.length, -1, selectable);
+          if (last >= 0) setActive(last);
           return;
         }
       }
       const k = accessKeyPressed(e);
-      if (k) {
-        const hits = list.map((it, i) => (accessKeyOf(it) === k && selectable(i) ? i : -1)).filter((i) => i >= 0);
-        if (hits.length === 1) activate(hits[0], modsOf(e));
-        else if (hits.length > 1) setActive(hits.find((i) => i > active) ?? hits[0]);
-      }
+      const hit = k ? accessKeyTarget(list.map(accessKeyOf), k, active, selectable) : null;
+      if (hit && "run" in hit) activate(hit.run, modsOf(e));
+      else if (hit) setActive(hit.select);
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
