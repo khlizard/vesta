@@ -15,4 +15,28 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
   },
+  {
+    // Views are passive (AGENTS.md「書き方」): they draw what their presenter gives them and tell
+    // the root what happened. They do not reach the store, the commands or the backend.
+    files: ["src/components/**/*.{ts,tsx}"],
+    ignores: ["src/components/**/*.test.ts"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/state/*", "**/commands/*", "**/api/backend", "**/config/store", "**/config/load"],
+              message: "A view reads through src/presenters/ and acts through dispatch (src/root/dispatch.ts).",
+              allowTypeImports: true,
+            },
+          ],
+          paths: [
+            { name: "zustand", message: "A view reads through src/presenters/ (useView)." },
+            { name: "@tauri-apps/api/core", message: "A view does not call the backend." },
+          ],
+        },
+      ],
+    },
+  },
 );

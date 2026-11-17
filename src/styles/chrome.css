@@ -55,6 +55,10 @@ button {
   max-height: 100vh;
   overflow-y: auto;
 }
+/* The open menu has the keyboard focus; the picked item shows where it is. */
+.popup:focus {
+  outline: 0;
+}
 .popup-item {
   display: flex;
   align-items: center;
