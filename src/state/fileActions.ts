@@ -9,6 +9,7 @@ import {
   copiedMessage,
   copyLines,
   dropKind,
+  nextRenamePart,
   nextShown,
   pasteDest,
   renameTo,
@@ -83,7 +84,7 @@ async function runNow(ops: FileOp | FileOp[], after?: SelectAfter): Promise<bool
   const select = after && created;
   await reloadShown(after && created ? { paneId: after.paneId, location: created } : undefined);
   if (after?.rename && select && getState().panes[after.paneId]?.selected.has(select)) {
-    updatePane(after.paneId, () => ({ renaming: select }));
+    startRename(after.paneId, select);
   }
   return complete;
 }
@@ -222,10 +223,23 @@ export async function properties(id: string | null) {
   if (target.length) await backend.openItems(target, "properties").catch((e) => setMessage(errorText(e)));
 }
 
-/** Starts in-place rename of the cursor item (or the first selected). */
+/** Opens the rename box on `location`, with the name selected as the RenameExtension option says. */
+function startRename(id: string, location: string) {
+  const renamePart = getState().options.RenameExtension ? "base" : "all";
+  updatePane(id, () => ({ renaming: location, renamePart }));
+}
+
+/**
+ * Current.Rename: starts in-place rename of the cursor item (or the first selected). Run again
+ * while renaming, it selects the extension, then the name without it, in turn.
+ */
 export function beginRename(id: string | null) {
   const p = paneOf(id);
   if (!p || !id) return;
+  if (p.renaming) {
+    updatePane(id, (now) => ({ renamePart: nextRenamePart(now.renamePart) }));
+    return;
+  }
   const loc = p.cursor && p.selected.has(p.cursor) ? p.cursor : selectedLocations(id)[0];
-  if (loc) updatePane(id, () => ({ renaming: loc }));
+  if (loc) startRename(id, loc);
 }

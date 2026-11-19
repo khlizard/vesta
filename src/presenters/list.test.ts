@@ -104,7 +104,7 @@ describe("listView", () => {
   });
 
   it("takes the options the views draw with", () => {
-    setup({}, { options: { ...DEFAULT_OPTIONS, FullRowSelect: true, GridLine: true, FontSize: 16, ThumbnailSize: 128, RenameExtension: false } });
+    setup({}, { options: { ...DEFAULT_OPTIONS, FullRowSelect: true, GridLine: true, FontSize: 16, ThumbnailSize: 128 } });
     const v = read(listView("a"));
     expect(v.fullRow).toBe(true);
     expect(v.gridLine).toBe(true);
@@ -112,7 +112,7 @@ describe("listView", () => {
     expect(v.groupHeight).toBe(26);
     expect(v.thumbLabelHeight).toBe(40);
     expect(v.thumbSize).toBe(128);
-    expect(v.renameSkipExt).toBe(false);
+    expect(v.renamePart).toBe("base");
   });
 
   it("says which pane is current and what folder it shows", () => {

@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { copiedMessage, copyLines, dropKind, nextShown, pasteDest, renameTo, resultMessage, transferOps } from "./fileOps";
+import {
+  copiedMessage,
+  copyLines,
+  dropKind,
+  nextRenamePart,
+  nextShown,
+  pasteDest,
+  renameSelection,
+  renameTo,
+  resultMessage,
+  transferOps,
+} from "./fileOps";
 
 describe("pasteDest", () => {
   const dir = { location: "C:\\work\\sub", isFolder: true };
@@ -44,6 +55,34 @@ describe("copyLines / copiedMessage", () => {
   it("names the first line and counts the rest", () => {
     expect(copiedMessage(["a"])).toBe("a をコピーしました");
     expect(copiedMessage(["a", "b", "c"])).toBe("a ほか 2 件 をコピーしました");
+  });
+});
+
+describe("renameSelection / nextRenamePart", () => {
+  it("selects the name without its extension, the extension, or everything", () => {
+    expect(renameSelection("報告.txt", false, "base")).toEqual([0, 2]);
+    expect(renameSelection("報告.txt", false, "ext")).toEqual([3, 6]);
+    expect(renameSelection("報告.txt", false, "all")).toEqual([0, 6]);
+  });
+
+  it("takes what follows the last dot as the extension", () => {
+    expect(renameSelection("a.tar.gz", false, "base")).toEqual([0, 5]);
+    expect(renameSelection("a.tar.gz", false, "ext")).toEqual([6, 8]);
+    expect(renameSelection("a.", false, "ext")).toEqual([2, 2]);
+  });
+
+  it("selects everything where there is no extension to tell apart", () => {
+    for (const part of ["base", "ext"] as const) {
+      expect(renameSelection("readme", false, part)).toEqual([0, 6]);
+      expect(renameSelection(".gitignore", false, part)).toEqual([0, 10]);
+      expect(renameSelection("v1.2", true, part)).toEqual([0, 4]);
+    }
+  });
+
+  it("goes to the extension, then back and forth", () => {
+    expect(nextRenamePart("base")).toBe("ext");
+    expect(nextRenamePart("all")).toBe("ext");
+    expect(nextRenamePart("ext")).toBe("base");
   });
 });
 

@@ -77,6 +77,25 @@ export function copiedMessage(lines: string[]): string {
   return lines[0] + (lines.length > 1 ? ` ほか ${lines.length - 1} 件` : "") + " をコピーしました";
 }
 
+/** The part of a name selected in the rename box: all of it, without the extension, or the extension. */
+export type RenamePart = "all" | "base" | "ext";
+
+/**
+ * The range of `name` to select for `part`, as [start, end). The extension is what follows the
+ * last dot (not the dot itself). A folder, a name without a dot and a name that only starts
+ * with one (`.gitignore`) have no extension to tell apart: all of the name is selected.
+ */
+export function renameSelection(name: string, isFolder: boolean, part: RenamePart): [number, number] {
+  const dot = name.lastIndexOf(".");
+  if (part === "all" || isFolder || dot <= 0) return [0, name.length];
+  return part === "base" ? [0, dot] : [dot + 1, name.length];
+}
+
+/** The part selected by running the rename command again while renaming: extension and name in turn. */
+export function nextRenamePart(part: RenamePart): RenamePart {
+  return part === "ext" ? "base" : "ext";
+}
+
 /** The new name to rename `location` to, or null when `typed` is empty or leaves the name as it is. */
 export function renameTo(location: string, typed: string): string | null {
   const name = typed.trim();

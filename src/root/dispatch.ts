@@ -9,7 +9,7 @@ import { backend } from "../api/backend";
 import { iconUrl } from "../api/urls";
 import { runItem } from "../commands/items";
 import { bindingFor } from "../commands/keys";
-import { runCommand } from "../commands/registry";
+import { parseCommand, runCommand } from "../commands/registry";
 import { useConfig } from "../config/store";
 import { ALL_COLUMNS, COLUMN_LABEL, DEFAULT_COLUMNS, moveShownColumn, toggleColumn, visibleColumns } from "../model/columns";
 import { verbCommand } from "../model/fileOps";
@@ -528,8 +528,17 @@ export function keyDown(k: KeyInput): boolean {
       else void runItem(item, modsOf(k), k.repeat);
       return true;
     }
+    case "text": {
+      // The field has the keys. One binding still runs while a name is being edited: the rename
+      // command itself, which then changes the part of the name that is selected.
+      if (m.kind !== "edit" || m.field !== "rename") return false;
+      const item = bindingFor(k, true)?.item;
+      if (!item?.command || parseCommand(item.command).name !== "Current.Rename") return false;
+      void runItem(item, modsOf(k), k.repeat);
+      return true;
+    }
     default:
-      // "popup": the menu with the focus handles its keys. "text": the field does. "none": Windows does.
+      // "popup": the menu with the focus handles its keys. "none": Windows does.
       return false;
   }
 }

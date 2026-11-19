@@ -87,6 +87,7 @@ beforeEach(() => {
     keyForm: [{ modifier: "C", key: "W", item: { command: "Current.Close" } }],
     keyFolder: [
       { modifier: "", key: "delete", item: { command: "Current.Paste" } },
+      { modifier: "", key: "F2", item: { command: "Current.Rename" } },
       { modifier: "C", key: "M", item: { text: "menu", children: [{ text: "one", command: "Current.SelectAll" }] } },
     ],
   });
@@ -333,6 +334,31 @@ describe("list", () => {
     expect(selected()).toEqual([]);
     dispatch({ type: "list.marquee", id: "a", items: [loc("y.txt"), loc("z.txt")] });
     expect(selected()).toEqual(["y.txt", "z.txt"]);
+  });
+
+  it("changes the selected part of the name when the rename key is pressed again", () => {
+    const f2 = (more: Partial<KeyInput> = {}) => keyDown(key("F2", { code: "F2", ...more }));
+    dispatch({ type: "list.press", id: "a", item: loc("x.txt"), mods: { ctrl: false, shift: false } });
+    expect(f2()).toBe(true);
+    expect(getState().panes.a).toMatchObject({ renaming: loc("x.txt"), renamePart: "base" });
+    // The focus is now in the rename box: a text field inside the list.
+    expect(f2({ inText: true })).toBe(true);
+    expect(getState().panes.a.renamePart).toBe("ext");
+    expect(f2({ inText: true })).toBe(true);
+    expect(getState().panes.a).toMatchObject({ renaming: loc("x.txt"), renamePart: "base" });
+    // No other binding runs while the name is edited.
+    expect(keyDown(key("Delete", { code: "Delete", inText: true }))).toBe(false);
+    expect(keyDown(key("w", { ctrlKey: true, inText: true }))).toBe(false);
+    expect(tabIds()).toEqual(["a", "b"]);
+  });
+
+  it("starts with the whole name selected when the option says so", () => {
+    setState({ options: { ...DEFAULT_OPTIONS, RenameExtension: false } });
+    dispatch({ type: "list.press", id: "a", item: loc("x.txt"), mods: { ctrl: false, shift: false } });
+    keyDown(key("F2", { code: "F2" }));
+    expect(getState().panes.a.renamePart).toBe("all");
+    keyDown(key("F2", { code: "F2", inText: true }));
+    expect(getState().panes.a.renamePart).toBe("ext");
   });
 
   it("ends a rename once, and gives the focus back to the list", () => {

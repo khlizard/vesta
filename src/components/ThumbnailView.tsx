@@ -55,7 +55,7 @@ export function ThumbnailView({ id }: ViewProps) {
           />
         </div>
         {v.renaming === e.location ? (
-          <RenameInput id={id} entry={e} skipExt={v.renameSkipExt} />
+          <RenameInput id={id} entry={e} part={v.renamePart} />
         ) : (
           <div className="tlabel">{e.name}</div>
         )}

@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import type { DiskFree, Entry, FolderInfo } from "../api/types";
 import { DEFAULT_COLUMNS } from "../model/columns";
+import type { RenamePart } from "../model/fileOps";
 import { OPEN_GATE, type Gate } from "../model/gate";
 import { modeOf, type Mode } from "../model/mode";
 import type { PopupRequest } from "./popup";
@@ -53,6 +54,8 @@ export interface PaneState {
   view: ViewSettings;
   /** Item being renamed in place. */
   renaming: string | null;
+  /** The part of the name selected in the rename box (changed by Current.Rename while renaming). */
+  renamePart: RenamePart;
   disk: DiskFree | null;
 }
 
@@ -67,6 +70,7 @@ export function emptyPane(view: ViewSettings = DEFAULT_VIEW): PaneState {
     anchor: null,
     view,
     renaming: null,
+    renamePart: "base",
     disk: null,
   };
 }

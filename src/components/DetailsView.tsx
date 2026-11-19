@@ -55,7 +55,7 @@ export function DetailsView({ id }: ViewProps) {
             >
               <img className="icon" src={iconUrl(e.location, 16, e)} loading="lazy" draggable={false} alt="" />
               {v.renaming === e.location ? (
-                <RenameInput id={id} entry={e} skipExt={v.renameSkipExt} />
+                <RenameInput id={id} entry={e} part={v.renamePart} />
               ) : (
                 <span className="label">{e.name}</span>
               )}

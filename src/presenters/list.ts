@@ -2,6 +2,7 @@
 // Specs: docs/spec/listing.md, docs/spec/ui.md「モード」
 
 import { visibleColumns } from "../model/columns";
+import type { RenamePart } from "../model/fileOps";
 import { textMetrics } from "../model/fontSize";
 import type { SortKey } from "../model/sort";
 import { ordered, type Ordered } from "../state/selection";
@@ -41,8 +42,8 @@ export interface ListModel {
   /** Edge of a thumbnail (px). */
   thumbSize: number;
 
-  /** The rename box opens with the extension left out of the selected text. */
-  renameSkipExt: boolean;
+  /** The part of the name selected in the rename box. */
+  renamePart: RenamePart;
 
   current: boolean;
   /** Location of the folder shown: the list goes back to its top when it changes. */
@@ -72,13 +73,12 @@ export function listView(id: string): Presenter<ListModel> {
         o.GridLine,
         o.FontSize,
         o.ThumbnailSize,
-        o.RenameExtension,
         app.tabs.currentId === id,
         f && f.paneId === id && f.target === "list" ? f.seq : 0,
         modeIn(app).kind === "idle",
       ] as const;
     },
-    (pane, optColumns, widths, fullRow, gridLine, fontSize, thumbSize, renameSkipExt, current, focusSeq, idle) => {
+    (pane, optColumns, widths, fullRow, gridLine, fontSize, thumbSize, current, focusSeq, idle) => {
       const p = pane ?? NO_PANE;
       const columns = visibleColumns(optColumns, !!p.folder?.syncRoot);
       const text = textMetrics(fontSize);
@@ -98,7 +98,7 @@ export function listView(id: string): Presenter<ListModel> {
         groupHeight: text.group,
         thumbLabelHeight: text.thumbLabel,
         thumbSize,
-        renameSkipExt,
+        renamePart: p.renamePart,
         current,
         folder: p.folder?.location ?? null,
         loading: p.loading,

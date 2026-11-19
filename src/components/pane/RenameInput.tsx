@@ -1,6 +1,7 @@
 // In-place rename editor. Spec: docs/spec/fileops.md
 
 import { useEffect, useRef } from "react";
+import { renameSelection, type RenamePart } from "../../model/fileOps";
 import { isImeKey } from "../../model/input";
 import type { Entry } from "../../presenters/list";
 import { dispatch } from "../../root/dispatch";
@@ -8,11 +9,11 @@ import { dispatch } from "../../root/dispatch";
 interface Props {
   id: string;
   entry: Pick<Entry, "location" | "name" | "isFolder">;
-  /** Leave the extension out of the text selected at first. */
-  skipExt: boolean;
+  /** The part of the name to select: when the box opens, and again whenever this changes. */
+  part: RenamePart;
 }
 
-export function RenameInput({ id, entry, skipExt }: Props) {
+export function RenameInput({ id, entry, part }: Props) {
   const ref = useRef<HTMLInputElement>(null);
   const done = useRef(false);
 
@@ -20,11 +21,9 @@ export function RenameInput({ id, entry, skipExt }: Props) {
     const el = ref.current;
     if (!el) return;
     el.focus();
-    const dot = entry.name.lastIndexOf(".");
-    el.setSelectionRange(0, skipExt && !entry.isFolder && dot > 0 ? dot : entry.name.length);
-    // Select once, when the editor opens.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Of the text as it is now: what was typed so far stays.
+    el.setSelectionRange(...renameSelection(el.value, entry.isFolder, part));
+  }, [part, entry.isFolder]);
 
   // Told once: the blur that follows Enter or Escape is not a second end.
   const finish = (commit: boolean, byKey: boolean) => {
