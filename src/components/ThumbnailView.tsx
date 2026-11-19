@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { iconUrl, thumbUrl } from "../api/urls";
 import { cx } from "../model/input";
-import { listView, type Entry } from "../presenters/list";
+import { dropMarks, listView, type Entry } from "../presenters/list";
 import { useView } from "../presenters/view";
 import { ListBase, type ViewProps } from "./pane/ListBase";
 import { buildLayout } from "./pane/layout";
@@ -37,7 +37,7 @@ export function ThumbnailView({ id }: ViewProps) {
         className={cx("tcell", selected && "selected", v.cursor === e.location && "cursor", e.hidden && "dim")}
         style={{ left: PAD + col * cellW, width: cellW, height: cellH }}
         data-item={e.location}
-        data-drop-folder={e.isFolder ? e.location : undefined}
+        {...dropMarks(e)}
       >
         <div className="timg" style={{ width: size, height: size }}>
           <img

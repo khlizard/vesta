@@ -11,8 +11,8 @@ import { setShown } from "../model/tabs";
 import {
   createHoverTimer,
   HOVER_SHOW_MS,
-  isNoopDrop,
   isSelfDrop,
+  isUsefulDrop,
   resolveTarget,
   rightDropItems,
   toCssPoint,
@@ -30,13 +30,17 @@ import { setTabs } from "../state/tabActions";
 function attrsOf(el: Element): DropAttrs {
   return {
     folder: el.getAttribute("data-drop-folder"),
+    file: el.getAttribute("data-drop-file"),
     tab: el.getAttribute("data-drop-tab"),
     pane: el.getAttribute("data-drop-pane"),
   };
 }
 
-/** What is under a point of the drop event, and the element to frame. */
-function hitTest(pos: { x: number; y: number }): { target: DropTarget; element: Element } | null {
+/**
+ * What is under a point of the drop event, and the element to frame. `files`: the drag carries
+ * paths, so a program or a shortcut can take it.
+ */
+function hitTest(pos: { x: number; y: number }, files: boolean): { target: DropTarget; element: Element } | null {
   const css = toCssPoint(pos, window.devicePixelRatio);
   const start = document.elementFromPoint(css.x, css.y);
   const els: Element[] = [];
@@ -46,6 +50,7 @@ function hitTest(pos: { x: number; y: number }): { target: DropTarget; element: 
     els.map(attrsOf),
     (id) => tabs.tabs.find((t) => t.id === id)?.location ?? null,
     (id) => panes[id]?.folder?.location ?? tabs.tabs.find((t) => t.id === id)?.location ?? null,
+    files,
   );
   return target ? { target, element: els[target.index] } : null;
 }
@@ -65,10 +70,30 @@ function frame(target: Element | null) {
   setState({ dropFrame: { left: r.left, top: r.top, width: r.width, height: r.height } });
 }
 
+/**
+ * A drop on a program or a shortcut. A shortcut to a folder is that folder; anything else is
+ * handed the files by the Shell, as in Explorer (a program starts with them as arguments).
+ */
+async function dropOnFile(paths: string[], item: string, position: { x: number; y: number }, rightButton: boolean) {
+  try {
+    const folder = /\.lnk$/i.test(item) ? await backend.linkFolder(item).catch(() => null) : null;
+    if (folder) {
+      if (isSelfDrop(paths, folder.location)) return;
+      if (rightButton) await backend.rightDrop(paths, folder.location, position.x, position.y);
+      else await dropFiles(paths, folder.location, await backend.keyState());
+      return;
+    }
+    await backend.dropOnItem(paths, item, position.x, position.y, rightButton);
+  } catch (e) {
+    setMessage(errorText(e));
+  }
+}
+
 /** Subscribes to drag & drop events once. Returns an unsubscribe function. */
 export async function listenToDrops(): Promise<() => void> {
-  // Paths of the current drag (only the enter event carries them).
+  // Paths of the current drag, and whether it has none of its own (only the enter event says).
   let dragged: string[] = [];
+  let saving = false;
   const hover = createHoverTimer(HOVER_SHOW_MS, (tabId) => {
     setTabs((s) => setShown(s, [tabId], true));
   });
@@ -84,11 +109,14 @@ export async function listenToDrops(): Promise<() => void> {
       clear();
       return;
     }
-    if (p.type === "enter") dragged = p.paths;
-    const hit = hitTest(p.position);
+    if (p.type === "enter") {
+      dragged = p.paths;
+      saving = p.saving;
+    }
+    const hit = hitTest(p.position, !(p.type === "drop" ? p.saving : saving));
     if (p.type === "enter" || p.type === "over") {
       // Re-placed on every move: the list may scroll under the pointer.
-      frame(hit && !isNoopDrop(dragged, hit.target.location) ? hit.element : null);
+      frame(hit && isUsefulDrop(dragged, hit.target) ? hit.element : null);
       const tab = hit?.target.kind === "tab" ? hit.target : null;
       const hidden = tab && getState().tabs.tabs.find((t) => t.id === tab.tabId)?.shown === false;
       hover.set(tab && hidden ? tab.tabId : null);
@@ -105,6 +133,10 @@ export async function listenToDrops(): Promise<() => void> {
     }
     const dest = hit.target.location;
     if (isSelfDrop(p.paths, dest)) return;
+    if (hit.target.kind === "file") {
+      void dropOnFile(p.paths, dest, p.position, p.rightButton);
+      return;
+    }
     if (p.rightButton && !p.saving) {
       // The Shell's own menu, so that drag-and-drop extensions (FastCopy, archivers) are in it.
       // Our menu is the fallback where the Shell has no drop target for the folder.

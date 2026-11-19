@@ -131,6 +131,19 @@ async fn right_drop(
     shelldrop::right_drop(window, sources, folder, x, y).await
 }
 
+/// A drop on a program or a shortcut: the Shell's drop target of that item takes it.
+#[tauri::command]
+async fn drop_on_item(
+    window: WebviewWindow,
+    sources: Vec<String>,
+    item: String,
+    x: f64,
+    y: f64,
+    right_button: bool,
+) -> Result<(), String> {
+    shelldrop::drop_on_item(window, sources, item, x, y, right_button).await
+}
+
 // File access runs off the main thread: the data folder may sit on a slow or offline share.
 #[tauri::command]
 async fn read_state(app: tauri::AppHandle, name: String) -> Result<Option<String>, String> {
@@ -232,6 +245,7 @@ pub fn run() {
             show_context_menu,
             start_drag,
             right_drop,
+            drop_on_item,
             read_state,
             write_state,
             get_ui_config,

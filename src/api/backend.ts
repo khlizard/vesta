@@ -39,6 +39,9 @@ export const backend = {
   /** Shows the Shell's right-button drop menu at (x, y) (physical pixels) and lets the Shell do the choice. */
   rightDrop: (sources: string[], folder: string, x: number, y: number) =>
     invoke<void>("right_drop", { sources, folder, x, y }),
+  /** Drops `sources` on a program or shortcut: the Shell does what Explorer would (x, y: physical px in the window). */
+  dropOnItem: (sources: string[], item: string, x: number, y: number, rightButton: boolean) =>
+    invoke<void>("drop_on_item", { sources, item, x, y, rightButton }),
   readState: (name: string) => invoke<string | null>("read_state", { name }),
   writeState: (name: string, json: string) => invoke<void>("write_state", { name, json }),
   /** The folder a shortcut (.lnk) points to, or null. */

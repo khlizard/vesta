@@ -9,8 +9,23 @@ import {
   renameSelection,
   renameTo,
   resultMessage,
+  takesDrop,
   transferOps,
 } from "./fileOps";
+
+describe("takesDrop", () => {
+  const item = (name: string, more: Partial<{ isFolder: boolean; isLink: boolean }> = {}) => ({ name, isFolder: false, isLink: false, ...more });
+
+  it("is true for programs, scripts and shortcuts", () => {
+    for (const name of ["a.exe", "run.BAT", "x.cmd", "old.com", "s.vbs", "s.js", "s.wsf"]) expect(takesDrop(item(name))).toBe(true);
+    expect(takesDrop(item("_MF勤怠 to  FX2.bat.lnk", { isLink: true }))).toBe(true);
+  });
+
+  it("is false for other files, and for folders (which are drop targets of their own kind)", () => {
+    for (const name of ["a.txt", "readme", ".bat", "a.exe.bak"]) expect(takesDrop(item(name))).toBe(false);
+    expect(takesDrop(item("tools.exe", { isFolder: true }))).toBe(false);
+  });
+});
 
 describe("pasteDest", () => {
   const dir = { location: "C:\\work\\sub", isFolder: true };

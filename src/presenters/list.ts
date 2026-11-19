@@ -2,7 +2,7 @@
 // Specs: docs/spec/listing.md, docs/spec/ui.md「モード」
 
 import { visibleColumns } from "../model/columns";
-import type { RenamePart } from "../model/fileOps";
+import { takesDrop, type RenamePart } from "../model/fileOps";
 import { textMetrics } from "../model/fontSize";
 import type { SortKey } from "../model/sort";
 import { ordered, type Ordered } from "../state/selection";
@@ -10,8 +10,18 @@ import { emptyPane, modeIn } from "../state/store";
 import { presenter, type Presenter } from "./view";
 
 // The item type, for the views (they do not import from the backend's side themselves).
-export type { Entry } from "../api/types";
+import type { Entry } from "../api/types";
+export type { Entry };
 export type { Ordered } from "../state/selection";
+
+/**
+ * What marks a listed item for drops (root/drop.ts finds what is under the pointer by these):
+ * a folder takes the dropped files in, a program or a shortcut is handed them.
+ */
+export function dropMarks(e: Entry): { "data-drop-folder"?: string; "data-drop-file"?: string } {
+  if (e.isFolder) return { "data-drop-folder": e.location };
+  return takesDrop(e) ? { "data-drop-file": e.location } : {};
+}
 
 export interface ListModel {
   /** The items in display order, and their groups when grouping is on. */

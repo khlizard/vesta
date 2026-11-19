@@ -35,27 +35,36 @@ export const HOVER_SHOW_MS = 500;
 /** The drop-related attributes of one element in the ancestor chain (nearest first). */
 export interface DropAttrs {
   folder?: string | null;
+  /** A program or a shortcut: it is handed what is dropped on it. */
+  file?: string | null;
   tab?: string | null;
   pane?: string | null;
 }
 
 export type DropTarget =
   | { kind: "folder"; location: string; index: number }
+  | { kind: "file"; location: string; index: number }
   | { kind: "tab"; tabId: string; location: string; index: number }
   | { kind: "pane"; tabId: string; location: string; index: number };
 
 /**
  * Picks the drop target from the attributes of an element and its ancestors (nearest first):
- * the nearest folder item, else a tab, else a pane. `index` is the position in `chain` of the
- * element that matched (for highlighting). Tabs/panes without a known folder yield null.
+ * the nearest folder item or (with `files`) program / shortcut item, else a tab, else a pane.
+ * `index` is the position in `chain` of the element that matched (for highlighting). Tabs/panes
+ * without a known folder yield null. `files` is false for a drag without paths (data from a
+ * browser), which a program cannot be handed.
  */
 export function resolveTarget(
   chain: DropAttrs[],
   tabLocation: (tabId: string) => string | null,
   paneLocation: (tabId: string) => string | null,
+  files = true,
 ): DropTarget | null {
-  const folder = chain.findIndex((a) => a.folder);
-  if (folder >= 0) return { kind: "folder", location: chain[folder].folder as string, index: folder };
+  const item = chain.findIndex((a) => a.folder || (files && a.file));
+  if (item >= 0) {
+    const { folder, file } = chain[item];
+    return folder ? { kind: "folder", location: folder, index: item } : { kind: "file", location: file as string, index: item };
+  }
   const tab = chain.findIndex((a) => a.tab);
   if (tab >= 0) {
     const tabId = chain[tab].tab as string;
@@ -89,6 +98,12 @@ export function isSelfDrop(paths: string[], dest: string): boolean {
 export function isNoopDrop(paths: string[], dest: string): boolean {
   if (!paths.length) return false;
   return isSelfDrop(paths, dest) || splitByParent(paths, dest).other.length === 0;
+}
+
+/** Whether a drop of `paths` on `target` would do something, so that the target is worth highlighting. */
+export function isUsefulDrop(paths: string[], target: DropTarget): boolean {
+  // A program is handed the files wherever they are; only dropping it on itself is nothing.
+  return target.kind === "file" ? !isSelfDrop(paths, target.location) : !isNoopDrop(paths, target.location);
 }
 
 /**

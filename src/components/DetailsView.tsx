@@ -5,7 +5,7 @@ import { iconUrl } from "../api/urls";
 import { RIGHT_ALIGNED, cellText } from "../model/columns";
 import { cx } from "../model/input";
 import type { SortKey } from "../model/sort";
-import { listView, type Entry } from "../presenters/list";
+import { dropMarks, listView, type Entry } from "../presenters/list";
 import { useView } from "../presenters/view";
 import { DetailsHeader } from "./pane/DetailsHeader";
 import { ListBase, type ViewProps } from "./pane/ListBase";
@@ -41,7 +41,7 @@ export function DetailsView({ id }: ViewProps) {
     const isCursor = v.cursor === e.location;
     const itemAttrs: Record<string, string | undefined> = {
       "data-item": e.location,
-      "data-drop-folder": e.isFolder ? e.location : undefined,
+      ...dropMarks(e),
     };
     const cell = (key: SortKey) => {
       switch (key) {

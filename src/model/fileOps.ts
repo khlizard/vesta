@@ -29,6 +29,20 @@ export function transferOps(kind: TransferKind, paths: string[], dest: string): 
   return ops;
 }
 
+/** Programs and scripts that take dropped files as their arguments (as in Explorer). */
+const DROP_PROGRAMS = new Set(["exe", "com", "bat", "cmd", "vbs", "js", "wsf"]);
+
+/**
+ * Whether a listed item that is not a folder takes a drop: a shortcut (to a program or to a
+ * folder), or a program itself. Other files do not; a drop over them goes to their folder.
+ */
+export function takesDrop(entry: { name: string; isFolder: boolean; isLink: boolean }): boolean {
+  if (entry.isFolder) return false;
+  if (entry.isLink) return true;
+  const dot = entry.name.lastIndexOf(".");
+  return dot > 0 && DROP_PROGRAMS.has(entry.name.slice(dot + 1).toLowerCase());
+}
+
 /**
  * Where a paste goes: the pane's folder, or (PasteInFolder) the one selected item when it is a
  * folder.

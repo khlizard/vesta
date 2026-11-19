@@ -1,5 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import { createHoverTimer, isNoopDrop, isSelfDrop, resolveTarget, rightDropItems, toCssPoint, type DropAttrs } from "./dnd";
+import {
+  createHoverTimer,
+  isNoopDrop,
+  isSelfDrop,
+  isUsefulDrop,
+  resolveTarget,
+  rightDropItems,
+  toCssPoint,
+  type DropAttrs,
+} from "./dnd";
 
 const tabLoc = (id: string) => ({ t1: "C:\\a", t2: "D:\\b" })[id as "t1" | "t2"] ?? null;
 const paneLoc = (id: string) => ({ t1: "C:\\a", t2: null })[id as "t1" | "t2"] ?? null;
@@ -89,6 +98,26 @@ describe("isNoopDrop", () => {
     expect(isNoopDrop(["C:\\a\\x"], "C:\\a\\sub")).toBe(false);
     expect(isNoopDrop(["C:\\a\\x", "C:\\b\\y"], "C:\\a")).toBe(false);
     expect(isNoopDrop([], "C:\\a")).toBe(false);
+  });
+});
+
+describe("program and shortcut items", () => {
+  it("are targets like folder items, the nearest winning", () => {
+    const chain: DropAttrs[] = [{ file: "C:\\a\\run.bat" }, { pane: "t1" }];
+    expect(resolveTarget(chain, tabLoc, paneLoc)).toEqual({ kind: "file", location: "C:\\a\\run.bat", index: 0 });
+  });
+
+  it("are passed over by a drag without paths, which goes to the pane", () => {
+    const chain: DropAttrs[] = [{ file: "C:\\a\\run.bat" }, { pane: "t1" }];
+    expect(resolveTarget(chain, tabLoc, paneLoc, false)).toEqual({ kind: "pane", tabId: "t1", location: "C:\\a", index: 1 });
+  });
+
+  it("are worth a drop from their own folder, but not of themselves", () => {
+    const bat = { kind: "file" as const, location: "C:\\a\\run.bat", index: 0 };
+    expect(isUsefulDrop(["C:\\a\\data.csv"], bat)).toBe(true);
+    expect(isUsefulDrop(["C:\\a\\run.bat"], bat)).toBe(false);
+    // A folder the files are already in is not.
+    expect(isUsefulDrop(["C:\\a\\data.csv"], { kind: "pane", tabId: "t1", location: "C:\\a", index: 0 })).toBe(false);
   });
 });
 
