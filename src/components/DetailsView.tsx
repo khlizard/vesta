@@ -9,7 +9,7 @@ import { dropMarks, listView, type Entry } from "../presenters/list";
 import { useView } from "../presenters/view";
 import { DetailsHeader } from "./pane/DetailsHeader";
 import { ListBase, type ViewProps } from "./pane/ListBase";
-import { buildLayout } from "./pane/layout";
+import { buildLayout } from "../model/layout";
 import { RenameInput } from "./pane/RenameInput";
 import { SyncIcon } from "./pane/SyncIcon";
 import "../styles/pane.css";

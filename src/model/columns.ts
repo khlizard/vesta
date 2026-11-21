@@ -106,3 +106,20 @@ export function dropIndex(widths: readonly number[], x: number): number {
   }
   return widths.length;
 }
+
+/** Access keys of the columns in the header menu. */
+const COLUMN_KEY: Record<SortKey, string> = {
+  name: "N",
+  status: "S",
+  modified: "M",
+  type: "T",
+  size: "Z",
+  created: "C",
+  accessed: "A",
+  attributes: "R",
+};
+
+/** A column as the header menu names it: its label and access key (`名前(_N)`). */
+export function columnMenuLabel(key: SortKey): string {
+  return `${COLUMN_LABEL[key]}(_${COLUMN_KEY[key]})`;
+}

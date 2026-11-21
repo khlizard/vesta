@@ -4,7 +4,6 @@
 
 import { normPath, splitByParent } from "../model/paths";
 import type { PopupItem } from "./popup";
-import { dropFilesAs } from "./fileActions";
 
 /** Position in physical pixels inside the webview. */
 interface DragPosition {
@@ -110,12 +109,12 @@ export function isUsefulDrop(paths: string[], target: DropTarget): boolean {
 
 /**
  * The menu of a right-button drop of `paths` on `dest`. Moving is disabled when every item is
- * already in `dest`; copying there duplicates them.
+ * already in `dest`; copying there duplicates them. `drop` does what is chosen.
  */
 export function rightDropItems(
   paths: string[],
   dest: string,
-  drop: (kind: "copy" | "move" | "link", paths: string[], dest: string) => unknown = dropFilesAs,
+  drop: (kind: "copy" | "move" | "link", paths: string[], dest: string) => unknown,
 ): PopupItem[] {
   const alreadyThere = splitByParent(paths, dest).other.length === 0;
   const choose = (kind: "copy" | "move" | "link") => () => void drop(kind, paths, dest);

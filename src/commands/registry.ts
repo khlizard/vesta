@@ -1,9 +1,6 @@
 // Command registry. Command names follow Avesta (docs/spec/config.md, docs/spec/tabs.md).
 // Menus, toolbars, the status bar and key bindings all go through `runCommand`.
 
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { backend } from "../api/backend";
-import { reloadUiConfig } from "../config/load";
 import { NO_MODS, type Mods } from "../model/navigation";
 import * as T from "../model/tabs";
 import { refreshPane } from "../state/loading";
@@ -17,6 +14,8 @@ import { focusPane } from "../state/focus";
 import { currentPane, currentPaneId, getState, type Options } from "../state/store";
 import { adjustColumns } from "../state/columns";
 import { setFontSize, setOption } from "../state/options";
+import { reloadUiConfig } from "../state/uiConfig";
+import { closeWindow } from "../state/startup";
 import { restartForUpdate } from "../state/update";
 
 export interface CommandContext {
@@ -65,8 +64,11 @@ function tabAt(index: number | null): T.Tab | null {
   return index ? (getState().tabs.tabs[index - 1] ?? null) : null;
 }
 
-const toggleOption = (key: keyof Options): CommandDef => ({
-  run: () => setOption(key, !getState().options[key] as never),
+/** The options that are on or off. */
+type Flag = { [K in keyof Options]: Options[K] extends boolean ? K : never }[keyof Options];
+
+const toggleOption = (key: Flag): CommandDef => ({
+  run: () => setOption(key, !getState().options[key]),
   checked: () => Boolean(getState().options[key]),
 });
 
@@ -163,8 +165,8 @@ const COMMANDS: Record<string, CommandDef> = {
     },
     enabled: (p) => !!tabAt(p.index),
   },
-  "RecycleBin.Empty": fileOp({ run: () => backend.openItems(["::{645FF040-5081-101B-9F08-00AA002F954E}"], "empty") }),
-  "System.Exit": { run: () => getCurrentWindow().close() },
+  "RecycleBin.Empty": fileOp({ run: () => F.emptyRecycleBin() }),
+  "System.Exit": { run: () => closeWindow() },
   // Vesta only (docs/spec/update.md): apply the downloaded update and restart.
   "System.Update": { run: () => restartForUpdate(), enabled: () => !!getState().updateReady },
 
@@ -295,7 +297,7 @@ const COMMANDS: Record<string, CommandDef> = {
   "Option.FontSize.14": fontSizeCmd(14),
   "Option.FontSize.16": fontSizeCmd(16),
   "Option.TwoRows": toggleOption("TwoRows"),
-  "Option.Reload": { run: () => reloadUiConfig() },
+  "Option.Reload": { run: () => reloadUiConfig(isKnownCommand) },
 
   // ヘルプ
   "System.About": { run: () => openDialog("about") },

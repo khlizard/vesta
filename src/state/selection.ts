@@ -13,15 +13,10 @@ import {
   type CursorStep,
   type SelMods,
 } from "../model/selection";
-import { groupEntries, sortEntries, type GroupedRows } from "../model/sort";
-import { updatePane, type PaneState } from "./store";
+import { groupEntries, sortEntries, type Ordered } from "../model/sort";
 
-export interface Ordered {
-  /** Flat list in display order. */
-  entries: Entry[];
-  /** Groups when grouping is on, else null. */
-  groups: GroupedRows[] | null;
-}
+export type { Ordered } from "../model/sort";
+import { updatePane, type PaneState } from "./store";
 
 const cache = new WeakMap<Entry[], { key: string; value: Ordered }>();
 

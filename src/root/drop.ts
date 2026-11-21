@@ -20,7 +20,7 @@ import {
   type DropAttrs,
   type DropTarget,
 } from "../state/dnd";
-import { dropFiles, saveDropped } from "../state/fileActions";
+import { dropFiles, dropFilesAs, saveDropped } from "../state/fileActions";
 import { setMessage } from "../state/message";
 import { openDroppedFolders } from "../state/navigation";
 import { openPopup } from "../state/popup";
@@ -142,7 +142,7 @@ export async function listenToDrops(): Promise<() => void> {
       // Our menu is the fallback where the Shell has no drop target for the folder.
       backend.rightDrop(p.paths, dest, p.position.x, p.position.y).catch(() => {
         const at = toCssPoint(p.position, window.devicePixelRatio);
-        openPopup(rightDropItems(p.paths, dest), at.x, at.y);
+        openPopup(rightDropItems(p.paths, dest, dropFilesAs), at.x, at.y);
       });
       return;
     }

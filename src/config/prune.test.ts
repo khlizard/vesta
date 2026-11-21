@@ -4,7 +4,11 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: vi.fn() }));
 
-const { pruneItems, pruneBindings, unknownCommands } = await import("./load");
+const { isKnownCommand: known } = await import("../commands/registry");
+const prune = await import("./prune");
+const pruneItems = (items: Parameters<typeof prune.pruneItems>[0]) => prune.pruneItems(items, known);
+const pruneBindings = (b: Parameters<typeof prune.pruneBindings>[0]) => prune.pruneBindings(b, known);
+const unknownCommands = (c: Parameters<typeof prune.unknownCommands>[0]) => prune.unknownCommands(c, known);
 
 describe("pruneItems", () => {
   it("drops unknown commands, empty submenus and stray separators", () => {

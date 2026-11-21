@@ -13,7 +13,7 @@ import { parseCommand, runCommand } from "../commands/registry";
 import { useConfig } from "../config/store";
 import {
   ALL_COLUMNS,
-  COLUMN_LABEL,
+  columnMenuLabel,
   DEFAULT_COLUMNS,
   moveShownColumn,
   toggleColumn,
@@ -25,7 +25,6 @@ import { barItemFor, menuBarKey, menuLabel } from "../model/menu";
 import { altAloneAllowed, commandsAllowed, NO_ALT, routeKey, trackAlt, type AltPress } from "../model/mode";
 import { NO_MODS, type Mods } from "../model/navigation";
 import { isTyping, keyStep, openTargets, pressOnItem, typeLetter, type TypeAhead } from "../model/selection";
-import type { SortKey } from "../model/sort";
 import * as T from "../model/tabs";
 import { stepThumbnailSize } from "../model/thumbSize";
 import { createSuggester } from "../state/address";
@@ -33,7 +32,7 @@ import { fitWidth } from "../state/columns";
 import { closeDialog, rememberLocation } from "../state/dialogs";
 import { newItem, rename, selectedLocations } from "../state/fileActions";
 import { focusPane } from "../state/focus";
-import { clickLink, contextLink, hoverLink } from "../state/links";
+import { clickLink, contextLink, hoverLink } from "../commands/links";
 import { setMessage } from "../state/message";
 import { goHistory, goUp, navigate, openEntries, openExternal, openInput } from "../state/navigation";
 import { setOption } from "../state/options";
@@ -123,22 +122,11 @@ function tabMenuItems(id: string): PopupItem[] {
   });
 }
 
-const COLUMN_KEY: Record<SortKey, string> = {
-  name: "N",
-  status: "S",
-  modified: "M",
-  type: "T",
-  size: "Z",
-  created: "C",
-  accessed: "A",
-  attributes: "R",
-};
-
 /** Header context menu: show/hide columns (docs/spec/listing.md「列のカスタマイズ」). */
 function columnMenuItems(): PopupItem[] {
   const columns = getState().options.Columns;
   const items: PopupItem[] = ALL_COLUMNS.map((key) => ({
-    text: `${COLUMN_LABEL[key]}(_${COLUMN_KEY[key]})`,
+    text: columnMenuLabel(key),
     checked: columns.includes(key),
     disabled: key === "name",
     onSelect: () => attempt(setOption("Columns", toggleColumn(getState().options.Columns, key))),
@@ -221,19 +209,6 @@ function listKey(id: string, key: string, mods: Mods, grid: { columns: number; p
     typed.set(id, t.next);
     if (t.prefix !== null) jumpToPrefix(id, t.prefix);
   }
-}
-
-/** Whether `key` is one the list acts on by itself (so the page must not also scroll or type). */
-export function isListKey(
-  key: string,
-  mods: Mods,
-  grid: { columns: number; page: number; horizontal: boolean },
-): boolean {
-  if (keyStep(key, grid) !== null) return true;
-  if (key === "Enter") return !mods.alt;
-  // Space toggles the cursor item whatever is held (Ctrl+Space after moving with Ctrl+arrows).
-  if (key === " ") return true;
-  return key.length === 1 && !mods.ctrl && !mods.alt;
 }
 
 // ---------------------------------------------------------------- dispatch

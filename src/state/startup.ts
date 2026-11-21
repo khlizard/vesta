@@ -112,3 +112,8 @@ export function subscribe(): () => void {
     if (s.tabs !== before.tabs || s.mru !== before.mru) saveSessionSoon();
   });
 }
+
+/** System.Exit: closes the window as its close button does (what is unsaved is written first). */
+export async function closeWindow() {
+  await getCurrentWindow().close();
+}

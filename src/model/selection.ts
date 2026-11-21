@@ -197,3 +197,16 @@ function toggled(selected: Set<string>, location: string): Pick<Sel, "selected" 
   else next.add(location);
   return { selected: next, anchor: location };
 }
+
+/** Whether `key` is one the list acts on by itself (so the page must not also scroll or type). */
+export function isListKey(
+  key: string,
+  mods: { ctrl: boolean; alt: boolean },
+  grid: { columns: number; page: number; horizontal: boolean },
+): boolean {
+  if (keyStep(key, grid) !== null) return true;
+  if (key === "Enter") return !mods.alt;
+  // Space toggles the cursor item whatever is held (Ctrl+Space after moving with Ctrl+arrows).
+  if (key === " ") return true;
+  return key.length === 1 && !mods.ctrl && !mods.alt;
+}

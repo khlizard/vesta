@@ -205,3 +205,11 @@ export function groupEntries(sorted: Entry[], key: SortKey, desc: boolean, now: 
   });
   return rows;
 }
+
+/** The items of a pane in the order they are shown. */
+export interface Ordered {
+  /** Flat list in display order. */
+  entries: Entry[];
+  /** Groups when grouping is on, else null. */
+  groups: GroupedRows[] | null;
+}

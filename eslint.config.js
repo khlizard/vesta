@@ -15,6 +15,64 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
   },
+  // The layers (AGENTS.md「書き方」): model <- api, config <- state <- commands <- root, presenters
+  // <- components. A layer imports only from the ones to its left. Tests may reach further.
+  ...[
+    {
+      layer: "model",
+      above: ["state", "commands", "root", "presenters", "components"],
+      also: ["**/api/backend", "**/config/store"],
+      packages: ["zustand", "@tauri-apps/api/core", "@tauri-apps/api/event", "@tauri-apps/api/window"],
+      why: "src/model/ holds pure functions: no store, no backend, nothing from the layers above.",
+    },
+    {
+      layer: "api",
+      above: ["state", "commands", "root", "presenters", "components"],
+      also: [],
+      packages: ["zustand"],
+      why: "src/api/ only talks to the backend.",
+    },
+    {
+      layer: "config",
+      above: ["state", "commands", "root", "presenters", "components"],
+      also: [],
+      packages: [],
+      why: "src/config/ is below the store and the commands (what exists is passed in: config/prune.ts).",
+    },
+    {
+      layer: "state",
+      above: ["commands", "root", "presenters", "components"],
+      also: [],
+      packages: [],
+      why: "src/state/ does not know the commands, the root or the views.",
+    },
+    {
+      layer: "commands",
+      above: ["root", "presenters", "components"],
+      also: [],
+      packages: [],
+      why: "src/commands/ does not know the root or the views.",
+    },
+    {
+      layer: "presenters",
+      above: ["root", "components"],
+      also: ["**/api/backend"],
+      packages: ["@tauri-apps/api/core"],
+      why: "A presenter turns the stores into values to draw: no backend, nothing from the root or the views.",
+    },
+  ].map(({ layer, above, also, packages, why }) => ({
+    files: [`src/${layer}/**/*.{ts,tsx}`],
+    ignores: ["src/**/*.test.ts"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [{ group: [...above.map((d) => `**/${d}/*`), ...also], message: why }],
+          paths: packages.map((name) => ({ name, message: why })),
+        },
+      ],
+    },
+  })),
   {
     // Views are passive (AGENTS.md「書き方」): they draw what their presenter gives them and tell
     // the root what happened. They do not reach the store, the commands or the backend.

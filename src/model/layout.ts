@@ -1,7 +1,7 @@
 // Pure layout helpers shared by the details and thumbnail views.
 
-import type { Entry } from "../../api/types";
-import type { Ordered } from "../../state/selection";
+import type { Entry } from "../api/types";
+import type { Ordered } from "./sort";
 
 export interface GroupRow {
   kind: "group";

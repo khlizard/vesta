@@ -256,3 +256,11 @@ export function beginRename(id: string | null) {
   const loc = p.cursor && p.selected.has(p.cursor) ? p.cursor : selectedLocations(id)[0];
   if (loc) startRename(id, loc);
 }
+
+/** The Recycle Bin of the Shell namespace. */
+const RECYCLE_BIN = "::{645FF040-5081-101B-9F08-00AA002F954E}";
+
+/** RecycleBin.Empty: Windows asks before it empties the bin. */
+export async function emptyRecycleBin() {
+  await backend.openItems([RECYCLE_BIN], "empty");
+}

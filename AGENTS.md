@@ -48,7 +48,8 @@
 
 - Rust の Win32/COM 呼び出しは、モジュールの中に閉じ込める。Tauri のコマンドは薄くし、ロジックはテストできる関数に分ける
 - 判断のロジック（タブの操作、開き方の表、ラベル、ステータスの文字、キーマップ）は、UI から切り離した純粋な関数にして vitest でテストする
-- フロントの層：`src/model/`（純粋関数）← `src/state/`（ストアと backend を使う処理）← `src/root/`（ルート）← `src/presenters/`・`src/components/`
+- フロントの層：`src/model/`（純粋関数）← `src/api/`（backend の呼び出しと型）・`src/config/`（設定ファイルの型、設定のストア、使えない項目を落とす純粋関数）← `src/state/`（ストアと backend を使う処理）← `src/commands/`（コマンドの表、設定の項目を実行する処理）← `src/root/`（ルート）・`src/presenters/` ← `src/components/`
+  - 層は、自分より左の層だけを import する（lint で止めている。テストは除く）。上の層が持つものが要るときは、引数で受け取る（例：`config/prune.ts` は、コマンドがあるかどうかの関数を受け取る）
   - **ルート（`src/root/`）が唯一の判断の場所。** いまのモード（`src/model/mode.ts`、仕様は `docs/spec/ui.md`「モード」）を見て、入力を受け付けるか・何をするかを決める。`window` に常に付けておくリスナー（キー、ポインタ、リサイズ）は `root/input.ts` だけに置く（ドラッグの間だけ付けるものは `components/pane/pointer.ts`）
   - **ビュー（`src/components/`）は受け身。** プレゼンタ（`src/presenters/`、ストア → 表示用の値の純粋関数）の結果を描き、起きたことを `dispatch`（`root/dispatch.ts`）へ送るだけ。ストアを書かない、backend を呼ばない、ほかの部品の DOM を探さない（lint で止めている）
   - ビューに持ってよい状態は、操作の途中だけの見た目（範囲選択の枠、ドラッグ中の線、入力途中の文字、メニューで選んでいる項目、表示範囲）。確定した結果は `dispatch` で送る

@@ -4,11 +4,19 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { dragStarted, modsOf } from "../../model/input";
-import { edgeScrollSpeed, pageStep } from "../../model/selection";
+import { edgeScrollSpeed, isListKey, pageStep } from "../../model/selection";
 import type { Entry, ListModel } from "../../presenters/list";
-import { dispatch, isListKey } from "../../root/dispatch";
+import { dispatch } from "../../root/dispatch";
 import { LIST_ATTR } from "../../root/input";
-import { marqueeHits, normalizeBox, revealScroll, sameSet, visibleRange, type Box, type Layout } from "./layout";
+import {
+  marqueeHits,
+  normalizeBox,
+  revealScroll,
+  sameSet,
+  visibleRange,
+  type Box,
+  type Layout,
+} from "../../model/layout";
 import { trackPointer } from "./pointer";
 
 export interface ViewProps {

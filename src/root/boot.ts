@@ -3,11 +3,12 @@
 import { getVersion } from "@tauri-apps/api/app";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { loadKeyboardLayout } from "../commands/keys";
-import { loadUiConfig } from "../config/load";
+import { isKnownCommand } from "../commands/registry";
 import { useConfig } from "../config/store";
 import { windowTitle } from "../model/labels";
 import { currentTab } from "../model/tabs";
 import { resolveLinks } from "../state/links";
+import { loadUiConfig } from "../state/uiConfig";
 import { logLine } from "../state/log";
 import { loadOptions } from "../state/options";
 import { startApp } from "../state/startup";
@@ -58,7 +59,7 @@ export function boot(): () => void {
   void step("version", async () => setState({ appVersion: await getVersion() }))();
   void step("drops", listenToDrops)();
   void step("options", loadOptions)()
-    .then(step("settings", loadUiConfig))
+    .then(step("settings", () => loadUiConfig(isKnownCommand)))
     .then(step("session", startApp))
     .then(step("updates", startUpdateChecks));
   return stopInput;

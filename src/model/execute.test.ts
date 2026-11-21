@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { labelParts, menuLabel } from "../model/menu";
-import { expandArgs, linkAction, normalizeExecute, quote } from "./items";
+import { labelParts, menuLabel } from "./menu";
+import { expandArgs, linkAction, normalizeExecute, quote } from "./execute";
 
 describe("expandArgs", () => {
   const sel = ["C:\\a b.txt", "C:\\c.txt"];
