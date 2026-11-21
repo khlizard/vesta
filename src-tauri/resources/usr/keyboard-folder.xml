@@ -3,6 +3,8 @@
   Vesta のキー割り当て：一覧にフォーカスがあるときだけ効くもの（keyboard-form.xml より先に効く）。
   子の <menu> を持つ割り当ては、押すとその場にメニューを出す。
   execute の args：[selected] は選択項目ごとに1回ずつ、{selected} は全部をまとめて渡す。
+  書式：https://github.com/khlizard/vesta/blob/main/docs/spec/config.md
+  使えるコマンド：https://github.com/khlizard/vesta/blob/main/docs/spec/commands.md
 -->
 <keyboard name="folder">
   <!-- 選択 -->
@@ -40,7 +42,7 @@
   <bind modifier="S"  key="tab"    command="Tab.Prev2"/>
 
   <!-- ツール -->
-  <bind modifier="C"  key="T">
+  <bind modifier="C"  key="E">
     <menu text="_C : コマンドプロンプト" execute="SYSTEM\cmd.exe"/>
     <menu text="_N : メモ帳で開く"       execute="SYSTEM\notepad.exe" args="[selected]"/>
   </bind>

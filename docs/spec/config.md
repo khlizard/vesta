@@ -152,7 +152,7 @@
 | DistinguishTab | true | タブのラベルを区別する |
 | RestoreCond | true | 起動時にタブを復元する |
 | RenameExtension | true | 名前の変更で拡張子を除いて選択する |
-| FullRowSelect | false | 詳細で行全体を選択する |
+| FullRowSelect | true | 詳細で行全体を選択する |
 | GridLine | false | 詳細で罫線を引く |
 | OpenDups | false | 同じフォルダを重複して開く |
 | LockClose | true | ロック中のタブも閉じる |

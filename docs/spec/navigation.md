@@ -79,6 +79,7 @@
 | DRIVES, DRIVE | PC |
 | HOME, MYDOCUMENTS, PERSONAL | ドキュメント |
 | MYMUSIC, MYPICTURES, MYPICTURE, MYVIDEO, MYVIDEOS | ミュージック、ピクチャ、ビデオ |
+| DOWNLOADS | ダウンロード（場所を移していても、いまの場所。Vesta だけの別名） |
 | PROFILE, ~ | ユーザーフォルダ |
 | CONTROLS, CONTROLPANEL, CONTROL | コントロールパネル |
 | BITBUCKET, RECYCLEBIN, TRASH | ごみ箱 |

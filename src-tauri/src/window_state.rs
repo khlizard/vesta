@@ -7,7 +7,7 @@ use windows::Win32::Graphics::Gdi::{
     EnumDisplayMonitors, GetMonitorInfoW, HDC, HMONITOR, MONITORINFO,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetWindowPlacement, SWP_NOACTIVATE, SWP_NOZORDER, SetWindowPos, WINDOWPLACEMENT,
+    GetWindowPlacement, GetWindowRect, SWP_NOACTIVATE, SWP_NOZORDER, SetWindowPos, WINDOWPLACEMENT,
 };
 
 use crate::com;
@@ -108,6 +108,14 @@ pub fn fit(rect: Rect, work_areas: &[Rect]) -> Rect {
     }
 }
 
+/// Where a window of the default size opens when nothing is stored: in the middle of the work
+/// area, shrunk to it when it is larger (a 1600x900 window on a small or scaled screen).
+pub fn centered(size: (i32, i32), work: &Rect) -> Rect {
+    let width = size.0.min(work.width);
+    let height = size.1.min(work.height);
+    Rect { x: work.x + (work.width - width) / 2, y: work.y + (work.height - height) / 2, width, height }
+}
+
 fn to_rect(r: &RECT) -> Rect {
     Rect { x: r.left, y: r.top, width: r.right - r.left, height: r.bottom - r.top }
 }
@@ -176,10 +184,18 @@ pub fn placement(window: &tauri::WebviewWindow) -> Result<Placement, String> {
 
 /// Applies the stored placement to the (hidden) window. Every failure is ignored.
 pub fn restore(window: &tauri::WebviewWindow, session_json: Option<&str>) {
-    let Some(p) = session_json.and_then(parse) else {
+    let Ok(hwnd) = com::hwnd_of(window) else {
         return;
     };
-    let Ok(hwnd) = com::hwnd_of(window) else {
+    let Some(p) = session_json.and_then(parse) else {
+        // First start (or an unreadable session): the default size, on the primary screen.
+        let mut r = RECT::default();
+        if unsafe { GetWindowRect(hwnd, &mut r) }.is_ok()
+            && let Some(work) = work_areas().first()
+        {
+            let now = to_rect(&r);
+            set_rect(hwnd, centered((now.width, now.height), work));
+        }
         return;
     };
     let rect = fit(Rect { x: p.x, y: p.y, width: p.width, height: p.height }, &work_areas());
@@ -252,6 +268,20 @@ mod tests {
     }
 
     const PRIMARY: Rect = Rect { x: 0, y: 0, width: 1920, height: 1040 };
+
+    #[test]
+    fn centered_in_the_work_area() {
+        assert_eq!(centered((1600, 900), &PRIMARY), r(160, 70, 1600, 900));
+        // A work area that does not start at the origin (task bar on the left or top).
+        assert_eq!(centered((800, 600), &r(60, 40, 1000, 700)), r(160, 90, 800, 600));
+    }
+
+    #[test]
+    fn centered_shrinks_to_a_small_screen() {
+        // 1920x1080 at 125%: the window would be 2000x1125 physical pixels.
+        assert_eq!(centered((2000, 1125), &PRIMARY), r(0, 0, 1920, 1040));
+        assert_eq!(centered((1600, 900), &r(0, 0, 1366, 728)), r(0, 0, 1366, 728));
+    }
 
     #[test]
     fn fit_inside_unchanged() {

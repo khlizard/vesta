@@ -132,6 +132,8 @@ mod tests {
         assert!(f.location.to_lowercase().ends_with("\\windows\\system32"));
         let f = folder(resolve("Profile"));
         assert!(f.fs_path.is_some());
+        // The Downloads folder, wherever it has been moved to.
+        assert!(folder(resolve("downloads")).fs_path.is_some());
         // `~` is the profile folder; only as the whole first component.
         let home = f.location;
         assert_eq!(folder(resolve("~")).location, home);

@@ -103,6 +103,7 @@ X は、対象のタブの組。`Current`（current）、`All`（すべて）、
 | `Others.Show(false)` | ほかを表示する / 隠す |
 | `Tab[n].Show(toggle)` | n 番目のタブを表示する / 隠す |
 | `Tab[n].Focus` | n 番目のタブを current にする（隠れていれば表示する） |
+| `Tab.New` | 新しいタブで PC を開いて current にする（表示中のタブはそのまま）。PC のタブが既にあれば、それを表示して current にする（`OpenDups` がオンなら、もう 1 つ開く）。Vesta だけのコマンド |
 | `Tab.Next` | 表示中のタブのうち、右隣を current にする |
 | `Tab.Prev` | 左隣を current にする |
 | `Tab.Next2` | `Tab.Next` と同じ（Avesta の設定をそのまま読めるように残した別名） |

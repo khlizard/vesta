@@ -108,7 +108,7 @@ export const DEFAULT_OPTIONS: Options = {
   DistinguishTab: true,
   RestoreCond: true,
   RenameExtension: true,
-  FullRowSelect: false,
+  FullRowSelect: true,
   GridLine: false,
   OpenDups: false,
   LockClose: true,

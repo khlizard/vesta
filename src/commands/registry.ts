@@ -7,7 +7,7 @@ import { reloadUiConfig } from "../config/load";
 import { NO_MODS, type Mods } from "../model/navigation";
 import * as T from "../model/tabs";
 import { refreshPane } from "../state/loading";
-import { goHistory, goUp } from "../state/navigation";
+import { goHistory, goUp, openNewTab } from "../state/navigation";
 import * as A from "../state/tabActions";
 import * as F from "../state/fileActions";
 import * as S from "../state/selection";
@@ -237,6 +237,7 @@ const COMMANDS: Record<string, CommandDef> = {
   "Tool.Show": toggleOption("ToolVisible"),
   "Link.Show": toggleOption("LinkVisible"),
   "Status.Show": toggleOption("StatusVisible"),
+  "Tab.New": { run: () => openNewTab() },
   "Tab.Next": { run: () => A.setTabs((s) => T.cycleCurrent(s, 1)) },
   "Tab.Prev": { run: () => A.setTabs((s) => T.cycleCurrent(s, -1)) },
   "Tab.Next2": { run: () => A.setTabs((s) => T.cycleCurrent(s, 1)) },

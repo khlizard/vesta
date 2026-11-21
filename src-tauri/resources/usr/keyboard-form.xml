@@ -4,6 +4,8 @@
   一覧にフォーカスがあるときは keyboard-folder.xml の割り当てが先に効く。
   modifier：C=Ctrl、S=Shift、A=Alt、W=Windows の組み合わせ（空なら修飾なし）。
   移動のコマンドでは、押している修飾キーが開き方になる（Ctrl：横に追加、Shift：隠して追加）。
+  書式：https://github.com/khlizard/vesta/blob/main/docs/spec/config.md
+  使えるコマンド：https://github.com/khlizard/vesta/blob/main/docs/spec/commands.md
 -->
 <keyboard name="form">
   <!-- 移動 -->
@@ -26,6 +28,7 @@
   <!-- タブ -->
   <bind modifier="C"   key="W" command="Current.Close"/>
   <bind modifier="CS"  key="W" command="Others.Close"/>
+  <bind modifier="C"   key="T" command="Tab.New"/>
   <bind modifier="CS"  key="T" command="File.MRU"/>
   <bind modifier="C"   key="H" command="Current.Show(false)"/>
   <bind modifier="CS"  key="H" command="Others.Show(false)"/>

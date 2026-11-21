@@ -71,6 +71,16 @@ export async function openExternal(input: string, mods: Mods = NO_MODS) {
   await openInput(input, mods);
 }
 
+/** Tab.New: This PC in a new tab that becomes current; the shown tabs stay (docs/spec/commands.md). */
+export async function openNewTab() {
+  try {
+    const r = await backend.resolveLocation("DRIVES");
+    if (r.kind === "folder") await openInTab(r.folder, "switch");
+  } catch (e) {
+    setMessage(errorText(e));
+  }
+}
+
 /**
  * Opens the folders among `paths` (dropped on a bar, outside every pane and tab). Anything that
  * is not a folder is ignored without a message.

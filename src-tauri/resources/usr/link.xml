@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Vesta のリンクバー。path は場所（docs/spec/navigation.md の書き方：フルパス、%環境変数%、別名）。
+  Vesta のリンクバー。path は場所（フルパス、%環境変数%、DRIVES などの別名）。
+  書き方：https://github.com/khlizard/vesta/blob/main/docs/spec/navigation.md と config.md
   depth：0 はただのボタン。1 以上はその階層までサブフォルダをメニューに展開する。省略すると制限なし。
   include-files="true" でファイルもメニューに入れる。子の <menu> だけを持つ項目はメニューになる。
   場所が見つからない項目は、灰色の文字と × で表示される。
@@ -10,7 +11,7 @@
   <menu text="_PC"                path="DRIVES"                  depth="1"/>
   <menu text="デスクトップ(_D)"   path="DESKTOPDIRECTORY"        depth="0"/>
   <menu text="ドキュメント(_O)"   path="MYDOCUMENTS"             depth="2"/>
-  <menu text="ダウンロード(_W)"   path="%USERPROFILE%\Downloads" depth="0"/>
+  <menu text="ダウンロード(_W)"   path="DOWNLOADS"               depth="0"/>
   <menu text="ほかの場所(_L)">
     <menu text="ピクチャ(_P)"     path="MYPICTURES"  depth="0"/>
     <menu text="ミュージック(_M)" path="MYMUSIC"     depth="0"/>

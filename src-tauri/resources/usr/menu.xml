@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Vesta のメニューバー。書式は docs/spec/config.md を参照。
+  Vesta のメニューバー。書式：https://github.com/khlizard/vesta/blob/main/docs/spec/config.md
+  使えるコマンド：https://github.com/khlizard/vesta/blob/main/docs/spec/commands.md
   text の _X は X をアクセスキーにする。<menu/> は区切り線。
-  image はアイコンの番号（docs/spec/config.md「image の番号」）。
+  image はアイコンの番号（config.md「image の番号」）。
 -->
 <menu>
   <menu text="ファイル(_F)">
@@ -95,6 +96,7 @@
   </menu>
 
   <menu text="タブ(_T)">
+    <menu text="新しいタブ(_N)"             command="Tab.New"/>
     <menu text="閉じる(_C)"                 command="Current.Close"       image="25"/>
     <menu text="まとめて閉じる(_M)">
       <menu text="ほかのタブ(_O)"           command="Others.Close"        image="46"/>

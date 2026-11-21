@@ -222,7 +222,7 @@ mod tests {
         assert_eq!(l[0].depth, Some(1));
         assert_eq!(l[2].path.as_deref(), Some("MYDOCUMENTS"));
         assert_eq!(l[2].include_files, None);
-        assert_eq!(l[3].path.as_deref(), Some("%USERPROFILE%\\Downloads"));
+        assert_eq!(l[3].path.as_deref(), Some("DOWNLOADS"));
         let kids = l[4].children.as_ref().unwrap();
         assert_eq!(kids[0].path.as_deref(), Some("MYPICTURES"));
         assert!(kids.iter().any(|k| k.separator == Some(true)));

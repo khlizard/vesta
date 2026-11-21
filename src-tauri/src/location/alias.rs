@@ -6,7 +6,7 @@ use std::sync::OnceLock;
 
 use windows::Win32::System::Environment::ExpandEnvironmentStringsW;
 use windows::Win32::UI::Shell::{
-    FOLDERID_Desktop, FOLDERID_Documents, FOLDERID_Music, FOLDERID_Pictures, FOLDERID_Profile,
+    FOLDERID_Desktop, FOLDERID_Documents, FOLDERID_Downloads, FOLDERID_Music, FOLDERID_Pictures, FOLDERID_Profile,
     FOLDERID_ProgramFiles, FOLDERID_System, FOLDERID_Videos, FOLDERID_Windows, KF_FLAG_DEFAULT,
     SHGetKnownFolderPath,
 };
@@ -39,6 +39,7 @@ fn alias_target(name: &str) -> Option<AliasTarget> {
         "MYMUSIC" => Known(FOLDERID_Music),
         "MYPICTURES" | "MYPICTURE" => Known(FOLDERID_Pictures),
         "MYVIDEO" | "MYVIDEOS" => Known(FOLDERID_Videos),
+        "DOWNLOADS" => Known(FOLDERID_Downloads),
         "PROFILE" | "~" => Known(FOLDERID_Profile),
         "CONTROLS" | "CONTROLPANEL" | "CONTROL" => Fixed(CONTROL_PANEL),
         "BITBUCKET" | "RECYCLEBIN" | "TRASH" => Fixed(RECYCLE_BIN),
