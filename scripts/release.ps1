@@ -3,7 +3,8 @@
   Builds Vesta, packs it with Velopack and publishes it to GitHub Releases. Spec: docs/spec/update.md
 
 .DESCRIPTION
-  1. npm run tauri build -- --no-bundle  (vesta.exe; the UI and default settings are embedded)
+  1. scripts/build-exe.ps1               (vesta.exe; the UI and default settings are embedded,
+                                          and the Windows user name of the builder is kept out)
   2. vpk download github                 (the previous release, so a delta package can be made)
   3. vpk pack                            (Vesta-win-Setup.exe, a portable zip, full and delta packages)
   4. vpk upload github                   (creates the release v<version>)
@@ -83,13 +84,8 @@ try {
   Set-Content -Path $NotesFile -Value $notes -Encoding utf8
 
   # ---- build vesta.exe
-  Invoke-Native "tauri build" { npm run tauri build -- --no-bundle }
-  Push-Location src-tauri
-  try {
-    $target = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).target_directory
-  } finally { Pop-Location }
-  $exe = Join-Path $target "release/vesta.exe"
-  if (-not (Test-Path $exe)) { throw "Not found: $exe" }
+  # Builds without the Windows user name in the exe, and checks that (see build-exe.ps1).
+  $exe = & (Join-Path $PSScriptRoot "build-exe.ps1")
 
   # ---- a clean folder holding only what is installed
   Remove-Item $Publish -Recurse -Force -ErrorAction SilentlyContinue

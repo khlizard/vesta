@@ -39,29 +39,29 @@ describe("labels", () => {
   });
 
   it("uses the last part when unique", () => {
-    const l = computeLabels([src("1", "D:\\Data\\dev"), src("2", "D:\\Work\\VRC")], true);
-    expect(l.get("1")).toBe("dev");
-    expect(l.get("2")).toBe("VRC");
+    const l = computeLabels([src("1", "D:\\Photos\\2024"), src("2", "D:\\Work\\notes")], true);
+    expect(l.get("1")).toBe("2024");
+    expect(l.get("2")).toBe("notes");
   });
 
   it("adds parents until labels differ (case-insensitive)", () => {
     const l = computeLabels(
-      [src("1", "D:\\Data\\dev"), src("2", "D:\\Work\\_VR\\DEV"), src("3", "D:\\x\\Data\\dev")],
+      [src("1", "D:\\Photos\\2024"), src("2", "D:\\Backup\\Old\\2024"), src("3", "D:\\x\\Photos\\2024")],
       true,
     );
-    expect(l.get("1")).toBe("D:\\Data\\dev");
-    expect(l.get("2")).toBe("_VR\\DEV");
-    expect(l.get("3")).toBe("x\\Data\\dev");
+    expect(l.get("1")).toBe("D:\\Photos\\2024");
+    expect(l.get("2")).toBe("Old\\2024");
+    expect(l.get("3")).toBe("x\\Photos\\2024");
   });
 
   it("does not grow for duplicate tabs of the same folder", () => {
-    const l = computeLabels([src("1", "D:\\a\\dev"), src("2", "D:\\a\\dev")], true);
-    expect(l.get("1")).toBe("dev");
+    const l = computeLabels([src("1", "D:\\a\\2024"), src("2", "D:\\a\\2024")], true);
+    expect(l.get("1")).toBe("2024");
   });
 
   it("uses only the last part when not distinguishing", () => {
-    const l = computeLabels([src("1", "D:\\Data\\dev"), src("2", "D:\\Work\\dev")], false);
-    expect(l.get("2")).toBe("dev");
+    const l = computeLabels([src("1", "D:\\Photos\\2024"), src("2", "D:\\Backup\\2024")], false);
+    expect(l.get("2")).toBe("2024");
   });
 
   it("uses the display name for virtual folders and drive roots keep the drive", () => {

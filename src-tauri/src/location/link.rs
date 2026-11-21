@@ -154,8 +154,8 @@ mod tests {
     #[test]
     fn lnk_relative_path_is_read_from_the_file() {
         // Item list, link info, a name, then the relative path (Unicode).
-        let d = lnk_bytes(0x8F, Some(&[1, 2, 3, 4, 0, 0]), Some(&[9; 20]), &["説明", r"..\_DJ"]);
-        assert_eq!(lnk_relative_path(&d).as_deref(), Some(r"..\_DJ"));
+        let d = lnk_bytes(0x8F, Some(&[1, 2, 3, 4, 0, 0]), Some(&[9; 20]), &["説明", r"..\music"]);
+        assert_eq!(lnk_relative_path(&d).as_deref(), Some(r"..\music"));
         // Only the relative path.
         let d = lnk_bytes(0x88, None, None, &[r".\フォルダ"]);
         assert_eq!(lnk_relative_path(&d).as_deref(), Some(r".\フォルダ"));

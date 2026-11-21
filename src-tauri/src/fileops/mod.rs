@@ -442,7 +442,7 @@ mod tests {
     #[test]
     fn recycle_then_undo_restores_same_path() {
         let tmp = tempfile::tempdir().unwrap();
-        let file = tmp.path().join("avesta-recycle-test.txt");
+        let file = tmp.path().join("vesta-recycle-test.txt");
         fs::write(&file, "keep me").unwrap();
         let p = s(&file);
         on_op(move || {

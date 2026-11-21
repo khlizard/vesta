@@ -31,6 +31,7 @@ Velopack で配布し、GitHub Releases（https://github.com/khlizard/vesta ）�
 
 ## 手元の確認用の上書き
 
+- どちらのスクリプトも、exe は `scripts/build-exe.ps1` で作る。ビルドした人の Windows のユーザー名が exe に入らないよう、埋め込まれるパス（ホーム、cargo の置き場所、リポジトリ、ビルド出力）を固定の文字に置き換え、できた exe にユーザー名が残っていれば失敗させる
 - `scripts/install-local.ps1`：リリース版をビルドし、インストール済みの `%LocalAppData%\Vesta\current\vesta.exe` を上書きする。Velopack のパッケージは作らず、バージョンも変えない
 - インストール先から起動している Vesta があれば、ウィンドウを閉じて（タブと設定は保存される）終わるのを待ってから上書きする。10 秒で終わらなければ強制終了する。開発用の `tauri dev` のものは止めない
 - Velopack でインストールしていない（`current\vesta.exe` が無い）ときは止める

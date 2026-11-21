@@ -28,7 +28,7 @@ describe("patternToRegExp", () => {
 
 describe("ancestorKeys", () => {
   it("walks up file-system paths", () => {
-    expect(ancestorKeys("D:\\Work\\_VR\\dev\\")).toEqual(["d:\\work\\_vr\\dev", "d:\\work\\_vr", "d:\\work", "d:"]);
+    expect(ancestorKeys("D:\\Work\\a\\dev\\")).toEqual(["d:\\work\\a\\dev", "d:\\work\\a", "d:\\work", "d:"]);
   });
 
   it("stops at the server for UNC paths", () => {

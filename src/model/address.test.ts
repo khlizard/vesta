@@ -3,9 +3,9 @@ import { listableParent, matchingNames, splitTyped } from "./address";
 
 describe("splitTyped", () => {
   it("splits at the last separator, of either kind", () => {
-    expect(splitTyped("C:\\Users\\ob")).toEqual({ parent: "C:\\Users\\", prefix: "ob" });
-    expect(splitTyped("C:/Users/ob")).toEqual({ parent: "C:/Users/", prefix: "ob" });
-    expect(splitTyped("~/.cl")).toEqual({ parent: "~/", prefix: ".cl" });
+    expect(splitTyped("C:\\Users\\pu")).toEqual({ parent: "C:\\Users\\", prefix: "pu" });
+    expect(splitTyped("C:/Users/pu")).toEqual({ parent: "C:/Users/", prefix: "pu" });
+    expect(splitTyped("~/Do")).toEqual({ parent: "~/", prefix: "Do" });
     expect(splitTyped("C:\\")).toEqual({ parent: "C:\\", prefix: "" });
   });
 
@@ -32,7 +32,7 @@ describe("matchingNames", () => {
 describe("listableParent", () => {
   it("uses backslashes and marks a path under ~ for resolving", () => {
     expect(listableParent("C:/Users/")).toEqual({ path: "C:\\Users\\", resolve: false });
-    expect(listableParent("~/.claude/")).toEqual({ path: "~\\.claude\\", resolve: true });
+    expect(listableParent("~/Downloads/")).toEqual({ path: "~\\Downloads\\", resolve: true });
     expect(listableParent("~\\")).toEqual({ path: "~\\", resolve: true });
     expect(listableParent("C:\\~\\")).toEqual({ path: "C:\\~\\", resolve: false });
   });

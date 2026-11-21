@@ -169,7 +169,7 @@ mod tests {
     fn text_clears_files() {
         com::clip_pool()
             .run_blocking(|| {
-                set_text_sync("avesta テスト").unwrap();
+                set_text_sync("vesta テスト").unwrap();
                 assert_eq!(get_files_sync().unwrap(), None);
             })
             .unwrap();

@@ -24,6 +24,13 @@ reference/
 # release packages (scripts/release.ps1)
 build/
 
+# Settings and state copied from an installed Vesta (personal paths): never commit them
+/usr/
+/var/
+/src-tauri/usr/
+/src-tauri/var/
+/.cargo/
+
 # TypeScript incremental build info
 *.tsbuildinfo
 

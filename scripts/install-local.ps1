@@ -4,7 +4,7 @@
   environment. Spec: docs/spec/update.md「手元の確認用の上書き」
 
 .DESCRIPTION
-  1. npm run tauri build -- --no-bundle
+  1. scripts/build-exe.ps1 (npm run tauri build -- --no-bundle, without the user name in the exe)
   2. Closes Vesta if it runs from %LocalAppData%\Vesta (the window is closed normally, so tabs and
      settings are saved; forced after 10 seconds). A `tauri dev` instance is left alone.
   3. Copies the exe over %LocalAppData%\Vesta\current\vesta.exe
@@ -30,14 +30,8 @@ if (-not (Test-Path $Installed)) {
 
 Push-Location $Root
 try {
-  npm run tauri build -- --no-bundle
-  if ($LASTEXITCODE -ne 0) { throw "tauri build failed (exit code $LASTEXITCODE)" }
-  Push-Location src-tauri
-  try {
-    $target = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).target_directory
-  } finally { Pop-Location }
-  $exe = Join-Path $target "release/vesta.exe"
-  if (-not (Test-Path $exe)) { throw "Not found: $exe" }
+  # Builds without the Windows user name in the exe (see build-exe.ps1).
+  $exe = & (Join-Path $PSScriptRoot "build-exe.ps1")
 
   # ---- close the installed Vesta (only the one running from the install folder)
   $running = @(Get-Process vesta -ErrorAction SilentlyContinue |

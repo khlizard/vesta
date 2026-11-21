@@ -114,7 +114,7 @@ mod tests {
     #[test]
     fn open_nonexistent_path_is_error() {
         let r = com::launch_pool().run_blocking(|| {
-            open_sync(&["C:\\no-such-dir-avesta-test\\nofile.txt".to_string()], None, None, None, Hwnd::NONE)
+            open_sync(&["C:\\no-such-dir-vesta-test\\nofile.txt".to_string()], None, None, None, Hwnd::NONE)
         });
         assert!(r.unwrap().is_err());
     }

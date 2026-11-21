@@ -95,6 +95,6 @@ mod tests {
             "DESKTOP",
             "::{645FF040-5081-101B-9F08-00AA002F954E}"
         ]);
-        assert_eq!(run(&["~", "~/.claude", "~\\x"]), vec!["~", "~/.claude", "~\\x"]);
+        assert_eq!(run(&["~", "~/Downloads", "~\\x"]), vec!["~", "~/Downloads", "~\\x"]);
     }
 }

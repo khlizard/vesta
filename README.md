@@ -24,7 +24,7 @@ Windows 用のタブ型ファイラ。開いたタブを横に並べて表示し
 - 文字の大きさは「表示 → 文字の大きさ」で変える
 - プログラム（`.exe` `.bat` など）やショートカットの項目にファイルをドロップすると、Explorer と同じく、そのファイルを渡して起動する
 - 名前の変更（F2）の最中にもう一度 F2 を押すと拡張子を選び、さらに押すと名前の部分に戻る
-- 場所の入力では、`~` をユーザーフォルダとして読む（`~/.claude` など）
+- 場所の入力では、`~` をユーザーフォルダとして読む（`~\Downloads` など）
 - `vesta.exe <フォルダ>` で、そのフォルダを開く。既に起動していれば、そのウィンドウで開く
 - キー操作の既定は `%APPDATA%\io.github.khlizard.vesta\usr\keyboard-*.xml` を参照（Ctrl+W でタブを閉じる、Ctrl+N で新規作成 など）
 
@@ -99,6 +99,8 @@ $env:GITHUB_TOKEN = "<contents に書き込めるトークン>"
 ./scripts/release.ps1             # ビルド → パッケージ → Releases に公開
 ./scripts/release.ps1 -NoUpload   # build/velopack/releases に作るだけ
 ```
+
+exe は `scripts/build-exe.ps1` でビルドする。Rust は依存ライブラリの場所（`C:\Users\<ユーザー名>\.cargo\...`）を exe に埋め込むので、このスクリプトがそれを固定の文字に置き換え、ユーザー名が残っていればビルドを失敗させる。配布する exe を `npm run tauri build` で直接作らない。
 
 ## ライセンス
 
