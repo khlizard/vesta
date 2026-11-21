@@ -4,19 +4,12 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { cx, dragStarted, modsOf } from "../../model/input";
-import { edgeScrollSpeed, isListKey, pageStep } from "../../model/selection";
+import { isListKey, pageStep } from "../../model/selection";
 import type { Entry, ListModel } from "../../presenters/list";
 import { dispatch } from "../../root/dispatch";
 import { LIST_ATTR } from "../../root/input";
-import {
-  marqueeHits,
-  normalizeBox,
-  revealScroll,
-  sameSet,
-  visibleRange,
-  type Box,
-  type Layout,
-} from "../../model/layout";
+import { revealScroll, visibleRange, type Box, type Layout } from "../../model/layout";
+import { trackMarquee } from "./marquee";
 import { trackPointer } from "./pointer";
 
 export interface ViewProps {
@@ -41,7 +34,6 @@ interface ListBaseProps extends ViewProps {
   renderItem: (e: Entry, col: number) => ReactNode;
 }
 
-const EDGE = 24;
 /** Wheel delta of one mouse notch; touchpads send smaller deltas that add up to it. */
 const WHEEL_NOTCH = 100;
 const GROUP_HEIGHT_CLASS = "group-row";
@@ -161,70 +153,15 @@ export function ListBase(props: ListBaseProps) {
   const startMarquee = (e: React.PointerEvent, additive: boolean) => {
     const body = bodyRef.current;
     if (!body) return;
-    // What was selected at the press stays selected under an additive marquee.
-    const base = additive ? new Set(latest.current.selected) : new Set<string>();
-    const r0 = body.getBoundingClientRect();
-    const sx = e.clientX - r0.left;
-    const sy = e.clientY - r0.top;
-    let px = e.clientX;
-    let py = e.clientY;
-    let dirty = false;
-    let active = false;
-    let raf = 0;
-
-    const update = () => {
-      const r = body.getBoundingClientRect();
-      const cx = px - r.left;
-      const cy = py - r.top;
-      if (!active && !dragStarted(cx - sx, cy - sy)) return;
-      active = true;
-      const box = normalizeBox(sx, sy, cx, cy);
-      setMarquee(box);
-      const L = latest.current;
-      const next = new Set([...base, ...marqueeHits(L.layout, L.itemBox, box)]);
-      if (!sameSet(next, L.selected)) dispatch({ type: "list.marquee", id, items: [...next] });
-    };
-
-    const tick = () => {
-      raf = requestAnimationFrame(tick);
-      const el = scrollerRef.current;
-      if (!el) return;
-      const sr = el.getBoundingClientRect();
-      const top = sr.top + latest.current.headerHeight + EDGE;
-      const bottom = sr.top + el.clientHeight - EDGE;
-      const left = sr.left + EDGE;
-      const right = sr.left + el.clientWidth - EDGE;
-      const speed = edgeScrollSpeed;
-      let dy = 0;
-      let dx = 0;
-      if (py < top) dy = -speed(top - py);
-      else if (py > bottom) dy = speed(py - bottom);
-      if (px < left) dx = -speed(left - px);
-      else if (px > right) dx = speed(px - right);
-      if (dx || dy) {
-        const before = el.scrollTop + el.scrollLeft * 1e4;
-        el.scrollTop += dy;
-        el.scrollLeft += dx;
-        if (el.scrollTop + el.scrollLeft * 1e4 !== before) dirty = true;
-      }
-      if (dirty) {
-        dirty = false;
-        update();
-      }
-    };
-    raf = requestAnimationFrame(tick);
-
-    trackPointer(
-      (ev) => {
-        px = ev.clientX;
-        py = ev.clientY;
-        dirty = true;
-      },
-      () => {
-        cancelAnimationFrame(raf);
-        setMarquee(null);
-      },
-    );
+    trackMarquee(e, {
+      body,
+      scroller: () => scrollerRef.current,
+      // What was selected at the press stays selected under an additive marquee.
+      base: additive ? new Set(latest.current.selected) : new Set<string>(),
+      latest: () => latest.current,
+      show: setMarquee,
+      select: (items) => dispatch({ type: "list.marquee", id, items }),
+    });
   };
 
   // A press on an item becomes a drag once the pointer has travelled far enough; a right-button

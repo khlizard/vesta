@@ -210,3 +210,27 @@ export function isListKey(
   if (key === " ") return true;
   return key.length === 1 && !mods.ctrl && !mods.alt;
 }
+
+/**
+ * How far a list scrolls in one frame while a marquee is dragged with the pointer at (x, y).
+ * `view` is the part of the list that shows items (below the header). Nothing while the pointer
+ * is more than `edge` inside it; faster the further the pointer is past that line.
+ */
+export function edgeScroll(
+  x: number,
+  y: number,
+  view: { left: number; top: number; width: number; height: number },
+  edge: number,
+): { dx: number; dy: number } {
+  const top = view.top + edge;
+  const bottom = view.top + view.height - edge;
+  const left = view.left + edge;
+  const right = view.left + view.width - edge;
+  let dx = 0;
+  let dy = 0;
+  if (y < top) dy = -edgeScrollSpeed(top - y);
+  else if (y > bottom) dy = edgeScrollSpeed(y - bottom);
+  if (x < left) dx = -edgeScrollSpeed(left - x);
+  else if (x > right) dx = edgeScrollSpeed(x - right);
+  return { dx, dy };
+}

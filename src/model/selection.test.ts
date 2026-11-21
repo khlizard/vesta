@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   clickSelect,
   contextSelect,
+  edgeScroll,
   edgeScrollSpeed,
   isTyping,
   keyStep,
@@ -10,9 +11,9 @@ import {
   pageStep,
   prefixTarget,
   pressOnItem,
+  type Sel,
   toggleAtCursor,
   typeLetter,
-  type Sel,
 } from "./selection";
 
 const order = ["a", "b", "c", "d", "e"];
@@ -214,5 +215,27 @@ describe("edgeScrollSpeed", () => {
     expect(edgeScrollSpeed(0)).toBe(3);
     expect(edgeScrollSpeed(30)).toBe(13);
     expect(edgeScrollSpeed(1000)).toBe(40);
+  });
+});
+
+describe("edgeScroll", () => {
+  const view = { left: 100, top: 50, width: 400, height: 300 };
+
+  it("does nothing while the pointer is well inside the list", () => {
+    expect(edgeScroll(300, 200, view, 24)).toEqual({ dx: 0, dy: 0 });
+    expect(edgeScroll(124, 74, view, 24)).toEqual({ dx: 0, dy: 0 });
+    expect(edgeScroll(476, 326, view, 24)).toEqual({ dx: 0, dy: 0 });
+  });
+
+  it("scrolls towards the edge the pointer is near or past, faster further out", () => {
+    const near = edgeScroll(300, 340, view, 24);
+    const far = edgeScroll(300, 500, view, 24);
+    expect(near.dx).toBe(0);
+    expect(near.dy).toBeGreaterThan(0);
+    expect(far.dy).toBeGreaterThan(near.dy);
+    expect(edgeScroll(300, 60, view, 24).dy).toBeLessThan(0);
+    expect(edgeScroll(110, 200, view, 24)).toMatchObject({ dy: 0 });
+    expect(edgeScroll(110, 200, view, 24).dx).toBeLessThan(0);
+    expect(edgeScroll(490, 200, view, 24).dx).toBeGreaterThan(0);
   });
 });
