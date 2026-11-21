@@ -26,7 +26,8 @@ import type { MenuItem } from "../config/types";
 import { OPEN_GATE } from "../model/gate";
 import type { Tab } from "../model/tabs";
 import { DEFAULT_OPTIONS, emptyPane, getState, modeIn, setState, type PaneState } from "../state/store";
-import { dispatch, keyDown, keyUp, pointerDown, windowBlur, type KeyInput } from "./dispatch";
+import { dispatch } from "./dispatch";
+import { keyDown, keyUp, pointerDown, windowBlur, type KeyInput } from "./keys";
 
 function tab(id: string, shown = true): Tab {
   return {

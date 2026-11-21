@@ -2,7 +2,8 @@
 // plain values and hand them to the root (dispatch.ts), which decides.
 
 import { blockBrowserShortcuts } from "../commands/keys";
-import { dispatch, keyDown, keyUp, pointerDown, windowBlur, type KeyInput } from "./dispatch";
+import { dispatch } from "./dispatch";
+import { keyDown, keyUp, pointerDown, windowBlur, type KeyInput } from "./keys";
 
 /**
  * Marks, for the listeners below: the open popup menu; a button that opens and closes its menu

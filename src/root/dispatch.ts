@@ -4,26 +4,16 @@
 // arrive through `keyDown` / `keyUp` / `pointerDown` (input.ts). Each is looked at in the light
 // of the mode the window is in (model/mode.ts), then carried out with the functions of
 // `src/state/`. Views never call those themselves.
+//
+// This file: what the views report. keys.ts: keys and presses of the whole window. menus.ts:
+// the menus opened here. run.ts: carrying a decision out.
 
 import { backend } from "../api/backend";
-import { iconUrl } from "../api/urls";
 import { runItem } from "../commands/items";
-import { bindingFor } from "../commands/keys";
-import { parseCommand, runCommand } from "../commands/registry";
 import { useConfig } from "../config/store";
-import {
-  ALL_COLUMNS,
-  columnMenuLabel,
-  DEFAULT_COLUMNS,
-  moveShownColumn,
-  toggleColumn,
-  visibleColumns,
-} from "../model/columns";
-import { verbCommand } from "../model/fileOps";
-import { errorText, modsOf } from "../model/input";
-import { barItemFor, menuBarKey, menuLabel } from "../model/menu";
-import { altAloneAllowed, commandsAllowed, NO_ALT, routeKey, trackAlt, type AltPress } from "../model/mode";
-import { NO_MODS, type Mods } from "../model/navigation";
+import { moveShownColumn, visibleColumns } from "../model/columns";
+import { commandsAllowed } from "../model/mode";
+import { type Mods } from "../model/navigation";
 import { isTyping, keyStep, openTargets, pressOnItem, typeLetter, type TypeAhead } from "../model/selection";
 import * as T from "../model/tabs";
 import { stepThumbnailSize } from "../model/thumbSize";
@@ -33,10 +23,9 @@ import { closeDialog, rememberLocation } from "../state/dialogs";
 import { newItem, rename, selectedLocations } from "../state/fileActions";
 import { focusPane } from "../state/focus";
 import { clickLink, contextLink, hoverLink } from "../commands/links";
-import { setMessage } from "../state/message";
-import { goHistory, goUp, navigate, openEntries, openExternal, openInput } from "../state/navigation";
+import { goHistory, goUp, openEntries, openExternal, openInput } from "../state/navigation";
 import { setOption } from "../state/options";
-import { closePopup, MENU_OWNER, menuBarIndex, openPopup, popupOwner, type PopupItem } from "../state/popup";
+import { closePopup, openPopup, popupOwner } from "../state/popup";
 import {
   clickItem,
   jumpToPrefix,
@@ -49,108 +38,11 @@ import {
   setSelection,
   toggleCursorItem,
 } from "../state/selection";
-import { getState, modeIn, setState, updatePane } from "../state/store";
+import { getState, setState, updatePane } from "../state/store";
 import { closeTabs, setTabs, setView } from "../state/tabActions";
-import type { Point, UiEvent } from "./events";
-
-const mode = () => modeIn(getState());
-
-/** Runs something that may fail, showing the reason in the status bar. */
-function attempt(work: Promise<unknown>) {
-  work.catch((e) => setMessage(errorText(e)));
-}
-
-// ---------------------------------------------------------------- native menus and drags
-
-/** After a right-button drag the Shell may still send the click that would open a context menu. */
-const RIGHT_DRAG_TAIL_MS = 100;
-
-/** Marks the time a Shell menu or a drag has the input, so nothing else is started meanwhile. */
-async function native<T>(work: Promise<T>, tailMs = 0): Promise<T> {
-  setState({ native: true });
-  try {
-    return await work;
-  } finally {
-    if (tailMs) setTimeout(() => setState({ native: false }), tailMs);
-    else setState({ native: false });
-  }
-}
-
-/** The Shell context menu for `items` of `folder`; the verbs it leaves to the app run as commands. */
-async function shellMenu(folder: string, items: string[], at: Point) {
-  const verb = await native(backend.showContextMenu(folder, items, at.x, at.y));
-  const command = verbCommand(verb, verb === "delete" && (await backend.keyState()).shift);
-  if (command) await runCommand(command, { mods: NO_MODS });
-}
-
-// ---------------------------------------------------------------- menus
-
-function openMenuBar(index: number, byKey: boolean) {
-  const item = useConfig.getState().menu[index];
-  if (!item) return;
-  const at = getState().layout.menuBar[index];
-  if (item.children?.length && at) {
-    openPopup(item.children, at.x, at.y, `${MENU_OWNER}${index}`, !byKey);
-  } else {
-    closePopup();
-    setState({ menuBarHot: null });
-    attempt(runItem(item, NO_MODS));
-  }
-}
-
-/** Index of the menu bar item whose menu is open, or -1. */
-function openBarIndex(): number {
-  return menuBarIndex(popupOwner());
-}
-
-const barAccessKeys = () => useConfig.getState().menu.map((m) => menuLabel(m.text).accessKey);
-
-function tabMenuItems(id: string): PopupItem[] {
-  return T.tabMenu(getState().tabs, id).map((entry): PopupItem => {
-    if (!entry) return { separator: true };
-    return {
-      text: entry.text,
-      checked: entry.checked,
-      disabled: entry.disabled,
-      onSelect: () => {
-        const { state, close } = T.applyTabMenu(getState().tabs, id, entry.action);
-        setTabs(() => state);
-        if (close.length) closeTabs(close);
-      },
-    };
-  });
-}
-
-/** Header context menu: show/hide columns (docs/spec/listing.md「列のカスタマイズ」). */
-function columnMenuItems(): PopupItem[] {
-  const columns = getState().options.Columns;
-  const items: PopupItem[] = ALL_COLUMNS.map((key) => ({
-    text: columnMenuLabel(key),
-    checked: columns.includes(key),
-    disabled: key === "name",
-    onSelect: () => attempt(setOption("Columns", toggleColumn(getState().options.Columns, key))),
-  }));
-  items.push(
-    { separator: true },
-    { text: "既定に戻す(_D)", onSelect: () => attempt(setOption("Columns", [...DEFAULT_COLUMNS])) },
-  );
-  return items;
-}
-
-/** The folders above the one pane `id` shows, down from the desktop, as a menu to go to. */
-async function ancestorItems(id: string): Promise<PopupItem[]> {
-  const folder = getState().panes[id]?.folder;
-  if (!folder) return [];
-  const ancestors = await backend.folderAncestors(folder.location);
-  return ancestors.map((f, i) => ({
-    text: f.displayName,
-    literal: true,
-    iconSrc: iconUrl(f.location),
-    indent: i,
-    strong: i === ancestors.length - 1,
-    onSelect: (mods: Mods) => attempt(navigate(id, f.location, mods)),
-  }));
-}
+import type { UiEvent } from "./events";
+import { ancestorItems, columnMenuItems, openBarIndex, openMenuBar, tabMenuItems } from "./menus";
+import { attempt, mode, native, RIGHT_DRAG_TAIL_MS, shellMenu } from "./run";
 
 // ---------------------------------------------------------------- address bar memory
 
@@ -465,115 +357,4 @@ export function dispatch(e: UiEvent): void {
       closeDialog();
       return;
   }
-}
-
-// ---------------------------------------------------------------- window input
-
-/** A key press as the root needs it (input.ts fills it in from the DOM event). */
-export interface KeyInput {
-  key: string;
-  code: string;
-  ctrlKey: boolean;
-  shiftKey: boolean;
-  altKey: boolean;
-  metaKey: boolean;
-  repeat: boolean;
-  /** The focus is in a text field. */
-  inText: boolean;
-  /** The focus is in a pane's list (keyboard-folder.xml applies). */
-  inList: boolean;
-  /** Where a menu bound to the key opens: the middle of the list with the focus, or of the window. */
-  at: Point;
-}
-
-let alt: AltPress = NO_ALT;
-
-/** A key went down anywhere in the window. True when the root has dealt with it (nothing else should). */
-export function keyDown(k: KeyInput): boolean {
-  alt = trackAlt(alt, { type: "keydown", key: k.key, repeat: k.repeat }).press;
-  const m = mode();
-
-  // Alt+letter opens that menu of the menu bar, from wherever the focus is.
-  if (k.altKey && !k.ctrlKey && altAloneAllowed(m) && getState().options.MenuVisible) {
-    const i = barItemFor(barAccessKeys(), k.key, false);
-    if (i >= 0) {
-      openMenuBar(i, true);
-      return true;
-    }
-  }
-
-  switch (routeKey(m, k.inText)) {
-    case "dialog":
-      // The only dialog without an OK button is closed by Enter as well.
-      if (k.key === "Escape" || (k.key === "Enter" && getState().dialog?.kind === "about")) {
-        closeDialog();
-        return true;
-      }
-      return false;
-    case "menubar": {
-      const hot = getState().menuBarHot ?? 0;
-      const r = menuBarKey(hot, barAccessKeys(), k.key, k.ctrlKey);
-      if (!r) return false;
-      if ("hot" in r) setState({ menuBarHot: r.hot });
-      else if ("open" in r) openMenuBar(r.open, true);
-      else setState({ menuBarHot: null });
-      return true;
-    }
-    case "bindings": {
-      const binding = bindingFor(k, k.inList);
-      if (!binding) return false;
-      const item = binding.item;
-      if (item.children?.length) openPopup(item.children, k.at.x, k.at.y);
-      else attempt(runItem(item, modsOf(k), k.repeat));
-      return true;
-    }
-    case "text": {
-      // The field has the keys. One binding still runs while a name is being edited: the rename
-      // command itself, which then changes the part of the name that is selected.
-      if (m.kind !== "edit" || m.field !== "rename") return false;
-      const item = bindingFor(k, true)?.item;
-      if (!item?.command || parseCommand(item.command).name !== "Current.Rename") return false;
-      attempt(runItem(item, modsOf(k), k.repeat));
-      return true;
-    }
-    default:
-      // "popup": the menu with the focus handles its keys. "none": Windows does.
-      return false;
-  }
-}
-
-/** A key came up. True when it was Alt pressed alone and the root acted on it. */
-export function keyUp(key: string): boolean {
-  const r = trackAlt(alt, { type: "keyup", key });
-  alt = r.press;
-  if (!r.alone || !altAloneAllowed(mode())) return false;
-  const s = getState();
-  if (!s.options.MenuVisible) {
-    // A hidden menu bar could otherwise only be brought back by editing config.json.
-    attempt(setOption("MenuVisible", true));
-  } else if (s.popup) {
-    closePopup();
-  } else {
-    setState({ menuBarHot: s.menuBarHot === null ? 0 : null });
-  }
-  return true;
-}
-
-/**
- * A pointer button went down anywhere in the window. `inPopup`: on the open popup menu;
- * `onAnchor`: on a button that opens and closes its menu itself (a menu bar item, the ▼ of an
- * address bar).
- */
-export function pointerDown(inPopup: boolean, onAnchor: boolean) {
-  alt = trackAlt(alt, { type: "pointerdown" }).press;
-  const s = getState();
-  if (s.menuBarHot !== null) setState({ menuBarHot: null });
-  if (s.popup && !inPopup && !onAnchor) closePopup();
-}
-
-/** The window lost the focus: an open menu would be left hanging over other windows. */
-export function windowBlur() {
-  alt = NO_ALT;
-  closePopup();
-  if (getState().menuBarHot !== null) setState({ menuBarHot: null });
 }
