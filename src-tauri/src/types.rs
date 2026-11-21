@@ -101,19 +101,43 @@ pub struct Modifiers {
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum FileOp {
-    Copy { sources: Vec<String>, dest: String },
-    Move { sources: Vec<String>, dest: String },
+    Copy {
+        sources: Vec<String>,
+        dest: String,
+    },
+    Move {
+        sources: Vec<String>,
+        dest: String,
+    },
     /// Create shortcuts to `sources` in `dest`.
-    Link { sources: Vec<String>, dest: String },
+    Link {
+        sources: Vec<String>,
+        dest: String,
+    },
     /// Copy into the same folder ("- コピー" names).
-    Duplicate { sources: Vec<String> },
+    Duplicate {
+        sources: Vec<String>,
+    },
     /// Send to the Recycle Bin.
-    Recycle { paths: Vec<String> },
+    Recycle {
+        paths: Vec<String>,
+    },
     /// Delete permanently.
-    Delete { paths: Vec<String> },
-    Rename { path: String, new_name: String },
-    NewFolder { parent: String, name: String },
-    NewFile { parent: String, name: String },
+    Delete {
+        paths: Vec<String>,
+    },
+    Rename {
+        path: String,
+        new_name: String,
+    },
+    NewFolder {
+        parent: String,
+        name: String,
+    },
+    NewFile {
+        parent: String,
+        name: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Default, PartialEq, Eq)]

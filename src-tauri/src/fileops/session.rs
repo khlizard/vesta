@@ -5,9 +5,8 @@ use std::sync::{Arc, Mutex};
 
 use windows::Win32::System::Com::{CLSCTX_ALL, CoCreateInstance};
 use windows::Win32::UI::Shell::{
-    COPYENGINE_S_USER_IGNORED, FILEOPERATION_FLAGS, FOF_NOCONFIRMATION, FOF_NOCONFIRMMKDIR, FOF_NOERRORUI,
-    FOF_SILENT, FileOperation, IFileOperation, IFileOperationProgressSink, IFileOperationProgressSink_Impl,
-    IShellItem,
+    COPYENGINE_S_USER_IGNORED, FILEOPERATION_FLAGS, FOF_NOCONFIRMATION, FOF_NOCONFIRMMKDIR, FOF_NOERRORUI, FOF_SILENT,
+    FileOperation, IFileOperation, IFileOperationProgressSink, IFileOperationProgressSink_Impl, IShellItem,
 };
 use windows::core::{HRESULT, PCWSTR, Ref, implement};
 
@@ -57,12 +56,15 @@ struct Sink {
 
 impl Sink {
     fn push(&self, kind: Kind, src: Option<&IShellItem>, new: Option<&IShellItem>, hr: HRESULT) {
-        let source = src
-            .and_then(|i| parsing_name(i).ok())
-            .unwrap_or_default();
+        let source = src.and_then(|i| parsing_name(i).ok()).unwrap_or_default();
         // For deletes this is the `$R...` path of the item in the Recycle Bin.
         let created = new.and_then(|n| parsing_name(n).ok());
-        com::lock(&self.events).push(Event { kind, source, created, hr });
+        com::lock(&self.events).push(Event {
+            kind,
+            source,
+            created,
+            hr,
+        });
     }
 }
 
@@ -88,13 +90,7 @@ impl IFileOperationProgressSink_Impl for Sink_Impl {
         self.push(Kind::Rename, item.as_ref(), new.as_ref(), hr);
         Ok(())
     }
-    fn PreMoveItem(
-        &self,
-        _f: u32,
-        _i: Ref<IShellItem>,
-        _d: Ref<IShellItem>,
-        _n: &PCWSTR,
-    ) -> windows::core::Result<()> {
+    fn PreMoveItem(&self, _f: u32, _i: Ref<IShellItem>, _d: Ref<IShellItem>, _n: &PCWSTR) -> windows::core::Result<()> {
         Ok(())
     }
     fn PostMoveItem(
@@ -109,13 +105,7 @@ impl IFileOperationProgressSink_Impl for Sink_Impl {
         self.push(Kind::Move, item.as_ref(), new.as_ref(), hr);
         Ok(())
     }
-    fn PreCopyItem(
-        &self,
-        _f: u32,
-        _i: Ref<IShellItem>,
-        _d: Ref<IShellItem>,
-        _n: &PCWSTR,
-    ) -> windows::core::Result<()> {
+    fn PreCopyItem(&self, _f: u32, _i: Ref<IShellItem>, _d: Ref<IShellItem>, _n: &PCWSTR) -> windows::core::Result<()> {
         Ok(())
     }
     fn PostCopyItem(
@@ -191,7 +181,8 @@ impl Outcome {
         // own parents there (the cost follows the depth of the path, not the number of files).
         let done: Vec<&Event> = self.events.iter().filter(|e| e.kind == kind && e.done()).collect();
         let sources: std::collections::HashSet<String> = done.iter().map(|e| crate::path::key(&e.source)).collect();
-        done.into_iter().filter(move |e| !crate::path::is_below_any(&e.source, &sources))
+        done.into_iter()
+            .filter(move |e| !crate::path::is_below_any(&e.source, &sources))
     }
 
     pub(super) fn any_ok(&self) -> bool {
@@ -199,7 +190,12 @@ impl Outcome {
     }
 
     pub(super) fn result(&self, created: Vec<String>) -> OpResult {
-        OpResult { created, aborted: self.aborted, done: self.any_ok(), ..Default::default() }
+        OpResult {
+            created,
+            aborted: self.aborted,
+            done: self.any_ok(),
+            ..Default::default()
+        }
     }
 
     /// Error when the operation failed for every item (cancelling is not an error).
@@ -235,12 +231,7 @@ fn hr_message(hr: HRESULT) -> String {
 
 /// Creates an IFileOperation with `flags`, lets `f` queue operations, performs them and
 /// returns what the progress sink saw.
-pub(super) fn run_session<F>(
-    owner: Hwnd,
-    flags: FILEOPERATION_FLAGS,
-    silent: bool,
-    f: F,
-) -> Result<Outcome, String>
+pub(super) fn run_session<F>(owner: Hwnd, flags: FILEOPERATION_FLAGS, silent: bool, f: F) -> Result<Outcome, String>
 where
     F: FnOnce(&IFileOperation) -> windows::core::Result<()>,
 {
@@ -256,7 +247,10 @@ where
         op.SetOperationFlags(fl).map_err(err)?;
 
         let events: Events = Arc::new(Mutex::new(Vec::new()));
-        let sink: IFileOperationProgressSink = Sink { events: Arc::clone(&events) }.into();
+        let sink: IFileOperationProgressSink = Sink {
+            events: Arc::clone(&events),
+        }
+        .into();
         let cookie = op.Advise(&sink).map_err(err)?;
 
         let queued = f(&op);
@@ -268,7 +262,11 @@ where
         let _ = op.Unadvise(cookie);
 
         let events = std::mem::take(&mut *com::lock(&events));
-        let mut out = Outcome { events, aborted, perform_err: None };
+        let mut out = Outcome {
+            events,
+            aborted,
+            perform_err: None,
+        };
         if let Err(e) = perform {
             if e.code().0 == E_CANCELLED {
                 out.aborted = true;
@@ -286,11 +284,20 @@ mod tests {
     use windows::Win32::Foundation::{E_ACCESSDENIED, S_OK};
 
     fn event(kind: Kind, source: &str, created: Option<&str>, hr: HRESULT) -> Event {
-        Event { kind, source: source.into(), created: created.map(Into::into), hr }
+        Event {
+            kind,
+            source: source.into(),
+            created: created.map(Into::into),
+            hr,
+        }
     }
 
     fn outcome(events: Vec<Event>) -> Outcome {
-        Outcome { events, aborted: false, perform_err: None }
+        Outcome {
+            events,
+            aborted: false,
+            perform_err: None,
+        }
     }
 
     #[test]
@@ -299,7 +306,12 @@ mod tests {
             event(Kind::Copy, r"C:\src\dir", Some(r"C:\dst\dir"), S_OK),
             // Items inside a folder that was copied itself are reported too, and left out.
             event(Kind::Copy, r"C:\src\dir\in.txt", Some(r"C:\dst\dir\in.txt"), S_OK),
-            event(Kind::Copy, r"C:\src\DIR\sub\deep.txt", Some(r"C:\dst\dir\sub\deep.txt"), S_OK),
+            event(
+                Kind::Copy,
+                r"C:\src\DIR\sub\deep.txt",
+                Some(r"C:\dst\dir\sub\deep.txt"),
+                S_OK,
+            ),
             // A name that only starts like the folder's is another item.
             event(Kind::Copy, r"C:\src\dir2", Some(r"C:\dst\dir2"), S_OK),
             event(Kind::Copy, r"C:\src\skipped.txt", None, COPYENGINE_S_USER_IGNORED),
@@ -328,7 +340,11 @@ mod tests {
         let copied: Vec<&str> = out.ok_events(Kind::Copy).map(|e| e.source.as_str()).collect();
         assert_eq!(copied, vec![r"C:\src\big", r"C:\src\other.txt"]);
         // Comparing every pair took minutes at this size.
-        assert!(started.elapsed() < std::time::Duration::from_secs(5), "{:?}", started.elapsed());
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(5),
+            "{:?}",
+            started.elapsed()
+        );
     }
 
     #[test]
@@ -371,7 +387,10 @@ mod tests {
 
         // Nothing happened at all, or everything was skipped by the user.
         assert_eq!(outcome(Vec::new()).check(), Ok(()));
-        assert_eq!(outcome(Vec::new()).require_some(), Err("対象の項目がありませんでした".to_string()));
+        assert_eq!(
+            outcome(Vec::new()).require_some(),
+            Err("対象の項目がありませんでした".to_string())
+        );
         let skipped = outcome(vec![event(Kind::Copy, "a", None, COPYENGINE_S_USER_IGNORED)]);
         assert!(!skipped.any_ok());
         assert_eq!(skipped.check(), Ok(()));

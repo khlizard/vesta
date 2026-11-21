@@ -40,5 +40,7 @@ export async function exclusive<T>(work: () => Promise<T>): Promise<T | undefine
  */
 export function mayClose(ask: (message: string) => boolean = (m) => window.confirm(m)): boolean {
   if (!getState().gate.running) return true;
-  return ask("ファイルの操作（コピー・移動・削除）がまだ終わっていません。\n終了すると途中で止まります。終了しますか？");
+  return ask(
+    "ファイルの操作（コピー・移動・削除）がまだ終わっていません。\n終了すると途中で止まります。終了しますか？",
+  );
 }

@@ -71,7 +71,14 @@ describe("marqueeHits", () => {
   const itemBox = (col: number) => ({ left: col * 100, width: 100 });
   it("selects intersecting cells", () => {
     expect(marqueeHits(layout, itemBox, normalizeBox(150, 10, 250, 20))).toEqual(["C:\\f1", "C:\\f2"]);
-    expect(marqueeHits(layout, itemBox, normalizeBox(250, 80, 50, 40))).toEqual(["C:\\f0", "C:\\f1", "C:\\f2", "C:\\f3", "C:\\f4", "C:\\f5"]);
+    expect(marqueeHits(layout, itemBox, normalizeBox(250, 80, 50, 40))).toEqual([
+      "C:\\f0",
+      "C:\\f1",
+      "C:\\f2",
+      "C:\\f3",
+      "C:\\f4",
+      "C:\\f5",
+    ]);
   });
   it("selects nothing in empty space", () => {
     expect(marqueeHits(layout, itemBox, normalizeBox(400, 10, 500, 90))).toEqual([]);

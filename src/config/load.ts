@@ -97,7 +97,10 @@ export async function reloadUiConfig() {
   // At startup unknown commands are only logged (settings copied from Avesta have many).
   // After a reload the user has just edited a file, so a mistyped name is worth showing.
   if (unknown.length) {
-    setMessage(`設定ファイルを読み直しました。使えないコマンド ${unknown.length} 件：${unknown.slice(0, 3).join("、")}${unknown.length > 3 ? " ほか" : ""}`, 8000);
+    setMessage(
+      `設定ファイルを読み直しました。使えないコマンド ${unknown.length} 件：${unknown.slice(0, 3).join("、")}${unknown.length > 3 ? " ほか" : ""}`,
+      8000,
+    );
   } else {
     setMessage("設定ファイルを読み直しました", 2000);
   }

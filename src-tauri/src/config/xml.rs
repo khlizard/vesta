@@ -42,10 +42,17 @@ fn start_node(e: &BytesStart<'_>) -> Result<Node, String> {
     for a in e.attributes().with_checks(false) {
         let a = a.map_err(|e| e.to_string())?;
         let key = a.key.as_ref().to_string();
-        let value = a.normalized_value(quick_xml::XmlVersion::Implicit1_0).map_err(|e| e.to_string())?.into_owned();
+        let value = a
+            .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+            .map_err(|e| e.to_string())?
+            .into_owned();
         attrs.push((key, value));
     }
-    Ok(Node { name, attrs, children: Vec::new() })
+    Ok(Node {
+        name,
+        attrs,
+        children: Vec::new(),
+    })
 }
 
 /// Builds an element tree; comments, PIs, doctype and text are ignored.
@@ -55,7 +62,9 @@ fn parse_tree(text: &str) -> Result<Node, String> {
     let mut root: Option<Node> = None;
     loop {
         let pos = reader.buffer_position();
-        let ev = reader.read_event().map_err(|e| format!("XML error at byte {pos}: {e}"))?;
+        let ev = reader
+            .read_event()
+            .map_err(|e| format!("XML error at byte {pos}: {e}"))?;
         match ev {
             Event::Start(e) => stack.push(start_node(&e)?),
             Event::Empty(e) => {
@@ -123,7 +132,12 @@ pub fn parse_menu(text: &str) -> Result<Vec<MenuItem>, String> {
     if root.name != "menu" {
         return Err(format!("root element is <{}>, expected <menu>", root.name));
     }
-    Ok(root.children.iter().filter(|c| c.name == "menu").map(|c| item_of(c, true)).collect())
+    Ok(root
+        .children
+        .iter()
+        .filter(|c| c.name == "menu")
+        .map(|c| item_of(c, true))
+        .collect())
 }
 
 /// Parses a `<keyboard>` file (keyboard-form / keyboard-folder).
@@ -139,7 +153,11 @@ pub fn parse_keyboard(text: &str) -> Result<Vec<KeyBinding>, String> {
         .filter_map(|b| {
             let key = b.attr("key")?.to_string();
             let modifier = b.attr("modifier").unwrap_or("").to_string();
-            Some(KeyBinding { modifier, key, item: item_of(b, false) })
+            Some(KeyBinding {
+                modifier,
+                key,
+                item: item_of(b, false),
+            })
         })
         .collect())
 }

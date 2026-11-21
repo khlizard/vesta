@@ -4,7 +4,11 @@ import type { TabsState } from "./tabs";
 
 describe("placeholderFolder", () => {
   it("names the tab after the last part of a file-system path", () => {
-    expect(placeholderFolder("D:\\work\\src\\")).toEqual({ location: "D:\\work\\src\\", displayName: "src", fsPath: "D:\\work\\src\\" });
+    expect(placeholderFolder("D:\\work\\src\\")).toEqual({
+      location: "D:\\work\\src\\",
+      displayName: "src",
+      fsPath: "D:\\work\\src\\",
+    });
     expect(placeholderFolder("\\\\nas\\share").displayName).toBe("share");
     expect(placeholderFolder("\\\\nas\\share").fsPath).toBe("\\\\nas\\share");
   });

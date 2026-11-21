@@ -16,11 +16,11 @@ use windows::Win32::UI::Shell::IShellItem;
 use crate::com::{self, display_name, err};
 use crate::types::{FolderInfo, Resolved};
 
-pub use alias::set_avesta_dir;
 pub(crate) use alias::expand_env;
+pub use alias::set_avesta_dir;
 pub use item::{folder_attrs, item_for, place_of};
-pub use link::link_folder;
 use item::{is_filesystem, is_folder, is_root, location_of, root_item};
+pub use link::link_folder;
 use sync_root::sync_root_of;
 
 /// Location string of the virtual Shell namespace root.
@@ -51,9 +51,13 @@ pub fn resolve(input: &str) -> Result<Resolved, String> {
     let s = alias::normalize(input)?;
     let item = item_for(&s).map_err(|_| format!("場所が見つかりません: {}", input.trim()))?;
     if is_folder(&item) {
-        Ok(Resolved::Folder { folder: info_from_item(&item)? })
+        Ok(Resolved::Folder {
+            folder: info_from_item(&item)?,
+        })
     } else {
-        Ok(Resolved::File { location: location_of(&item)? })
+        Ok(Resolved::File {
+            location: location_of(&item)?,
+        })
     }
 }
 
@@ -78,7 +82,14 @@ pub fn info_from_item(item: &IShellItem) -> Result<FolderInfo, String> {
     let name = display_name(item).map_err(err)?;
     let sync_root_path = fs_path.as_deref().and_then(sync_root_of);
     let sync_root = sync_root_path.is_some();
-    Ok(FolderInfo { location, display_name: name, fs_path, parent, sync_root, sync_root_path })
+    Ok(FolderInfo {
+        location,
+        display_name: name,
+        fs_path,
+        parent,
+        sync_root,
+        sync_root_path,
+    })
 }
 
 /// Ancestors from the Desktop down to `location` itself (inclusive), for the address bar dropdown.
@@ -157,7 +168,11 @@ mod tests {
             std::fs::canonicalize(&tmp).unwrap()
         );
         assert_eq!(folder(resolve("  C:  ")).location, "C:\\");
-        assert!(folder(resolve("C:/Windows")).location.eq_ignore_ascii_case("C:\\Windows"));
+        assert!(
+            folder(resolve("C:/Windows"))
+                .location
+                .eq_ignore_ascii_case("C:\\Windows")
+        );
     }
 
     #[test]

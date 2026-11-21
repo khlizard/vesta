@@ -26,7 +26,11 @@ function parts(src: LabelSource): string[] | null {
   if (!src.fsPath) return null;
   const p = src.fsPath.replace(/\\+$/, "");
   if (p.startsWith("\\\\")) {
-    return p.slice(2).split("\\").filter(Boolean).map((s, i) => (i === 0 ? `\\\\${s}` : s));
+    return p
+      .slice(2)
+      .split("\\")
+      .filter(Boolean)
+      .map((s, i) => (i === 0 ? `\\\\${s}` : s));
   }
   return p.split("\\").filter(Boolean);
 }
@@ -48,9 +52,7 @@ export function computeLabels(tabs: LabelSource[], distinguish: boolean): Map<st
       result.set(t.id, ps[ps.length - 1]);
       continue;
     }
-    const others = split.filter(
-      (o) => o.t.id !== t.id && o.ps && !sameLocation(o.t.location, t.location),
-    );
+    const others = split.filter((o) => o.t.id !== t.id && o.ps && !sameLocation(o.t.location, t.location));
     let n = 1;
     while (n < ps.length) {
       const mine = suffix(ps, n).toLowerCase();

@@ -4,9 +4,7 @@
 
 use windows::Win32::Foundation::HANDLE;
 use windows::Win32::System::DataExchange::{EmptyClipboard, SetClipboardData};
-use windows::Win32::System::Ole::{
-    CF_HDROP, CF_UNICODETEXT, DROPEFFECT_COPY, DROPEFFECT_MOVE, OleGetClipboard,
-};
+use windows::Win32::System::Ole::{CF_HDROP, CF_UNICODETEXT, DROPEFFECT_COPY, DROPEFFECT_MOVE, OleGetClipboard};
 use windows::core::w;
 
 use crate::com::{self, OpenClipboardGuard, err};
@@ -59,9 +57,7 @@ fn retry_busy<T>(mut f: impl FnMut() -> windows::core::Result<T>) -> windows::co
 /// Explorer does nothing.
 fn set_files_sync(paths: &[String], cut: bool) -> Result<(), String> {
     let data = dataobject::data_object(paths).map_err(|e| e.with_path("コピーするファイルがありません"))?;
-    let copy_of = |format: u16| -> Result<Global, String> {
-        Global::copy_of(&dataobject::global_data(&data, format)?)
-    };
+    let copy_of = |format: u16| -> Result<Global, String> { Global::copy_of(&dataobject::global_data(&data, format)?) };
     let files = copy_of(CF_HDROP.0)?;
     // Explorer pastes from CF_HDROP alone; the id list is what it prefers when it is there
     // (items without a file system path have nothing else).
@@ -151,7 +147,9 @@ mod tests {
         std::fs::write(&f, "x").unwrap();
         let path = f.to_str().unwrap().to_string();
         let copied = path.clone();
-        com::clip_pool().run_blocking(move || set_files_sync(&[copied], false).unwrap()).unwrap();
+        com::clip_pool()
+            .run_blocking(move || set_files_sync(&[copied], false).unwrap())
+            .unwrap();
         let out = std::process::Command::new("powershell")
             .args([
                 "-NoProfile",

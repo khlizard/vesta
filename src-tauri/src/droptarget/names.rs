@@ -34,7 +34,11 @@ pub(super) fn descriptor_files(bytes: &[u8]) -> Vec<VirtualFile> {
     const FD_FILESIZE: u32 = 0x40;
     const FILE_ATTRIBUTE_DIRECTORY: u32 = 0x10;
 
-    let u32_at = |at: usize| bytes.get(at..at + 4).map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]));
+    let u32_at = |at: usize| {
+        bytes
+            .get(at..at + 4)
+            .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+    };
     let Some(count) = u32_at(0) else { return Vec::new() };
     let count = (count as usize).min(bytes.len().saturating_sub(4) / RECORD);
     (0..count)
@@ -84,7 +88,11 @@ pub(super) fn safe_name(raw: &str) -> String {
     // Cutting may leave a space or a period at the end, which Windows would drop by itself.
     let name = format!("{stem}{ext}");
     let name = name.trim_end_matches([' ', '.']);
-    if name.is_empty() { "download".to_string() } else { name.to_string() }
+    if name.is_empty() {
+        "download".to_string()
+    } else {
+        name.to_string()
+    }
 }
 
 /// The start of `s` that fits in `max` UTF-16 units, without splitting a character.
@@ -124,7 +132,10 @@ pub(super) fn url_shortcut(url: &str) -> Option<(String, String)> {
     if host.is_empty() {
         return None;
     }
-    Some((safe_name(&format!("{host}.url")), format!("[InternetShortcut]\r\nURL={url}\r\n")))
+    Some((
+        safe_name(&format!("{host}.url")),
+        format!("[InternetShortcut]\r\nURL={url}\r\n"),
+    ))
 }
 
 /// A FILEGROUPDESCRIPTORW block for tests: (name, flags, attributes, size) of each file.
@@ -155,9 +166,21 @@ mod tests {
         assert_eq!(
             descriptor_files(&bytes),
             vec![
-                VirtualFile { name: "画像.png".into(), directory: false, size: Some(5) },
-                VirtualFile { name: "sub".into(), directory: true, size: None },
-                VirtualFile { name: "b.txt".into(), directory: false, size: None },
+                VirtualFile {
+                    name: "画像.png".into(),
+                    directory: false,
+                    size: Some(5)
+                },
+                VirtualFile {
+                    name: "sub".into(),
+                    directory: true,
+                    size: None
+                },
+                VirtualFile {
+                    name: "b.txt".into(),
+                    directory: false,
+                    size: None
+                },
             ]
         );
     }
@@ -222,8 +245,17 @@ mod tests {
 
     #[test]
     fn distinct_names_numbers_repeats() {
-        let names = vec!["a.png".to_string(), "A.PNG".to_string(), "a.png".to_string(), "b".to_string(), "b".to_string()];
-        assert_eq!(distinct_names(names), vec!["a.png", "A (2).PNG", "a (3).png", "b", "b (2)"]);
+        let names = vec![
+            "a.png".to_string(),
+            "A.PNG".to_string(),
+            "a.png".to_string(),
+            "b".to_string(),
+            "b".to_string(),
+        ];
+        assert_eq!(
+            distinct_names(names),
+            vec!["a.png", "A (2).PNG", "a (3).png", "b", "b (2)"]
+        );
     }
 
     #[test]
@@ -233,7 +265,10 @@ mod tests {
         assert_eq!(text, "[InternetShortcut]\r\nURL=https://example.com/a/b?c=1\r\n");
         assert_eq!(url_shortcut("HTTP://Example.com:8080/").unwrap().0, "example.com.url");
         // Only the first line: nothing else may be written into the shortcut file.
-        assert_eq!(url_shortcut("https://a.example/x\r\nIconFile=evil").unwrap().1, "[InternetShortcut]\r\nURL=https://a.example/x\r\n");
+        assert_eq!(
+            url_shortcut("https://a.example/x\r\nIconFile=evil").unwrap().1,
+            "[InternetShortcut]\r\nURL=https://a.example/x\r\n"
+        );
         assert!(url_shortcut("file:///C:/Windows/notepad.exe").is_none());
         assert!(url_shortcut("javascript:alert(1)").is_none());
         assert!(url_shortcut("https://").is_none());

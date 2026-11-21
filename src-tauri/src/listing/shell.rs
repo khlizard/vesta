@@ -1,14 +1,11 @@
 //! Virtual folders (This PC, Recycle Bin, Network, `\\server`, Desktop): IEnumShellItems.
 
-use windows::core::Interface;
 use windows::Win32::Storage::EnhancedStorage::{
-    PKEY_DateAccessed, PKEY_DateCreated, PKEY_DateModified, PKEY_FileAttributes, PKEY_ItemTypeText,
-    PKEY_Size,
+    PKEY_DateAccessed, PKEY_DateCreated, PKEY_DateModified, PKEY_FileAttributes, PKEY_ItemTypeText, PKEY_Size,
 };
-use windows::Win32::System::SystemServices::{
-    SFGAO_FILESYSTEM, SFGAO_FOLDER, SFGAO_HIDDEN, SFGAO_LINK, SFGAO_STREAM,
-};
+use windows::Win32::System::SystemServices::{SFGAO_FILESYSTEM, SFGAO_FOLDER, SFGAO_HIDDEN, SFGAO_LINK, SFGAO_STREAM};
 use windows::Win32::UI::Shell::{BHID_EnumItems, IEnumShellItems, IShellItem, IShellItem2};
+use windows::core::Interface;
 
 use super::fs::filetime_to_unix_ms;
 use crate::com::{display_name, err, take_cotaskmem_string};
@@ -64,7 +61,11 @@ fn entry_of(item: &IShellItem, show_hidden: bool) -> Option<Entry> {
         if !is_folder {
             size = unsafe { i2.GetUInt64(&PKEY_Size) }.ok();
         }
-        let time = |key| unsafe { i2.GetFileTime(key) }.ok().and_then(|ft| filetime_to_unix_ms(&ft));
+        let time = |key| {
+            unsafe { i2.GetFileTime(key) }
+                .ok()
+                .and_then(|ft| filetime_to_unix_ms(&ft))
+        };
         modified = time(&PKEY_DateModified);
         created = time(&PKEY_DateCreated);
         accessed = time(&PKEY_DateAccessed);

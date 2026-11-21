@@ -54,7 +54,14 @@ export function buildLayout(
   };
   if (ord.groups) {
     for (const g of ord.groups) {
-      rows.push({ kind: "group", key: g.group.key, label: g.group.label, count: g.entries.length, top, height: groupHeight });
+      rows.push({
+        kind: "group",
+        key: g.group.key,
+        label: g.group.label,
+        count: g.entries.length,
+        top,
+        height: groupHeight,
+      });
       top += groupHeight;
       addItems(g.entries);
     }

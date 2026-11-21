@@ -1,14 +1,6 @@
 // How a folder is opened. Spec: docs/spec/navigation.md
 
-export type Action =
-  | "goto"
-  | "gotoAlways"
-  | "open"
-  | "append"
-  | "reserve"
-  | "replace"
-  | "switch"
-  | "cancel";
+export type Action = "goto" | "gotoAlways" | "open" | "append" | "reserve" | "replace" | "switch" | "cancel";
 
 export interface Mods {
   ctrl: boolean;

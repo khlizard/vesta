@@ -23,7 +23,12 @@ function ToolButton({ b }: { b: ToolButtonView }) {
     ) : b.content === "text" ? (
       <span className="tb-text">{b.text}</span>
     ) : (
-      <Ellipsis className={b.enabled ? "cmd-icon" : "cmd-icon disabled"} size={24} strokeWidth={1.75} aria-hidden="true" />
+      <Ellipsis
+        className={b.enabled ? "cmd-icon" : "cmd-icon disabled"}
+        size={24}
+        strokeWidth={1.75}
+        aria-hidden="true"
+      />
     );
 
   if (b.kind === "drop") {
@@ -64,7 +69,9 @@ export function ToolBar() {
   return (
     // The list keeps the keyboard focus when a button is pressed.
     <div className="toolbar" onMouseDown={(e) => e.preventDefault()}>
-      {entries.map((b, i) => (b.kind === "separator" ? <div key={i} className="tb-sep" /> : <ToolButton key={i} b={b} />))}
+      {entries.map((b, i) =>
+        b.kind === "separator" ? <div key={i} className="tb-sep" /> : <ToolButton key={i} b={b} />,
+      )}
     </div>
   );
 }

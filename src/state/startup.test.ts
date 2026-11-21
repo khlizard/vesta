@@ -21,7 +21,16 @@ import { setTabs } from "./tabActions";
 import { emptyPane, getState, setState } from "./store";
 
 function tab(id: string, shown: boolean): Tab {
-  return { id, location: `C:\\${id}`, displayName: id, fsPath: `C:\\${id}`, shown, locked: false, back: [], forward: [] };
+  return {
+    id,
+    location: `C:\\${id}`,
+    displayName: id,
+    fsPath: `C:\\${id}`,
+    shown,
+    locked: false,
+    back: [],
+    forward: [],
+  };
 }
 
 function loadedPane(id: string) {

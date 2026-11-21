@@ -31,7 +31,18 @@ function openFolder(parent: string | null) {
   const folder = { location: "C:\\a", displayName: "a", fsPath: "C:\\a", parent } as FolderInfo;
   setState({
     tabs: {
-      tabs: [{ id: "a", location: "C:\\a", displayName: "a", fsPath: "C:\\a", shown: true, locked: false, back: [], forward: [] }],
+      tabs: [
+        {
+          id: "a",
+          location: "C:\\a",
+          displayName: "a",
+          fsPath: "C:\\a",
+          shown: true,
+          locked: false,
+          back: [],
+          forward: [],
+        },
+      ],
       currentId: "a",
     },
     panes: { a: { ...emptyPane(), folder } },
@@ -59,7 +70,10 @@ describe("toolBarView", () => {
   });
 
   it("asks the command whether a button can be pressed", () => {
-    setTool([{ text: "up", command: "Current.Go.Up" }, { text: "?", command: "No.Such.Command" }]);
+    setTool([
+      { text: "up", command: "Current.Go.Up" },
+      { text: "?", command: "No.Such.Command" },
+    ]);
     openFolder(null);
     expect(button(0).enabled).toBe(false);
     expect(button(1).enabled).toBe(false);
@@ -68,7 +82,10 @@ describe("toolBarView", () => {
   });
 
   it("does not make a split button usable because it has a drop-down", () => {
-    setTool([{ text: "up", command: "Current.Go.Up", children: [{ text: "x" }] }, { text: "drop", children: [{ text: "x" }] }]);
+    setTool([
+      { text: "up", command: "Current.Go.Up", children: [{ text: "x" }] },
+      { text: "drop", children: [{ text: "x" }] },
+    ]);
     openFolder(null);
     expect(button(0).enabled).toBe(false);
     expect(button(1).enabled).toBe(true);
@@ -111,7 +128,10 @@ describe("toolBarView", () => {
   });
 
   it("returns the same object while nothing it shows changes", () => {
-    setTool([{ text: "up", command: "Current.Go.Up" }, { text: "mru", command: "File.MRU" }]);
+    setTool([
+      { text: "up", command: "Current.Go.Up" },
+      { text: "mru", command: "File.MRU" },
+    ]);
     openFolder("C:\\");
     setState({ mru: ["C:\\b"] });
     const before = view();

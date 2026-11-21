@@ -20,7 +20,14 @@ export function closeTabs(ids: string[]) {
     delete panes[t.id];
     forgetPane(t.id);
   }
-  setState((s) => ({ tabs: state, panes, mru: addToMru(s.mru, closed.map((t) => t.location)) }));
+  setState((s) => ({
+    tabs: state,
+    panes,
+    mru: addToMru(
+      s.mru,
+      closed.map((t) => t.location),
+    ),
+  }));
 }
 
 export function closeTarget(target: T.CloseTarget) {

@@ -30,11 +30,18 @@ pub struct Debouncer {
 
 impl Debouncer {
     pub fn new(quiet: Duration, max_wait: Duration) -> Self {
-        Self { quiet, max_wait, pending: HashMap::new() }
+        Self {
+            quiet,
+            max_wait,
+            pending: HashMap::new(),
+        }
     }
 
     pub fn touch(&mut self, location: &str, now: Instant) {
-        self.pending.entry(location.to_string()).and_modify(|e| e.1 = now).or_insert((now, now));
+        self.pending
+            .entry(location.to_string())
+            .and_modify(|e| e.1 = now)
+            .or_insert((now, now));
     }
 
     fn due_at(&self, first: Instant, last: Instant) -> Instant {
@@ -106,7 +113,8 @@ impl Shared {
 
     fn watch(&self, path: &Path) -> bool {
         let mut w = lock(&self.watcher);
-        w.as_mut().is_some_and(|w| w.watch(path, RecursiveMode::NonRecursive).is_ok())
+        w.as_mut()
+            .is_some_and(|w| w.watch(path, RecursiveMode::NonRecursive).is_ok())
     }
 
     fn unwatch(&self, path: &Path) {
@@ -178,11 +186,18 @@ impl Shared {
                 continue;
             }
             if !fresh && let Some(o) = old.iter().find(|o| o.key == key) {
-                next.watched.push(Watched { location: loc, ..o.clone() });
+                next.watched.push(Watched {
+                    location: loc,
+                    ..o.clone()
+                });
                 continue;
             }
             let path = PathBuf::from(&loc);
-            let w = Watched { key, path, location: loc };
+            let w = Watched {
+                key,
+                path,
+                location: loc,
+            };
             if w.path.is_dir() && self.watch(&w.path) {
                 next.watched.push(w);
             } else {
@@ -281,15 +296,23 @@ impl Watcher {
             })
             .expect("failed to spawn watcher thread");
 
-        Self { shared, requests: Requests::default() }
+        Self {
+            shared,
+            requests: Requests::default(),
+        }
     }
 
     /// The watcher sending the location of every change to `tx`.
     fn shared(tx: mpsc::Sender<String>) -> Arc<Shared> {
-        let shared = Arc::new(Shared { watcher: Mutex::new(None), lists: Mutex::default() });
+        let shared = Arc::new(Shared {
+            watcher: Mutex::new(None),
+            lists: Mutex::default(),
+        });
         let s2 = Arc::downgrade(&shared);
         let handler = move |res: notify::Result<notify::Event>| {
-            let (Ok(ev), Some(shared)) = (res, s2.upgrade()) else { return };
+            let (Ok(ev), Some(shared)) = (res, s2.upgrade()) else {
+                return;
+            };
             let lists = shared.lists();
             for p in &ev.paths {
                 if let Some(w) = match_location(&lists.watched, p) {
@@ -318,7 +341,8 @@ impl Watcher {
     /// Applies the newest request, if another call has not taken it already. Returns once no
     /// request is waiting; a call that finds another one at work waits for it.
     pub fn apply(&self) {
-        self.requests.apply(|locations, fresh| self.shared.set(locations, fresh));
+        self.requests
+            .apply(|locations, fresh| self.shared.set(locations, fresh));
     }
 }
 
@@ -395,7 +419,11 @@ mod tests {
         assert!(changed(&rx, &loc), "no change reported while watched");
 
         std::fs::remove_dir_all(&dir).unwrap();
-        assert_eq!(shared.check_alive(), vec![loc.clone()], "the pane must be told the folder is gone");
+        assert_eq!(
+            shared.check_alive(),
+            vec![loc.clone()],
+            "the pane must be told the folder is gone"
+        );
         assert!(shared.check_alive().is_empty());
 
         std::fs::create_dir(&dir).unwrap();
@@ -459,7 +487,9 @@ mod tests {
                 });
             })
         };
-        started_rx.recv_timeout(Duration::from_secs(5)).expect("the first set did not start");
+        started_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("the first set did not start");
 
         requests.put(vec!["second".into()], false);
         let quick = {
@@ -468,12 +498,18 @@ mod tests {
         };
         // Time for the second call to finish first, were it not made to wait.
         std::thread::sleep(Duration::from_millis(100));
-        assert!(lock(&applied).is_empty(), "a newer request was applied while an older one was at work");
+        assert!(
+            lock(&applied).is_empty(),
+            "a newer request was applied while an older one was at work"
+        );
         release_tx.send(()).unwrap();
         slow.join().unwrap();
         quick.join().unwrap();
 
-        assert_eq!(*lock(&applied), vec![(vec!["first".to_string()], true), (vec!["second".to_string()], false)]);
+        assert_eq!(
+            *lock(&applied),
+            vec![(vec!["first".to_string()], true), (vec!["second".to_string()], false)]
+        );
         assert!(requests.take().is_none());
     }
 

@@ -1,12 +1,9 @@
 //! Opening items with ShellExecuteEx, and reading modifier key state.
 //! Items are opened on `crate::com::launch_pool()`.
 
-use windows::Win32::UI::Input::KeyboardAndMouse::{
-    GetAsyncKeyState, VK_CONTROL, VK_MENU, VK_SHIFT,
-};
+use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_CONTROL, VK_MENU, VK_SHIFT};
 use windows::Win32::UI::Shell::{
-    SEE_MASK_FLAG_NO_UI, SEE_MASK_IDLIST, SEE_MASK_INVOKEIDLIST, SEE_MASK_NOASYNC, SHELLEXECUTEINFOW,
-    ShellExecuteExW,
+    SEE_MASK_FLAG_NO_UI, SEE_MASK_IDLIST, SEE_MASK_INVOKEIDLIST, SEE_MASK_NOASYNC, SHELLEXECUTEINFOW, ShellExecuteExW,
 };
 use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
 use windows::core::PCWSTR;
@@ -43,7 +40,11 @@ fn open_sync(
 
     // The default action shows the shell's own dialogs ("Open with..." for a type without an
     // app); a named verb reports failures through the returned error only.
-    let quiet = if verb_w.is_some() { SEE_MASK_FLAG_NO_UI } else { Default::default() };
+    let quiet = if verb_w.is_some() {
+        SEE_MASK_FLAG_NO_UI
+    } else {
+        Default::default()
+    };
 
     // SEE_MASK_NOASYNC (on both calls below): ShellExecuteEx returns when the launch is complete.
     // Without it a launch may be finished later through messages to the calling thread (DDE,
@@ -84,7 +85,11 @@ fn open_sync(
             errors.push(format!("{loc}: {}", err(e)));
         }
     }
-    if errors.is_empty() { Ok(()) } else { Err(errors.join("\n")) }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("\n"))
+    }
 }
 
 /// Current state of Ctrl / Shift / Alt (GetAsyncKeyState).
@@ -109,12 +114,21 @@ mod tests {
     #[test]
     fn args_environment_variables_expand() {
         let root = std::env::var("SystemRoot").unwrap();
-        assert_eq!(crate::location::expand_env("--dir=\"%SystemRoot%\\x\" {a}"), format!("--dir=\"{root}\\x\" {{a}}"));
+        assert_eq!(
+            crate::location::expand_env("--dir=\"%SystemRoot%\\x\" {a}"),
+            format!("--dir=\"{root}\\x\" {{a}}")
+        );
     }
     #[test]
     fn open_nonexistent_path_is_error() {
         let r = com::launch_pool().run_blocking(|| {
-            open_sync(&["C:\\no-such-dir-vesta-test\\nofile.txt".to_string()], None, None, None, Hwnd::NONE)
+            open_sync(
+                &["C:\\no-such-dir-vesta-test\\nofile.txt".to_string()],
+                None,
+                None,
+                None,
+                Hwnd::NONE,
+            )
         });
         assert!(r.unwrap().is_err());
     }

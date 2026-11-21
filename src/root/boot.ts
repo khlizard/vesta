@@ -25,7 +25,9 @@ function followTitle() {
     const title = windowTitle(tab, folder);
     if (title === shown) return;
     shown = title;
-    void getCurrentWindow().setTitle(title).catch(() => {});
+    void getCurrentWindow()
+      .setTitle(title)
+      .catch(() => {});
     document.title = title;
   };
   show(useStore.getState());

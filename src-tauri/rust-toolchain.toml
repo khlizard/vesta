@@ -1,0 +1,5 @@
+# The toolchain every build uses (local, CI, release), so a new clippy lint cannot break a release.
+# Raise it on purpose, together with any fixes the new version asks for.
+[toolchain]
+channel = "1.99.1"
+components = ["clippy", "rustfmt"]

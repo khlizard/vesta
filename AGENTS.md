@@ -33,6 +33,7 @@
 | 配布物を作る（Velopack、公開しない） | `./scripts/release.ps1 -NoUpload` |
 | インストール済みの Vesta を上書き（手元で確認） | `./scripts/install-local.ps1` |
 | リリース | `v{版}` タグを push（`.github/workflows/release.yml`）。手元からは `./scripts/release.ps1` |
+| 整形 | `npm run format`（確認だけなら `npm run format:check`）。Rust は `src-tauri` の中で `cargo fmt` |
 | 型チェック | `npm run typecheck` |
 | lint | `npm run lint` |
 | フロントのテスト | `npm test` |

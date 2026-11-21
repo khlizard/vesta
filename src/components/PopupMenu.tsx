@@ -185,7 +185,10 @@ function Menu({ items, x, y, parentRect, onBack, selectFirst }: MenuProps) {
               </span>
               <span
                 className="popup-label"
-                style={{ paddingLeft: item.indent ? item.indent * INDENT : undefined, fontWeight: item.strong ? "bold" : undefined }}
+                style={{
+                  paddingLeft: item.indent ? item.indent * INDENT : undefined,
+                  fontWeight: item.strong ? "bold" : undefined,
+                }}
               >
                 {before}
                 {key && <u>{key}</u>}
@@ -196,7 +199,9 @@ function Menu({ items, x, y, parentRect, onBack, selectFirst }: MenuProps) {
           );
         })}
       </div>
-      {sub && list[sub.index] && <SubMenu item={list[sub.index]} rect={sub.rect} first={sub.first} onBack={() => setSub(null)} />}
+      {sub && list[sub.index] && (
+        <SubMenu item={list[sub.index]} rect={sub.rect} first={sub.first} onBack={() => setSub(null)} />
+      )}
     </>
   );
 }
@@ -218,7 +223,9 @@ function SubMenu(props: { item: PopupItem; rect: DOMRect; first: boolean; onBack
   }, [load]);
   const children = load ? loaded : (item.children ?? []);
   if (!children) return null;
-  return <Menu items={children} x={rect.right - 2} y={rect.top - 3} parentRect={rect} onBack={onBack} selectFirst={first} />;
+  return (
+    <Menu items={children} x={rect.right - 2} y={rect.top - 3} parentRect={rect} onBack={onBack} selectFirst={first} />
+  );
 }
 
 /** Draws the open popup menu, if any (mounted once, at the top of the window). */

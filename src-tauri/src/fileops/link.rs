@@ -21,11 +21,26 @@ pub(super) fn link(sources: &[String], dest: &str) -> Result<Done, String> {
         }
     }
     if created.is_empty() {
-        return Err(if errors.is_empty() { "対象がありません".into() } else { errors.join("\n") });
+        return Err(if errors.is_empty() {
+            "対象がありません".into()
+        } else {
+            errors.join("\n")
+        });
     }
-    let entry = Entry::Trash { paths: created.clone(), label: "ショートカットの作成" };
+    let entry = Entry::Trash {
+        paths: created.clone(),
+        label: "ショートカットの作成",
+    };
     let aborted = !errors.is_empty();
-    Ok((OpResult { created, aborted, done: true, ..Default::default() }, Some(entry)))
+    Ok((
+        OpResult {
+            created,
+            aborted,
+            done: true,
+            ..Default::default()
+        },
+        Some(entry),
+    ))
 }
 
 fn make_link(source: &str, dest_dir: &Path) -> Result<String, String> {

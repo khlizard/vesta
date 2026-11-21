@@ -95,4 +95,3 @@ export function isSeparator(item: PopupItem): boolean {
 export function accessKeyPressed(e: { key: string; metaKey: boolean }): string | null {
   return e.key.length === 1 && !e.metaKey ? e.key.toLowerCase() : null;
 }
-

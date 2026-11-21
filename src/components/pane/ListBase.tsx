@@ -40,7 +40,19 @@ const GROUP_HEIGHT_CLASS = "group-row";
 const LIST_MARK = { [LIST_ATTR]: "" };
 
 export function ListBase(props: ListBaseProps) {
-  const { id, view, className, headerHeight, header, contentWidth, itemHeight, layoutFor, itemBox, horizontalKeys, renderItem } = props;
+  const {
+    id,
+    view,
+    className,
+    headerHeight,
+    header,
+    contentWidth,
+    itemHeight,
+    layoutFor,
+    itemBox,
+    horizontalKeys,
+    renderItem,
+  } = props;
   const { selected, cursor, folder, loading, current, focusSeq, wantsFocus } = view;
   const scrollerRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -304,13 +316,21 @@ export function ListBase(props: ListBaseProps) {
       <div ref={bodyRef} className="list-body" style={{ height: layout.height, width: widthStyle }}>
         {layout.rows.slice(from, to).map((row) =>
           row.kind === "group" ? (
-            <div key={`g:${row.key}`} className={GROUP_HEIGHT_CLASS} style={{ top: row.top, height: row.height, width: widthStyle }}>
+            <div
+              key={`g:${row.key}`}
+              className={GROUP_HEIGHT_CLASS}
+              style={{ top: row.top, height: row.height, width: widthStyle }}
+            >
               <span>
                 {row.label} ({row.count})
               </span>
             </div>
           ) : (
-            <div key={row.entries[0].location} className="list-row" style={{ top: row.top, height: row.height, width: widthStyle }}>
+            <div
+              key={row.entries[0].location}
+              className="list-row"
+              style={{ top: row.top, height: row.height, width: widthStyle }}
+            >
               {row.entries.map((e, col) => renderItem(e, col))}
             </div>
           ),
@@ -318,7 +338,12 @@ export function ListBase(props: ListBaseProps) {
         {marquee && (
           <div
             className="marquee"
-            style={{ left: marquee.x1, top: marquee.y1, width: marquee.x2 - marquee.x1, height: marquee.y2 - marquee.y1 }}
+            style={{
+              left: marquee.x1,
+              top: marquee.y1,
+              width: marquee.x2 - marquee.x1,
+              height: marquee.y2 - marquee.y1,
+            }}
           />
         )}
       </div>

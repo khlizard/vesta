@@ -3,9 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 use windows::Win32::Foundation::{HWND, LPARAM, RECT};
-use windows::Win32::Graphics::Gdi::{
-    EnumDisplayMonitors, GetMonitorInfoW, HDC, HMONITOR, MONITORINFO,
-};
+use windows::Win32::Graphics::Gdi::{EnumDisplayMonitors, GetMonitorInfoW, HDC, HMONITOR, MONITORINFO};
 use windows::Win32::UI::WindowsAndMessaging::{
     GetWindowPlacement, GetWindowRect, SWP_NOACTIVATE, SWP_NOZORDER, SetWindowPos, WINDOWPLACEMENT,
 };
@@ -57,8 +55,8 @@ pub fn parse(session_json: &str) -> Option<Placement> {
 
 /// Builds a placement from `GetWindowPlacement` values; `normal` is in workspace coordinates.
 pub fn from_win32(show_cmd: u32, flags: u32, normal: Rect, work_offset: (i32, i32)) -> Placement {
-    let maximized = show_cmd == SW_SHOWMAXIMIZED
-        || (show_cmd == SW_SHOWMINIMIZED && flags & WPF_RESTORETOMAXIMIZED != 0);
+    let maximized =
+        show_cmd == SW_SHOWMAXIMIZED || (show_cmd == SW_SHOWMINIMIZED && flags & WPF_RESTORETOMAXIMIZED != 0);
     Placement {
         x: normal.x + work_offset.0,
         y: normal.y + work_offset.1,
@@ -80,7 +78,10 @@ pub fn fit(rect: Rect, work_areas: &[Rect]) -> Rect {
     let Some(first) = work_areas.first() else {
         return rect;
     };
-    let strip = Rect { height: STRIP_HEIGHT, ..rect };
+    let strip = Rect {
+        height: STRIP_HEIGHT,
+        ..rect
+    };
     let visible = work_areas.iter().any(|wa| {
         let (w, h) = overlap(&strip, wa);
         w >= STRIP_MIN_WIDTH && h >= STRIP_HEIGHT
@@ -113,11 +114,21 @@ pub fn fit(rect: Rect, work_areas: &[Rect]) -> Rect {
 pub fn centered(size: (i32, i32), work: &Rect) -> Rect {
     let width = size.0.min(work.width);
     let height = size.1.min(work.height);
-    Rect { x: work.x + (work.width - width) / 2, y: work.y + (work.height - height) / 2, width, height }
+    Rect {
+        x: work.x + (work.width - width) / 2,
+        y: work.y + (work.height - height) / 2,
+        width,
+        height,
+    }
 }
 
 fn to_rect(r: &RECT) -> Rect {
-    Rect { x: r.left, y: r.top, width: r.right - r.left, height: r.bottom - r.top }
+    Rect {
+        x: r.left,
+        y: r.top,
+        width: r.right - r.left,
+        height: r.bottom - r.top,
+    }
 }
 
 /// (primary?, monitor rect, work rect)
@@ -130,7 +141,10 @@ unsafe extern "system" fn monitor_proc(
     data: LPARAM,
 ) -> windows::core::BOOL {
     let list = unsafe { &mut *(data.0 as *mut Vec<MonitorEntry>) };
-    let mut info = MONITORINFO { cbSize: size_of::<MONITORINFO>() as u32, ..Default::default() };
+    let mut info = MONITORINFO {
+        cbSize: size_of::<MONITORINFO>() as u32,
+        ..Default::default()
+    };
     if unsafe { GetMonitorInfoW(monitor, &mut info) }.as_bool() {
         list.push((
             info.dwFlags & MONITORINFOF_PRIMARY != 0,
@@ -157,7 +171,10 @@ fn work_areas() -> Vec<Rect> {
 }
 
 fn capture(hwnd: HWND) -> Result<Placement, String> {
-    let mut wp = WINDOWPLACEMENT { length: size_of::<WINDOWPLACEMENT>() as u32, ..Default::default() };
+    let mut wp = WINDOWPLACEMENT {
+        length: size_of::<WINDOWPLACEMENT>() as u32,
+        ..Default::default()
+    };
     unsafe { GetWindowPlacement(hwnd, &mut wp) }.map_err(com::err)?;
     // GetWindowPlacement reports workspace coordinates (relative to the primary work area).
     let offset = monitors()
@@ -165,16 +182,19 @@ fn capture(hwnd: HWND) -> Result<Placement, String> {
         .find(|m| m.0)
         .map(|m| (m.2.x - m.1.x, m.2.y - m.1.y))
         .unwrap_or((0, 0));
-    Ok(from_win32(wp.showCmd as u32, wp.flags.0, to_rect(&wp.rcNormalPosition), offset))
+    Ok(from_win32(
+        wp.showCmd as u32,
+        wp.flags.0,
+        to_rect(&wp.rcNormalPosition),
+        offset,
+    ))
 }
 
 fn set_rect(hwnd: HWND, r: Rect) {
     // The first call may move the window to a monitor with another DPI and rescale it;
     // the second sets the exact rect.
     for _ in 0..2 {
-        let _ = unsafe {
-            SetWindowPos(hwnd, None, r.x, r.y, r.width, r.height, SWP_NOZORDER | SWP_NOACTIVATE)
-        };
+        let _ = unsafe { SetWindowPos(hwnd, None, r.x, r.y, r.width, r.height, SWP_NOZORDER | SWP_NOACTIVATE) };
     }
 }
 
@@ -198,7 +218,15 @@ pub fn restore(window: &tauri::WebviewWindow, session_json: Option<&str>) {
         }
         return;
     };
-    let rect = fit(Rect { x: p.x, y: p.y, width: p.width, height: p.height }, &work_areas());
+    let rect = fit(
+        Rect {
+            x: p.x,
+            y: p.y,
+            width: p.width,
+            height: p.height,
+        },
+        &work_areas(),
+    );
     set_rect(hwnd, rect);
     if p.maximized {
         let _ = window.maximize();
@@ -218,7 +246,13 @@ mod tests {
         let j = r#"{"tabs":[],"window":{"x":-10,"y":80,"width":1600,"height":900,"maximized":true}}"#;
         assert_eq!(
             parse(j),
-            Some(Placement { x: -10, y: 80, width: 1600, height: 900, maximized: true })
+            Some(Placement {
+                x: -10,
+                y: 80,
+                width: 1600,
+                height: 900,
+                maximized: true
+            })
         );
     }
 
@@ -235,15 +269,24 @@ mod tests {
 
     #[test]
     fn parse_wrong_types() {
-        assert_eq!(parse(r#"{"window":{"x":"1","y":0,"width":800,"height":600,"maximized":false}}"#), None);
+        assert_eq!(
+            parse(r#"{"window":{"x":"1","y":0,"width":800,"height":600,"maximized":false}}"#),
+            None
+        );
         assert_eq!(parse(r#"{"window":{"x":1,"y":0,"width":800,"height":600}}"#), None);
         assert_eq!(parse(r#"{"window":5}"#), None);
     }
 
     #[test]
     fn parse_too_small() {
-        assert_eq!(parse(r#"{"window":{"x":0,"y":0,"width":199,"height":600,"maximized":false}}"#), None);
-        assert_eq!(parse(r#"{"window":{"x":0,"y":0,"width":800,"height":99,"maximized":false}}"#), None);
+        assert_eq!(
+            parse(r#"{"window":{"x":0,"y":0,"width":199,"height":600,"maximized":false}}"#),
+            None
+        );
+        assert_eq!(
+            parse(r#"{"window":{"x":0,"y":0,"width":800,"height":99,"maximized":false}}"#),
+            None
+        );
         assert!(parse(r#"{"window":{"x":0,"y":0,"width":200,"height":100,"maximized":false}}"#).is_some());
     }
 
@@ -252,7 +295,13 @@ mod tests {
         let j = r#"{"window":{"x":1,"y":2,"width":800,"height":600,"maximized":false,"extra":1},"other":1}"#;
         assert_eq!(
             parse(j),
-            Some(Placement { x: 1, y: 2, width: 800, height: 600, maximized: false })
+            Some(Placement {
+                x: 1,
+                y: 2,
+                width: 800,
+                height: 600,
+                maximized: false
+            })
         );
     }
 
@@ -267,7 +316,12 @@ mod tests {
         assert_eq!((p.x, p.y, p.width, p.height), (10, 60, 800, 600));
     }
 
-    const PRIMARY: Rect = Rect { x: 0, y: 0, width: 1920, height: 1040 };
+    const PRIMARY: Rect = Rect {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1040,
+    };
 
     #[test]
     fn centered_in_the_work_area() {

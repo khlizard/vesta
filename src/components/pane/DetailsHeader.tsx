@@ -34,7 +34,13 @@ export function DetailsHeader({ id, columns, widths, total, height, sortKey, sor
   const dropIndexAt = (clientX: number) => {
     const left = headRef.current?.getBoundingClientRect().left ?? 0;
     // Nothing goes left of the name column.
-    return Math.max(1, dropIndex(columns.map((c) => widths[c]), clientX - left));
+    return Math.max(
+      1,
+      dropIndex(
+        columns.map((c) => widths[c]),
+        clientX - left,
+      ),
+    );
   };
   const dropLineLeft = drag === null ? 0 : columns.slice(0, drag.at).reduce((n, c) => n + widths[c], 0);
 

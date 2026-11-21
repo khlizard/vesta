@@ -6,8 +6,8 @@ use windows::Win32::UI::Shell::{
 };
 use windows::core::{Interface, PCWSTR};
 
-use super::item::{is_filesystem, is_folder, item_for};
 use super::info_from_item;
+use super::item::{is_filesystem, is_folder, item_for};
 use crate::com::{from_wide_buf, item_name, wide};
 use crate::types::FolderInfo;
 
@@ -27,7 +27,11 @@ pub fn link_folder(location: &str) -> Option<FolderInfo> {
         Some(t) if !gone(&t) => t,
         _ => item_for(&moved_link_target(location)?).ok()?,
     };
-    if is_folder(&target) { info_from_item(&target).ok() } else { None }
+    if is_folder(&target) {
+        info_from_item(&target).ok()
+    } else {
+        None
+    }
 }
 
 /// How long the Shell may look for a moved shortcut target.
@@ -91,7 +95,12 @@ fn lnk_relative_path(data: &[u8]) -> Option<String> {
     }
     let bytes = data.get(at + 2..at + 2 + u16_at(at)? * unit)?;
     if unit == 2 {
-        let units: Vec<u16> = bytes.as_chunks::<2>().0.iter().map(|c| u16::from_le_bytes(*c)).collect();
+        let units: Vec<u16> = bytes
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|c| u16::from_le_bytes(*c))
+            .collect();
         Some(String::from_utf16_lossy(&units))
     } else {
         // Shortcuts written without the Unicode flag are rare; plain ASCII is enough for them.
@@ -125,7 +134,9 @@ mod tests {
     #[test]
     #[ignore]
     fn link_folder_of_real_shortcut() {
-        let Ok(path) = std::env::var("VESTA_TEST_LNK") else { return };
+        let Ok(path) = std::env::var("VESTA_TEST_LNK") else {
+            return;
+        };
         crate::com::init_sta();
         println!("link_folder({path}) = {:?}", link_folder(&path).map(|f| f.location));
     }
@@ -214,6 +225,9 @@ mod tests {
         let got = link_folder(&moved.join("d.lnk").to_string_lossy());
         std::fs::rename(&moved, &root).unwrap(); // back, so the temporary folder is cleaned up
         let got = got.expect("moved folder shortcut");
-        assert!(got.location.eq_ignore_ascii_case(&moved.join("target").to_string_lossy()));
+        assert!(
+            got.location
+                .eq_ignore_ascii_case(&moved.join("target").to_string_lossy())
+        );
     }
 }

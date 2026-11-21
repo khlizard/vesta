@@ -14,13 +14,19 @@ use crate::location::RECYCLE_BIN;
 /// item, in order.
 pub(super) fn restore(items: &[(String, String)], owner: Hwnd, silent: bool) -> Vec<Result<(), String>> {
     // One pass over the Recycle Bin for all the items (it can hold thousands).
-    let wanted: Vec<&str> =
-        items.iter().filter(|(original, _)| !exists(original)).map(|(_, bin)| bin.as_str()).collect();
+    let wanted: Vec<&str> = items
+        .iter()
+        .filter(|(original, _)| !exists(original))
+        .map(|(_, bin)| bin.as_str())
+        .collect();
     let found = find_in_recycle_bin(&wanted);
     items
         .iter()
         .map(|(original, bin_path)| {
-            let pidl = found.iter().find(|(p, _)| p.eq_ignore_ascii_case(bin_path)).map(|(_, pidl)| pidl);
+            let pidl = found
+                .iter()
+                .find(|(p, _)| p.eq_ignore_ascii_case(bin_path))
+                .map(|(_, pidl)| pidl);
             restore_one(original, bin_path, pidl, owner, silent)
         })
         .collect()
@@ -29,19 +35,14 @@ pub(super) fn restore(items: &[(String, String)], owner: Hwnd, silent: bool) -> 
 /// Restores a Recycle Bin item to `original` with the "undelete" verb of the item in the Recycle
 /// Bin folder (`pidl`); falls back to moving the `$R...` file back. Never replaces what is at
 /// `original` now (the verb would ask to, with the Windows dialog).
-fn restore_one(
-    original: &str,
-    bin_path: &str,
-    pidl: Option<&Pidl>,
-    owner: Hwnd,
-    silent: bool,
-) -> Result<(), String> {
+fn restore_one(original: &str, bin_path: &str, pidl: Option<&Pidl>, owner: Hwnd, silent: bool) -> Result<(), String> {
     if exists(original) {
         return Err(NAME_TAKEN.into());
     }
     let verb = match pidl {
-        Some(pidl) => BuiltMenu::of_item(owner.get(), pidl)
-            .and_then(|menu| menu.invoke_verb(owner.get(), "undelete", silent)),
+        Some(pidl) => {
+            BuiltMenu::of_item(owner.get(), pidl).and_then(|menu| menu.invoke_verb(owner.get(), "undelete", silent))
+        }
         None => Err("ごみ箱の中に項目が見つかりません".to_string()),
     };
     if verb.is_ok() && exists(original) {
@@ -74,7 +75,9 @@ fn find_in_recycle_bin(bin_paths: &[&str]) -> Vec<(String, Pidl)> {
         return found;
     };
     let all_found = |found: &[(String, Pidl)]| {
-        bin_paths.iter().all(|want| found.iter().any(|(p, _)| p.eq_ignore_ascii_case(want)))
+        bin_paths
+            .iter()
+            .all(|want| found.iter().any(|(p, _)| p.eq_ignore_ascii_case(want)))
     };
     loop {
         let mut buf: [Option<IShellItem>; 16] = Default::default();
@@ -83,7 +86,9 @@ fn find_in_recycle_bin(bin_paths: &[&str]) -> Vec<(String, Pidl)> {
             return found;
         }
         for item in buf.iter().take(fetched as usize).flatten() {
-            let Ok(path) = item_name(item, SIGDN_FILESYSPATH) else { continue };
+            let Ok(path) = item_name(item, SIGDN_FILESYSPATH) else {
+                continue;
+            };
             if bin_paths.iter().any(|want| want.eq_ignore_ascii_case(&path))
                 && let Ok(pidl) = unsafe { SHGetIDListFromObject(item) }
             {

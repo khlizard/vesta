@@ -2,26 +2,26 @@
 
 :root {
   --font: "Yu Gothic UI", "Meiryo UI", "Segoe UI", sans-serif;
-  --font-size: 12px;        /* set from the FontSize option (App.tsx) */
+  --font-size: 12px; /* set from the FontSize option (App.tsx) */
   /* Heights that follow the text (model/fontSize.ts textMetrics): 20px / 15px at 12px. */
   --line-h: calc(var(--font-size) + 8px);
   --label-line-h: calc(var(--font-size) + 3px);
-  --face: #f0f0f0;          /* button face */
+  --face: #f0f0f0; /* button face */
   --face-dark: #e3e3e3;
   --edge-light: #ffffff;
   --edge-dark: #a0a0a0;
   --line: #d9d9d9;
   --text: #000000;
-  --text-dim: #6d6d6d;      /* inactive tab text */
-  --text-locked: #c00000;   /* locked tab text */
+  --text-dim: #6d6d6d; /* inactive tab text */
+  --text-locked: #c00000; /* locked tab text */
   --text-disabled: #8a8a8a; /* menu items and buttons that cannot be used */
   --window: #ffffff;
-  --select: #cce8ff;        /* selected item */
+  --select: #cce8ff; /* selected item */
   --select-border: #99d1ff;
   --hover: #e5f3ff;
   --select-inactive: #d9d9d9;
   --accent: #0078d7;
-  --icon: #22426f;          /* bar and menu icons (the app icon's navy, lightened) */
+  --icon: #22426f; /* bar and menu icons (the app icon's navy, lightened) */
   --icon-disabled: #a8b0bd;
   --shadow-popup: 2px 2px 3px rgba(0, 0, 0, 0.25);
   /* Layers above the panes: lists dropped from a pane, then menus and the drop frame, then dialogs. */

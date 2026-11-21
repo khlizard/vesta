@@ -17,8 +17,7 @@ import type { UiConfig } from "../config/types";
 export const backend = {
   /** usr/*.xml as read by the backend; `warnings` names the files that fell back to the built-in ones. */
   uiConfig: () => invoke<{ config: UiConfig; warnings: string[]; usrDir: string }>("get_ui_config"),
-  listFolder: (location: string, showHidden: boolean) =>
-    invoke<Listing>("list_folder", { location, showHidden }),
+  listFolder: (location: string, showHidden: boolean) => invoke<Listing>("list_folder", { location, showHidden }),
   resolveLocation: (input: string) => invoke<Resolved>("resolve_location", { input }),
   folderAncestors: (location: string) => invoke<FolderInfo[]>("folder_ancestors", { location }),
   diskFree: (location: string) => invoke<DiskFree | null>("disk_free", { location }),
@@ -28,8 +27,7 @@ export const backend = {
   keyState: () => invoke<Modifiers>("key_state"),
   fileOp: (op: FileOp) => invoke<OpResult>("file_op", { op }),
   undo: () => invoke<string | null>("undo"),
-  clipboardSetFiles: (paths: string[], cut: boolean) =>
-    invoke<void>("clipboard_set_files", { paths, cut }),
+  clipboardSetFiles: (paths: string[], cut: boolean) => invoke<void>("clipboard_set_files", { paths, cut }),
   clipboardGetFiles: () => invoke<ClipFiles | null>("clipboard_get_files"),
   clipboardSetText: (text: string) => invoke<void>("clipboard_set_text", { text }),
   clipboardClear: () => invoke<void>("clipboard_clear"),

@@ -1,4 +1,4 @@
-# Checks every push and pull request: types, lint, tests (frontend and Rust) and clippy.
+# Checks every push and pull request: formatting, types, lint, tests (frontend and Rust) and clippy.
 # Actions are pinned to commits (the tag is in the comment), as in release.yml.
 name: ci
 
@@ -25,8 +25,9 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
+          # The version itself comes from src-tauri/rust-toolchain.toml.
           toolchain: stable
-          components: clippy
+          components: clippy, rustfmt
 
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
@@ -34,6 +35,13 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Format (frontend)
+        run: npm run format:check
+
+      - name: Format (Rust)
+        working-directory: src-tauri
+        run: cargo fmt --check
 
       - name: Typecheck
         run: npm run typecheck

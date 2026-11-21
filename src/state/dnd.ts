@@ -63,7 +63,9 @@ export function resolveTarget(
   const item = chain.findIndex((a) => a.folder || (files && a.file));
   if (item >= 0) {
     const { folder, file } = chain[item];
-    return folder ? { kind: "folder", location: folder, index: item } : { kind: "file", location: file as string, index: item };
+    return folder
+      ? { kind: "folder", location: folder, index: item }
+      : { kind: "file", location: file as string, index: item };
   }
   const tab = chain.findIndex((a) => a.tab);
   if (tab >= 0) {

@@ -23,7 +23,11 @@ describe("textMetrics", () => {
 
 describe("scaleWidths", () => {
   it("scales text columns with the text and keeps the status column", () => {
-    expect(scaleWidths({ name: 220, status: 48, modified: 130 }, 12, 16)).toEqual({ name: 293, status: 48, modified: 173 });
+    expect(scaleWidths({ name: 220, status: 48, modified: 130 }, 12, 16)).toEqual({
+      name: 293,
+      status: 48,
+      modified: 173,
+    });
     expect(scaleWidths({ name: 293, status: 48 }, 16, 12)).toEqual({ name: 220, status: 48 });
   });
 

@@ -32,9 +32,7 @@ export function buildSession(tabs: TabsState, mru: string[], window: WindowPlace
 const isPlacement = (w: unknown): w is WindowPlacement => {
   if (typeof w !== "object" || w === null) return false;
   const p = w as Record<string, unknown>;
-  return (
-    ["x", "y", "width", "height"].every((k) => Number.isFinite(p[k])) && typeof p.maximized === "boolean"
-  );
+  return ["x", "y", "width", "height"].every((k) => Number.isFinite(p[k])) && typeof p.maximized === "boolean";
 };
 
 /** One saved tab, or nothing when the entry is not usable (a hand-edited or damaged file). */
@@ -65,7 +63,10 @@ export function parseSession(raw: string): Session | null {
 
 /** Tab label and path for a saved location that did not resolve (an offline share, an unplugged drive). */
 export function placeholderFolder(location: string): { location: string; displayName: string; fsPath: string | null } {
-  const name = location.replace(/[\\/]+$/, "").split(/[\\/]/).pop();
+  const name = location
+    .replace(/[\\/]+$/, "")
+    .split(/[\\/]/)
+    .pop();
   return { location, displayName: name || location, fsPath: /^([A-Za-z]:|\\\\)/.test(location) ? location : null };
 }
 

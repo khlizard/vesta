@@ -48,8 +48,14 @@ describe("linkBarView", () => {
   });
 
   it("shows the icon of what was found, and an arrow for a folder", () => {
-    setLink([{ text: "dir", path: "C:\\work" }, { text: "file", path: "C:\\a.txt" }, { text: "flat", path: "C:\\flat", depth: 0 }]);
-    setState({ linkTargets: { "C:\\work": folder("C:\\work"), "C:\\a.txt": file("C:\\a.txt"), "C:\\flat": folder("C:\\flat") } });
+    setLink([
+      { text: "dir", path: "C:\\work" },
+      { text: "file", path: "C:\\a.txt" },
+      { text: "flat", path: "C:\\flat", depth: 0 },
+    ]);
+    setState({
+      linkTargets: { "C:\\work": folder("C:\\work"), "C:\\a.txt": file("C:\\a.txt"), "C:\\flat": folder("C:\\flat") },
+    });
     const [dir, f, flat] = view();
     expect(dir).toMatchObject({ icon: iconUrl("C:\\work"), missing: null, arrow: true });
     expect(f).toMatchObject({ icon: iconUrl("C:\\a.txt"), missing: null, arrow: false });
@@ -58,7 +64,10 @@ describe("linkBarView", () => {
   });
 
   it("marks a link whose path was not found", () => {
-    setLink([{ text: "gone", path: "X:\\gone" }, { text: "menu", path: "X:\\gone", children: [{ text: "c", path: "C:\\" }] }]);
+    setLink([
+      { text: "gone", path: "X:\\gone" },
+      { text: "menu", path: "X:\\gone", children: [{ text: "c", path: "C:\\" }] },
+    ]);
     setState({ linkTargets: { "X:\\gone": null } });
     const [gone, menu] = view();
     expect(gone).toMatchObject({ icon: null, missing: "×", title: "見つかりません: X:\\gone", arrow: false });

@@ -16,7 +16,11 @@ export function paneLocation(s: AppState, id: string): string | null {
 export function syncWatches(fresh = false) {
   const s = getState();
   const locs = [
-    ...new Set(shownTabs(s.tabs).map((t) => paneLocation(s, t.id)).filter((l): l is string => !!l)),
+    ...new Set(
+      shownTabs(s.tabs)
+        .map((t) => paneLocation(s, t.id))
+        .filter((l): l is string => !!l),
+    ),
   ].sort();
   const key = locs.join("|");
   if (key === watched && !fresh) return;

@@ -79,7 +79,7 @@ Explorer と違うものを中心に挙げる。キーは `usr\keyboard-*.xml` �
 
 ## 開発
 
-必要なもの：Rust（stable、`x86_64-pc-windows-msvc`）と Visual Studio Build Tools（C++）、Node.js と npm。
+必要なもの：Rust（版は `src-tauri/rust-toolchain.toml` に固定してあり、rustup が自動で入れる。`x86_64-pc-windows-msvc`）と Visual Studio Build Tools（C++）、Node.js と npm。
 
 ```
 npm install
@@ -99,10 +99,12 @@ target-dir = "C:/Users/<ユーザー名>/.cargo-target/vesta"
 ### 検証
 
 ```
+npm run format:check   # 整形の確認（直すのは npm run format）
 npm run typecheck
 npm run lint
 npm test
 cd src-tauri
+cargo fmt --check
 cargo test
 cargo clippy --all-targets -- -D warnings
 ```

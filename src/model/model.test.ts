@@ -100,7 +100,9 @@ describe("format", () => {
     expect(
       statusText({ total: 5, totalBytes: 2048, selected: 0, selectedBytes: 0, disk: { label: "D", free: 1024 ** 3 } }),
     ).toBe("5 個のオブジェクト ( 2.00 KB ) / 空きディスク領域 [D] 1.00 GB");
-    expect(statusText({ total: 3, totalBytes: 0, selected: 0, selectedBytes: 0, disk: null })).toBe("3 個のオブジェクト");
+    expect(statusText({ total: 3, totalBytes: 0, selected: 0, selectedBytes: 0, disk: null })).toBe(
+      "3 個のオブジェクト",
+    );
   });
 });
 
@@ -134,7 +136,12 @@ describe("sort", () => {
   });
 
   it("orders numbers in Japanese names by value, full-width digits too", () => {
-    const sorted = (names: string[]) => sortEntries(names.map((n) => entry(n)), "name", false).map((e) => e.name);
+    const sorted = (names: string[]) =>
+      sortEntries(
+        names.map((n) => entry(n)),
+        "name",
+        false,
+      ).map((e) => e.name);
     expect(sorted(["第10章", "第2章", "第1章"])).toEqual(["第1章", "第2章", "第10章"]);
     expect(sorted(["第１０章", "第２章", "第１章"])).toEqual(["第１章", "第２章", "第１０章"]);
     // Symbols and digits first, then Latin, kana, kanji; emoji do not break the order.
@@ -142,7 +149,11 @@ describe("sort", () => {
   });
 
   it("sorts by size descending with ties by name", () => {
-    const sorted = sortEntries([entry("a", { size: 5 }), entry("b", { size: 9 }), entry("c", { size: 5 })], "size", true);
+    const sorted = sortEntries(
+      [entry("a", { size: 5 }), entry("b", { size: 9 }), entry("c", { size: 5 })],
+      "size",
+      true,
+    );
     expect(sorted.map((e) => e.name)).toEqual(["b", "c", "a"]);
   });
 });
@@ -178,7 +189,11 @@ describe("groups", () => {
 
   it("orders date groups newest first when descending", () => {
     const rows = groupEntries(
-      sortEntries([entry("old", { modified: at(2020, 0, 1) }), entry("new", { modified: at(2026, 10, 11) })], "modified", true),
+      sortEntries(
+        [entry("old", { modified: at(2020, 0, 1) }), entry("new", { modified: at(2026, 10, 11) })],
+        "modified",
+        true,
+      ),
       "modified",
       true,
       now,

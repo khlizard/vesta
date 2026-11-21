@@ -14,10 +14,16 @@ import {
 } from "./fileOps";
 
 describe("takesDrop", () => {
-  const item = (name: string, more: Partial<{ isFolder: boolean; isLink: boolean }> = {}) => ({ name, isFolder: false, isLink: false, ...more });
+  const item = (name: string, more: Partial<{ isFolder: boolean; isLink: boolean }> = {}) => ({
+    name,
+    isFolder: false,
+    isLink: false,
+    ...more,
+  });
 
   it("is true for programs, scripts and shortcuts", () => {
-    for (const name of ["a.exe", "run.BAT", "x.cmd", "old.com", "s.vbs", "s.js", "s.wsf"]) expect(takesDrop(item(name))).toBe(true);
+    for (const name of ["a.exe", "run.BAT", "x.cmd", "old.com", "s.vbs", "s.js", "s.wsf"])
+      expect(takesDrop(item(name))).toBe(true);
     expect(takesDrop(item("_MF勤怠 to  FX2.bat.lnk", { isLink: true }))).toBe(true);
   });
 

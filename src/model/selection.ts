@@ -175,7 +175,12 @@ export function patternToRegExp(pattern: string): RegExp {
     .split(";")
     .map((s) => s.trim())
     .filter(Boolean)
-    .map((s) => s.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, "."));
+    .map((s) =>
+      s
+        .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+        .replace(/\*/g, ".*")
+        .replace(/\?/g, "."),
+    );
   return new RegExp(`^(?:${parts.join("|") || "(?!)"})$`, "i");
 }
 

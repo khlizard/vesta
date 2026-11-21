@@ -25,5 +25,8 @@ export const saveFailed = (file: string) => (e: unknown) => {
 export async function setAsideBadState(name: string, what: string) {
   logLine(`${name}.json could not be read; kept as ${name}.bad.json`);
   await backend.keepBadState(name).catch((e) => logLine(`${name}.json could not be set aside`, e));
-  setMessage(`${what}（${name}.json）を読めませんでした。既定の状態で始めます。元のファイルは ${name}.bad.json に残しました`, 15000);
+  setMessage(
+    `${what}（${name}.json）を読めませんでした。既定の状態で始めます。元のファイルは ${name}.bad.json に残しました`,
+    15000,
+  );
 }

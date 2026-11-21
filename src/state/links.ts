@@ -114,7 +114,9 @@ async function buildItem(cfg: MenuItem): Promise<PopupItem> {
   if (target?.isFolder && cfg.depth !== 0) {
     item.loadChildren = async () => {
       const content = await expandFolder(target.location, cfg.depth, !!cfg.includeFiles);
-      return staticChildren.length && content.length ? [...staticChildren, SEP, ...content] : [...staticChildren, ...content];
+      return staticChildren.length && content.length
+        ? [...staticChildren, SEP, ...content]
+        : [...staticChildren, ...content];
     };
   } else if (staticChildren.length) {
     item.children = staticChildren;
@@ -151,7 +153,8 @@ export function hoverLink(index: number, at: { x: number; y: number }) {
   const cfg = button(index);
   if (!cfg) return;
   const hasMenu = linkHasMenu(cfg, cfg.path ? getState().linkTargets[cfg.path] : null);
-  if (switchesOnHover(popupOwner(), `${LINK_OWNER}${index}`, LINK_OWNER, hasMenu)) openLinkMenu(index, cfg, at, true).catch((e) => setMessage(errorText(e)));
+  if (switchesOnHover(popupOwner(), `${LINK_OWNER}${index}`, LINK_OWNER, hasMenu))
+    openLinkMenu(index, cfg, at, true).catch((e) => setMessage(errorText(e)));
 }
 
 /** Right-click on a link bar button: the Shell menu of what it points to. Ends when the menu has closed. */

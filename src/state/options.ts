@@ -8,7 +8,9 @@ import { saveFailed, setAsideBadState } from "./log";
 import { DEFAULT_OPTIONS, getState, setState, type Options } from "./store";
 
 /** config.json is written shortly after the last change (column drags and Ctrl+wheel change options rapidly). */
-const save = saveLater(500, () => backend.writeState("config", JSON.stringify(getState().options)).catch(saveFailed("config.json")));
+const save = saveLater(500, () =>
+  backend.writeState("config", JSON.stringify(getState().options)).catch(saveFailed("config.json")),
+);
 
 /** Writes config.json now (before a restart). */
 export const saveOptions = save.now;
@@ -22,7 +24,9 @@ export async function setOption<K extends keyof Options>(key: K, value: Options[
 export async function setFontSize(size: number) {
   const { FontSize, ColumnWidths } = getState().options;
   if (size === FontSize) return;
-  setState((s) => ({ options: { ...s.options, FontSize: size, ColumnWidths: scaleWidths(ColumnWidths, FontSize, size) } }));
+  setState((s) => ({
+    options: { ...s.options, FontSize: size, ColumnWidths: scaleWidths(ColumnWidths, FontSize, size) },
+  }));
   save.soon();
 }
 

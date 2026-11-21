@@ -25,7 +25,11 @@ pub fn line(text: &str) {
         let secs = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_secs());
-        let _ = append(&dir.join(FILE_NAME), &format!("[{secs}] Vesta {}: {text}", env!("CARGO_PKG_VERSION")), MAX_BYTES);
+        let _ = append(
+            &dir.join(FILE_NAME),
+            &format!("[{secs}] Vesta {}: {text}", env!("CARGO_PKG_VERSION")),
+            MAX_BYTES,
+        );
     }
 }
 

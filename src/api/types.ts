@@ -39,9 +39,7 @@ export interface Listing {
   elapsedMs: number;
 }
 
-export type Resolved =
-  | { kind: "folder"; folder: FolderInfo }
-  | { kind: "file"; location: string };
+export type Resolved = { kind: "folder"; folder: FolderInfo } | { kind: "file"; location: string };
 
 export interface DiskFree {
   label: string;

@@ -26,7 +26,9 @@ const saver = saveLater(1000, async () => {
   if (!sessionReady) return;
   lastWindow = (await backend.windowPlacement().catch(() => null)) ?? lastWindow;
   const s = getState();
-  await backend.writeState("session", JSON.stringify(buildSession(s.tabs, s.mru, lastWindow))).catch(saveFailed("session.json"));
+  await backend
+    .writeState("session", JSON.stringify(buildSession(s.tabs, s.mru, lastWindow)))
+    .catch(saveFailed("session.json"));
 });
 
 const FLUSH_LIMIT_MS = 2000;
@@ -58,7 +60,13 @@ export async function restoreSession(): Promise<boolean> {
   // A place that does not answer (a server that is off) must not hold the other tabs back:
   // after RESOLVE_LIMIT_MS its tab is made without it, like one that failed.
   const resolved = await Promise.all(
-    session.tabs.map((t) => within(backend.resolveLocation(t.location).catch(() => null), RESOLVE_LIMIT_MS, null)),
+    session.tabs.map((t) =>
+      within(
+        backend.resolveLocation(t.location).catch(() => null),
+        RESOLVE_LIMIT_MS,
+        null,
+      ),
+    ),
   );
   session.tabs.forEach((st, i) => {
     const r = resolved[i];

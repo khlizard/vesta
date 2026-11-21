@@ -61,7 +61,12 @@ pub fn install_panic_hook(var_dir: PathBuf) {
         ));
         let title = wide("Vesta");
         unsafe {
-            MessageBoxW(None, PCWSTR(body.as_ptr()), PCWSTR(title.as_ptr()), MB_OK | MB_ICONERROR);
+            MessageBoxW(
+                None,
+                PCWSTR(body.as_ptr()),
+                PCWSTR(title.as_ptr()),
+                MB_OK | MB_ICONERROR,
+            );
         }
     }));
 }
@@ -76,10 +81,10 @@ mod tests {
 
     #[test]
     fn keeps_absolute_paths_and_skips_options() {
-        assert_eq!(run(&["C:\\a b\\c", "--veloapp-version", "-x", "\\\\srv\\share"]), vec![
-            "C:\\a b\\c",
-            "\\\\srv\\share"
-        ]);
+        assert_eq!(
+            run(&["C:\\a b\\c", "--veloapp-version", "-x", "\\\\srv\\share"]),
+            vec!["C:\\a b\\c", "\\\\srv\\share"]
+        );
         assert!(run(&[]).is_empty());
     }
 
@@ -91,10 +96,10 @@ mod tests {
 
     #[test]
     fn leaves_aliases_and_shell_locations() {
-        assert_eq!(run(&["DESKTOP", "::{645FF040-5081-101B-9F08-00AA002F954E}"]), vec![
-            "DESKTOP",
-            "::{645FF040-5081-101B-9F08-00AA002F954E}"
-        ]);
+        assert_eq!(
+            run(&["DESKTOP", "::{645FF040-5081-101B-9F08-00AA002F954E}"]),
+            vec!["DESKTOP", "::{645FF040-5081-101B-9F08-00AA002F954E}"]
+        );
         assert_eq!(run(&["~", "~/Downloads", "~\\x"]), vec!["~", "~/Downloads", "~\\x"]);
     }
 }

@@ -7,8 +7,7 @@ use std::sync::OnceLock;
 use windows::Win32::System::Environment::ExpandEnvironmentStringsW;
 use windows::Win32::UI::Shell::{
     FOLDERID_Desktop, FOLDERID_Documents, FOLDERID_Downloads, FOLDERID_Music, FOLDERID_Pictures, FOLDERID_Profile,
-    FOLDERID_ProgramFiles, FOLDERID_System, FOLDERID_Videos, FOLDERID_Windows, KF_FLAG_DEFAULT,
-    SHGetKnownFolderPath,
+    FOLDERID_ProgramFiles, FOLDERID_System, FOLDERID_Videos, FOLDERID_Windows, KF_FLAG_DEFAULT, SHGetKnownFolderPath,
 };
 use windows::core::{GUID, PCWSTR};
 
@@ -77,7 +76,12 @@ pub(crate) fn expand_env(s: &str) -> String {
 /// Text normalisation and alias expansion. Returns the string to hand to the Shell,
 /// or `DESKTOP` for the namespace root.
 pub(super) fn normalize(input: &str) -> Result<String, String> {
-    normalize_with(input, expand_env, known_folder_path, AVESTA_DIR.get().map(PathBuf::as_path))
+    normalize_with(
+        input,
+        expand_env,
+        known_folder_path,
+        AVESTA_DIR.get().map(PathBuf::as_path),
+    )
 }
 
 /// `normalize` with what it asks Windows for handed in: the expansion of `%NAME%`, the path of
@@ -138,7 +142,11 @@ mod tests {
             (FOLDERID_Desktop, r"C:\Users\a\Desktop"),
             (FOLDERID_Documents, r"D:\"),
         ];
-        folders.iter().find(|(known, _)| known == id).map(|(_, p)| p.to_string()).ok_or("no such folder".into())
+        folders
+            .iter()
+            .find(|(known, _)| known == id)
+            .map(|(_, p)| p.to_string())
+            .ok_or("no such folder".into())
     }
 
     /// `%X%` is `D:\x`; nothing else is a variable.

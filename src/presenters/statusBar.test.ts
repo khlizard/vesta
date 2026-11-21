@@ -27,7 +27,18 @@ function entry(name: string, size: number): Entry {
 function openPane(pane: Partial<PaneState>) {
   setState({
     tabs: {
-      tabs: [{ id: "a", location: "C:\\a", displayName: "a", fsPath: "C:\\a", shown: true, locked: false, back: [], forward: [] }],
+      tabs: [
+        {
+          id: "a",
+          location: "C:\\a",
+          displayName: "a",
+          fsPath: "C:\\a",
+          shown: true,
+          locked: false,
+          back: [],
+          forward: [],
+        },
+      ],
       currentId: "a",
     },
     panes: { a: { ...emptyPane(), ...pane } },
@@ -69,17 +80,20 @@ describe("statusBarView", () => {
   });
 
   it("presents the buttons: separator, icon or text, pressed, usable", () => {
-    setStatus([
-      { text: "罫線", command: "Option.GridLine", image: 3 },
-      {},
-      { text: "上へ", command: "Current.Go.Up" },
-    ]);
+    setStatus([{ text: "罫線", command: "Option.GridLine", image: 3 }, {}, { text: "上へ", command: "Current.Go.Up" }]);
     openPane({});
     const [grid, sep, up] = view().buttons;
     expect(sep).toEqual({ kind: "separator" });
     expect(grid).toMatchObject({ kind: "button", title: "罫線", image: 3, enabled: true, checked: false });
     // The pane shows no folder: there is nowhere to go up to.
-    expect(up).toMatchObject({ kind: "button", title: "上へ", image: null, text: "上へ", enabled: false, checked: false });
+    expect(up).toMatchObject({
+      kind: "button",
+      title: "上へ",
+      image: null,
+      text: "上へ",
+      enabled: false,
+      checked: false,
+    });
 
     setState({ options: { ...DEFAULT_OPTIONS, GridLine: true } });
     expect(view().buttons[0]).toMatchObject({ checked: true });

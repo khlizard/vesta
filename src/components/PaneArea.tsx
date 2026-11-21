@@ -52,7 +52,10 @@ export function PaneArea() {
     const start = [v.split, 1 - v.split];
     const y0 = e.clientY;
     trackDrag(e, (ev) => {
-      dispatch({ type: "pane.rowSplit", split: resizePair(start, 0, (ev.clientY - y0) / avail, MIN_ROW_PX / avail)[0] });
+      dispatch({
+        type: "pane.rowSplit",
+        split: resizePair(start, 0, (ev.clientY - y0) / avail, MIN_ROW_PX / avail)[0],
+      });
     });
   };
 

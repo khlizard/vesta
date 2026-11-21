@@ -22,7 +22,8 @@ function LinkButton({ b }: { b: LinkButtonView }) {
       onClick={(e) => dispatch({ type: "link.click", index: b.index, mods: modsOf(e), at: below(e) })}
       onMouseEnter={(e) => dispatch({ type: "link.hover", index: b.index, at: below(e) })}
       onAuxClick={(e) => {
-        if (e.button === 1) dispatch({ type: "link.click", index: b.index, mods: modsOf(e), middle: true, at: below(e) });
+        if (e.button === 1)
+          dispatch({ type: "link.click", index: b.index, mods: modsOf(e), middle: true, at: below(e) });
       }}
       onContextMenu={(e) => {
         e.preventDefault();

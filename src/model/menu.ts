@@ -68,7 +68,12 @@ export type BarKeyResult =
  * A key pressed while item `hot` of the menu bar is highlighted. `accessKeys` are the access
  * keys of the bar's items. Null when the key means nothing to the bar.
  */
-export function menuBarKey(hot: number, accessKeys: (string | null)[], key: string, ctrl: boolean): BarKeyResult | null {
+export function menuBarKey(
+  hot: number,
+  accessKeys: (string | null)[],
+  key: string,
+  ctrl: boolean,
+): BarKeyResult | null {
   const n = accessKeys.length;
   if (n === 0) return null;
   switch (key) {

@@ -121,13 +121,7 @@ async fn start_drag(window: WebviewWindow, locations: Vec<String>) -> Result<Str
 
 /// A right-button drop: the Shell shows its drop menu and does what is chosen.
 #[tauri::command]
-async fn right_drop(
-    window: WebviewWindow,
-    sources: Vec<String>,
-    folder: String,
-    x: f64,
-    y: f64,
-) -> Result<(), String> {
+async fn right_drop(window: WebviewWindow, sources: Vec<String>, folder: String, x: f64, y: f64) -> Result<(), String> {
     shelldrop::right_drop(window, sources, folder, x, y).await
 }
 

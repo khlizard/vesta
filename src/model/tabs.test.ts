@@ -232,7 +232,8 @@ describe("adding tabs", () => {
 });
 
 describe("tab menu", () => {
-  const texts = (s: TabsState, id: string) => tabMenu(s, id).map((e) => (e ? `${e.text}${e.disabled ? " x" : ""}${e.checked ? " v" : ""}` : "-"));
+  const texts = (s: TabsState, id: string) =>
+    tabMenu(s, id).map((e) => (e ? `${e.text}${e.disabled ? " x" : ""}${e.checked ? " v" : ""}` : "-"));
 
   it("lists the actions, with what cannot be done disabled", () => {
     expect(texts(state("a* b! c", "a"), "a")).toEqual([

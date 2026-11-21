@@ -21,8 +21,7 @@ export interface PaneAreaView {
 }
 
 export const paneAreaView = presenter(
-  (s) =>
-    [s.app.tabs, s.app.options.TwoRows, s.app.options.TwoRowsMax, s.app.paneWidths, s.app.paneRowSplit] as const,
+  (s) => [s.app.tabs, s.app.options.TwoRows, s.app.options.TwoRowsMax, s.app.paneWidths, s.app.paneRowSplit] as const,
   (tabs, twoRows, rowMax, widths, rowSplit): PaneAreaView => {
     const ids = shownTabs(tabs).map((t) => t.id);
     const [top, bottom] = splitRows(ids.length, twoRows, rowMax);

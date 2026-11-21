@@ -21,8 +21,8 @@ use windows::Win32::Foundation::{DRAGDROP_E_INVALIDHWND, HWND, LPARAM, POINT, PO
 use windows::Win32::Graphics::Gdi::ScreenToClient;
 use windows::Win32::System::Com::{IDataObject, STREAM_SEEK_SET, TYMED_HGLOBAL, TYMED_ISTREAM};
 use windows::Win32::System::Ole::{
-    DROPEFFECT, DROPEFFECT_COPY, DROPEFFECT_LINK, DROPEFFECT_NONE, IDropTarget, IDropTarget_Impl,
-    RegisterDragDrop, RevokeDragDrop,
+    DROPEFFECT, DROPEFFECT_COPY, DROPEFFECT_LINK, DROPEFFECT_NONE, IDropTarget, IDropTarget_Impl, RegisterDragDrop,
+    RevokeDragDrop,
 };
 use windows::Win32::System::SystemServices::{MK_RBUTTON, MODIFIERKEYS_FLAGS};
 use windows::Win32::UI::WindowsAndMessaging::EnumChildWindows;
@@ -53,7 +53,11 @@ fn url_format() -> u16 {
 /// inside them land flat: browsers and mail clients send flat lists.
 fn virtual_files(data: &IDataObject) -> Vec<(usize, VirtualFile)> {
     let bytes = global_data(data, descriptor_format()).unwrap_or_default();
-    descriptor_files(&bytes).into_iter().enumerate().filter(|(_, f)| !f.directory).collect()
+    descriptor_files(&bytes)
+        .into_iter()
+        .enumerate()
+        .filter(|(_, f)| !f.directory)
+        .collect()
 }
 
 /// The Internet shortcut (name, contents) for the URL of `data`.
@@ -177,8 +181,14 @@ struct Position {
 #[derive(Serialize, Clone)]
 #[serde(tag = "type", rename_all = "camelCase")]
 enum DragEvent {
-    Enter { paths: Vec<String>, position: Position, saving: bool },
-    Over { position: Position },
+    Enter {
+        paths: Vec<String>,
+        position: Position,
+        saving: bool,
+    },
+    Over {
+        position: Position,
+    },
     Drop {
         paths: Vec<String>,
         position: Position,
@@ -206,7 +216,10 @@ impl Target {
     fn position(&self, pt: &POINTL) -> Position {
         let mut p = POINT { x: pt.x, y: pt.y };
         let _ = unsafe { ScreenToClient(self.hwnd, &mut p) };
-        Position { x: p.x as f64, y: p.y as f64 }
+        Position {
+            x: p.x as f64,
+            y: p.y as f64,
+        }
     }
 
     fn emit(&self, event: DragEvent) {
@@ -224,7 +237,11 @@ impl IDropTarget_Impl for Target_Impl {
         effect: *mut DROPEFFECT,
     ) -> windows::core::Result<()> {
         self.right.set(keys.0 & MK_RBUTTON.0 != 0);
-        let allowed = if effect.is_null() { DROPEFFECT_NONE } else { unsafe { *effect } };
+        let allowed = if effect.is_null() {
+            DROPEFFECT_NONE
+        } else {
+            unsafe { *effect }
+        };
         let mut kind = data.as_ref().map_or(Kind::None, kind_of);
         let chosen = match kind {
             Kind::None => DROPEFFECT_NONE,
@@ -248,7 +265,11 @@ impl IDropTarget_Impl for Target_Impl {
                 (Kind::Files, Some(data)) => hdrop_paths(data),
                 _ => Vec::new(),
             };
-            self.emit(DragEvent::Enter { paths, position: self.position(pt), saving: kind != Kind::Files });
+            self.emit(DragEvent::Enter {
+                paths,
+                position: self.position(pt),
+                saving: kind != Kind::Files,
+            });
         }
         Ok(())
     }
@@ -256,7 +277,9 @@ impl IDropTarget_Impl for Target_Impl {
     fn DragOver(&self, keys: MODIFIERKEYS_FLAGS, pt: &POINTL, effect: *mut DROPEFFECT) -> windows::core::Result<()> {
         self.right.set(keys.0 & MK_RBUTTON.0 != 0);
         if self.kind.get() != Kind::None {
-            self.emit(DragEvent::Over { position: self.position(pt) });
+            self.emit(DragEvent::Over {
+                position: self.position(pt),
+            });
         }
         if !effect.is_null() {
             unsafe { *effect = self.effect.get() };
@@ -328,8 +351,7 @@ pub fn install(window: &tauri::WebviewWindow) -> Result<(), String> {
     let _ = unsafe { EnumChildWindows(Some(top), Some(collect_child), LPARAM(&mut children as *mut _ as isize)) };
     let mut registered = Vec::new();
     for hwnd in children {
-        let target: IDropTarget =
-            Target {
+        let target: IDropTarget = Target {
             hwnd,
             app: app.clone(),
             kind: Cell::new(Kind::None),
@@ -369,7 +391,12 @@ mod tests {
         // The memory block is larger than the file; the size in the descriptor cuts it.
         let files = descriptor(&[(r"..\picture.png", 0x40, 0, 5)]);
         set_global(&data, &global(descriptor_format()), &files).unwrap();
-        set_global(&data, &formatetc(contents_format(), 0, TYMED_HGLOBAL.0 as u32), b"12345+padding").unwrap();
+        set_global(
+            &data,
+            &formatetc(contents_format(), 0, TYMED_HGLOBAL.0 as u32),
+            b"12345+padding",
+        )
+        .unwrap();
         assert_eq!(kind_of(&data), Kind::Virtual);
 
         let dir = tempfile::tempdir().unwrap();
@@ -381,13 +408,19 @@ mod tests {
     #[test]
     fn a_url_is_saved_as_an_internet_shortcut() {
         let data = empty_data_object();
-        let wide: Vec<u8> = "https://example.com/page\0".encode_utf16().flat_map(|c| c.to_le_bytes()).collect();
+        let wide: Vec<u8> = "https://example.com/page\0"
+            .encode_utf16()
+            .flat_map(|c| c.to_le_bytes())
+            .collect();
         set_global(&data, &global(url_format()), &wide).unwrap();
         assert_eq!(kind_of(&data), Kind::Url);
 
         let dir = tempfile::tempdir().unwrap();
         let written = save_url(&data, dir.path()).unwrap();
         assert_eq!(written, vec![dir.path().join("example.com.url")]);
-        assert_eq!(std::fs::read_to_string(&written[0]).unwrap(), "[InternetShortcut]\r\nURL=https://example.com/page\r\n");
+        assert_eq!(
+            std::fs::read_to_string(&written[0]).unwrap(),
+            "[InternetShortcut]\r\nURL=https://example.com/page\r\n"
+        );
     }
 }

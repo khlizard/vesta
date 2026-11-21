@@ -96,7 +96,16 @@ describe("listView", () => {
   });
 
   it("follows the configured columns and widths", () => {
-    setup({}, { options: { ...DEFAULT_OPTIONS, Columns: ["name", "size"], ColumnWidths: { ...DEFAULT_OPTIONS.ColumnWidths, name: 100, size: 50 } } });
+    setup(
+      {},
+      {
+        options: {
+          ...DEFAULT_OPTIONS,
+          Columns: ["name", "size"],
+          ColumnWidths: { ...DEFAULT_OPTIONS.ColumnWidths, name: 100, size: 50 },
+        },
+      },
+    );
     const v = read(listView("a"));
     expect(v.columns).toEqual(["name", "size"]);
     expect(v.widths.name).toBe(100);
@@ -104,7 +113,10 @@ describe("listView", () => {
   });
 
   it("takes the options the views draw with", () => {
-    setup({}, { options: { ...DEFAULT_OPTIONS, FullRowSelect: true, GridLine: true, FontSize: 16, ThumbnailSize: 128 } });
+    setup(
+      {},
+      { options: { ...DEFAULT_OPTIONS, FullRowSelect: true, GridLine: true, FontSize: 16, ThumbnailSize: 128 } },
+    );
     const v = read(listView("a"));
     expect(v.fullRow).toBe(true);
     expect(v.gridLine).toBe(true);

@@ -22,8 +22,8 @@ use windows::core::PCWSTR;
 
 use crate::com::{self, Hwnd, err, shell_item, wide};
 use crate::types::{FileOp, OpResult};
-use history::{Entry, record};
 pub(crate) use history::undo_sync;
+use history::{Entry, record};
 use session::{Kind, NO_FLAGS, NO_SINK, Outcome, run_session};
 
 /// Runs `op`. `owner` is the parent window of progress/confirm dialogs.
@@ -107,18 +107,16 @@ pub(crate) fn execute_sync(op: FileOp, owner: Hwnd, silent: bool) -> Result<OpRe
 
 type Done = (OpResult, Option<Entry>);
 
-fn copy_move(
-    sources: &[String],
-    dest: &str,
-    mv: bool,
-    owner: Hwnd,
-    silent: bool,
-) -> Result<Done, String> {
+fn copy_move(sources: &[String], dest: &str, mv: bool, owner: Hwnd, silent: bool) -> Result<Done, String> {
     let arr = paths_array(sources)?;
     let dest_item = shell_item(dest).map_err(err)?;
     let taken = names_taken(sources, dest);
     let out = run_session(owner, NO_FLAGS, silent, |op| unsafe {
-        if mv { op.MoveItems(&arr, &dest_item) } else { op.CopyItems(&arr, &dest_item) }
+        if mv {
+            op.MoveItems(&arr, &dest_item)
+        } else {
+            op.CopyItems(&arr, &dest_item)
+        }
     })?;
     out.check()?;
     let kind = if mv { Kind::Move } else { Kind::Copy };
@@ -155,9 +153,16 @@ fn sort_copied(pairs: Vec<(String, String)>, taken: &[String], mv: bool) -> Copi
     } else if mv {
         Some(Entry::Move { items: ours })
     } else {
-        Some(Entry::Trash { paths: ours.into_iter().map(|(c, _)| c).collect(), label: "コピー" })
+        Some(Entry::Trash {
+            paths: ours.into_iter().map(|(c, _)| c).collect(),
+            label: "コピー",
+        })
     };
-    Copied { created, replaced: !kept.is_empty(), entry }
+    Copied {
+        created,
+        replaced: !kept.is_empty(),
+        entry,
+    }
 }
 
 fn duplicate(sources: &[String], owner: Hwnd, silent: bool) -> Result<Done, String> {
@@ -178,7 +183,10 @@ fn duplicate(sources: &[String], owner: Hwnd, silent: bool) -> Result<Done, Stri
     })?;
     out.check()?;
     let created: Vec<String> = out.ok_events(Kind::Copy).filter_map(|e| e.created.clone()).collect();
-    let entry = (!created.is_empty()).then(|| Entry::Trash { paths: created.clone(), label: "複製" });
+    let entry = (!created.is_empty()).then(|| Entry::Trash {
+        paths: created.clone(),
+        label: "複製",
+    });
     Ok((out.result(created), entry))
 }
 
@@ -188,12 +196,21 @@ fn rename(path: &str, new_name: &str, owner: Hwnd, silent: bool) -> Result<Done,
         .map(|n| n.to_string_lossy().into_owned())
         .ok_or_else(|| "名前を変更できません".to_string())?;
     if old_name == new_name {
-        return Ok((OpResult { created: vec![path.to_string()], ..Default::default() }, None));
+        return Ok((
+            OpResult {
+                created: vec![path.to_string()],
+                ..Default::default()
+            },
+            None,
+        ));
     }
     let out = rename_raw(path, new_name, owner, silent)?;
     out.check()?;
     let created: Vec<String> = out.ok_events(Kind::Rename).filter_map(|e| e.created.clone()).collect();
-    let entry = created.first().map(|c| Entry::Rename { current: c.clone(), old_name });
+    let entry = created.first().map(|c| Entry::Rename {
+        current: c.clone(),
+        old_name,
+    });
     Ok((out.result(created), entry))
 }
 
@@ -205,18 +222,16 @@ fn rename_raw(path: &str, new_name: &str, owner: Hwnd, silent: bool) -> Result<O
     })
 }
 
-fn new_item(
-    parent: &str,
-    name: &str,
-    folder: bool,
-    owner: Hwnd,
-    silent: bool,
-) -> Result<Done, String> {
+fn new_item(parent: &str, name: &str, folder: bool, owner: Hwnd, silent: bool) -> Result<Done, String> {
     let exists = Path::new(parent).join(name).exists();
     let flags = if exists { FOF_RENAMEONCOLLISION } else { NO_FLAGS };
     let parent_item = shell_item(parent).map_err(err)?;
     let nw = wide(name);
-    let attr = if folder { FILE_ATTRIBUTE_DIRECTORY.0 } else { FILE_ATTRIBUTE_NORMAL.0 };
+    let attr = if folder {
+        FILE_ATTRIBUTE_DIRECTORY.0
+    } else {
+        FILE_ATTRIBUTE_NORMAL.0
+    };
     let out = run_session(owner, flags, silent, |op| unsafe {
         op.NewItem(&parent_item, attr, PCWSTR(nw.as_ptr()), PCWSTR::null(), NO_SINK)
     })?;
@@ -225,8 +240,15 @@ fn new_item(
     if created.is_empty() && out.any_ok() {
         created.push(PathBuf::from(parent).join(name).to_string_lossy().into_owned());
     }
-    let label = if folder { "フォルダーの作成" } else { "ファイルの作成" };
-    let entry = (!created.is_empty()).then(|| Entry::Trash { paths: created.clone(), label });
+    let label = if folder {
+        "フォルダーの作成"
+    } else {
+        "ファイルの作成"
+    };
+    let entry = (!created.is_empty()).then(|| Entry::Trash {
+        paths: created.clone(),
+        label,
+    });
     Ok((out.result(created), entry))
 }
 
@@ -251,7 +273,13 @@ mod sort_copied_tests {
         let copied = sort_copied(vec![a.clone(), b.clone()], &taken, false);
         assert_eq!(copied.created, both);
         assert!(copied.replaced);
-        assert_eq!(copied.entry, Some(Entry::Trash { paths: vec![a.0.clone()], label: "コピー" }));
+        assert_eq!(
+            copied.entry,
+            Some(Entry::Trash {
+                paths: vec![a.0.clone()],
+                label: "コピー"
+            })
+        );
 
         let moved = sort_copied(vec![a.clone(), b.clone()], &taken, true);
         assert_eq!(moved.created, both);
@@ -261,12 +289,31 @@ mod sort_copied_tests {
         // Nothing met a name: everything can be undone.
         let free = sort_copied(vec![a.clone(), b.clone()], &[], true);
         assert!(!free.replaced);
-        assert_eq!(free.entry, Some(Entry::Move { items: vec![a, b.clone()] }));
+        assert_eq!(
+            free.entry,
+            Some(Entry::Move {
+                items: vec![a, b.clone()]
+            })
+        );
 
         // Everything met a name: reported, but nothing to undo.
         let all = sort_copied(vec![b.clone()], &taken, false);
-        assert_eq!(all, Copied { created: vec![b.0], replaced: true, entry: None });
-        assert_eq!(sort_copied(Vec::new(), &taken, false), Copied { created: Vec::new(), replaced: false, entry: None });
+        assert_eq!(
+            all,
+            Copied {
+                created: vec![b.0],
+                replaced: true,
+                entry: None
+            }
+        );
+        assert_eq!(
+            sort_copied(Vec::new(), &taken, false),
+            Copied {
+                created: Vec::new(),
+                replaced: false,
+                entry: None
+            }
+        );
     }
 
     #[test]
@@ -325,7 +372,10 @@ mod tests {
         fs::write(src.join("a.txt"), "hello").unwrap();
         let (a, d) = (s(&src.join("a.txt")), s(&dst));
         on_op(move || {
-            let r = exec(FileOp::Copy { sources: vec![a], dest: d });
+            let r = exec(FileOp::Copy {
+                sources: vec![a],
+                dest: d,
+            });
             assert!(r.undoable);
             assert_eq!(r.created.len(), 1);
             assert!(r.created[0].ends_with("a.txt"));
@@ -346,7 +396,10 @@ mod tests {
         fs::write(src.join("m.txt"), "move").unwrap();
         let (a, d) = (s(&src.join("m.txt")), s(&dst));
         on_op(move || {
-            let r = exec(FileOp::Move { sources: vec![a], dest: d });
+            let r = exec(FileOp::Move {
+                sources: vec![a],
+                dest: d,
+            });
             assert!(r.undoable);
             assert!(!src.join("m.txt").exists());
             assert!(dst.join("m.txt").exists());
@@ -363,7 +416,10 @@ mod tests {
         let p = s(&tmp.path().join("old.txt"));
         let dir = tmp.path().to_path_buf();
         on_op(move || {
-            let r = exec(FileOp::Rename { path: p, new_name: "new.txt".into() });
+            let r = exec(FileOp::Rename {
+                path: p,
+                new_name: "new.txt".into(),
+            });
             assert!(r.undoable);
             assert_eq!(r.created.len(), 1);
             assert!(dir.join("new.txt").exists() && !dir.join("old.txt").exists());
@@ -378,17 +434,29 @@ mod tests {
         let dir = tmp.path().to_path_buf();
         let parent = s(&dir);
         on_op(move || {
-            let r1 = exec(FileOp::NewFolder { parent: parent.clone(), name: "newdir".into() });
+            let r1 = exec(FileOp::NewFolder {
+                parent: parent.clone(),
+                name: "newdir".into(),
+            });
             assert!(dir.join("newdir").is_dir());
             assert_eq!(r1.created.len(), 1);
-            let r2 = exec(FileOp::NewFolder { parent: parent.clone(), name: "newdir".into() });
+            let r2 = exec(FileOp::NewFolder {
+                parent: parent.clone(),
+                name: "newdir".into(),
+            });
             assert_eq!(r2.created.len(), 1);
             assert_ne!(r2.created[0], r1.created[0]);
             assert!(Path::new(&r2.created[0]).is_dir());
 
-            let f1 = exec(FileOp::NewFile { parent: parent.clone(), name: "n.txt".into() });
+            let f1 = exec(FileOp::NewFile {
+                parent: parent.clone(),
+                name: "n.txt".into(),
+            });
             assert!(dir.join("n.txt").is_file());
-            let f2 = exec(FileOp::NewFile { parent: parent.clone(), name: "n.txt".into() });
+            let f2 = exec(FileOp::NewFile {
+                parent: parent.clone(),
+                name: "n.txt".into(),
+            });
             assert_ne!(f1.created[0], f2.created[0]);
             assert!(Path::new(&f2.created[0]).is_file());
 
@@ -425,13 +493,19 @@ mod tests {
         fs::create_dir_all(&dest).unwrap();
         let (p, d) = (s(&tmp.path().join("t.txt")), s(&dest));
         on_op(move || {
-            let r = exec(FileOp::Link { sources: vec![p.clone()], dest: d.clone() });
+            let r = exec(FileOp::Link {
+                sources: vec![p.clone()],
+                dest: d.clone(),
+            });
             assert_eq!(r.created.len(), 1);
             let first = PathBuf::from(&r.created[0]);
             let name = first.file_name().unwrap().to_string_lossy().into_owned();
             assert_eq!(name, "t.txt - ショートカット.lnk");
             assert!(first.is_file());
-            let r2 = exec(FileOp::Link { sources: vec![p], dest: d });
+            let r2 = exec(FileOp::Link {
+                sources: vec![p],
+                dest: d,
+            });
             assert!(r2.created[0].ends_with("t.txt - ショートカット (2).lnk"));
             undo_it();
             undo_it();
@@ -457,8 +531,10 @@ mod tests {
     #[test]
     fn recycle_of_several_items_then_undo_restores_them_all() {
         let tmp = tempfile::tempdir().unwrap();
-        let files: Vec<PathBuf> =
-            ["vesta-multi-1.txt", "vesta-multi-2.txt", "vesta-multi-3.txt"].iter().map(|n| tmp.path().join(n)).collect();
+        let files: Vec<PathBuf> = ["vesta-multi-1.txt", "vesta-multi-2.txt", "vesta-multi-3.txt"]
+            .iter()
+            .map(|n| tmp.path().join(n))
+            .collect();
         for (i, f) in files.iter().enumerate() {
             fs::write(f, format!("keep {i}")).unwrap();
         }
@@ -526,7 +602,10 @@ mod tests {
         let (a, d) = (s(&src.join("dir")), s(&dst));
         on_op(move || {
             let before = history_len();
-            let r = exec(FileOp::Copy { sources: vec![a], dest: d });
+            let r = exec(FileOp::Copy {
+                sources: vec![a],
+                dest: d,
+            });
             assert!(r.replaced && !r.undoable);
             assert_eq!(history_len(), before);
             assert!(dst.join("dir").join("from-src.txt").exists());
@@ -542,18 +621,27 @@ mod tests {
         fs::write(src.join("dir").join("sub").join("deep.txt"), "2").unwrap();
         let (a, d) = (s(&src.join("dir")), s(&dst));
         on_op(move || {
-            let r = exec(FileOp::Copy { sources: vec![a.clone()], dest: d.clone() });
+            let r = exec(FileOp::Copy {
+                sources: vec![a.clone()],
+                dest: d.clone(),
+            });
             assert_eq!(r.created.len(), 1, "only the folder itself: {:?}", r.created);
             assert!(dst.join("dir").join("sub").join("deep.txt").exists());
             undo_it();
             assert!(names(&dst).is_empty());
 
-            let r = exec(FileOp::Move { sources: vec![a], dest: d });
+            let r = exec(FileOp::Move {
+                sources: vec![a],
+                dest: d,
+            });
             assert_eq!(r.created.len(), 1);
             assert!(!src.join("dir").exists());
             undo_it();
             assert!(names(&dst).is_empty());
-            assert_eq!(fs::read_to_string(src.join("dir").join("sub").join("deep.txt")).unwrap(), "2");
+            assert_eq!(
+                fs::read_to_string(src.join("dir").join("sub").join("deep.txt")).unwrap(),
+                "2"
+            );
         });
     }
 
@@ -563,7 +651,10 @@ mod tests {
         fs::write(src.join("m.txt"), "moved").unwrap();
         let (a, d) = (s(&src.join("m.txt")), s(&dst));
         on_op(move || {
-            exec(FileOp::Move { sources: vec![a], dest: d });
+            exec(FileOp::Move {
+                sources: vec![a],
+                dest: d,
+            });
             fs::write(src.join("m.txt"), "newer").unwrap();
             assert_eq!(undo_sync(Hwnd::NONE, true), Err(NAME_TAKEN.to_string()));
             assert_eq!(fs::read_to_string(src.join("m.txt")).unwrap(), "newer");
@@ -599,7 +690,10 @@ mod tests {
         fs::write(src.join("g.txt"), "x").unwrap();
         let (a, d) = (s(&src.join("g.txt")), s(&dst));
         on_op(move || {
-            exec(FileOp::Copy { sources: vec![a], dest: d });
+            exec(FileOp::Copy {
+                sources: vec![a],
+                dest: d,
+            });
             fs::remove_file(dst.join("g.txt")).unwrap();
             let before = history_len();
             assert_eq!(undo_sync(Hwnd::NONE, true), Err(NOT_FOUND.to_string()));
@@ -618,19 +712,31 @@ mod tests {
         let (f, d) = (s(&folder), s(&dst));
         on_op(move || {
             let listed = crate::listing::list(&f, false).unwrap();
-            let entry = listed.entries.iter().find(|e| e.name == name).expect("listed with the same name");
+            let entry = listed
+                .entries
+                .iter()
+                .find(|e| e.name == name)
+                .expect("listed with the same name");
             assert!(Path::new(&entry.location).exists());
 
-            let r = exec(FileOp::Copy { sources: vec![f.clone()], dest: d.clone() });
+            let r = exec(FileOp::Copy {
+                sources: vec![f.clone()],
+                dest: d.clone(),
+            });
             let copied = PathBuf::from(&r.created[0]);
             assert_eq!(copied.file_name().unwrap().to_string_lossy(), "日本語 フォルダ 😀");
             assert_eq!(fs::read_to_string(copied.join(name)).unwrap(), "中身");
 
-            let r = exec(FileOp::Rename { path: s(&copied.join(name)), new_name: "新しい名前🍣.txt".into() });
+            let r = exec(FileOp::Rename {
+                path: s(&copied.join(name)),
+                new_name: "新しい名前🍣.txt".into(),
+            });
             assert!(r.created[0].ends_with("新しい名前🍣.txt"));
             assert!(copied.join("新しい名前🍣.txt").exists());
 
-            let r = exec(FileOp::Recycle { paths: vec![s(&copied.join("新しい名前🍣.txt"))] });
+            let r = exec(FileOp::Recycle {
+                paths: vec![s(&copied.join("新しい名前🍣.txt"))],
+            });
             assert!(r.undoable);
             assert!(undo_it().contains("削除"));
             assert!(copied.join("新しい名前🍣.txt").exists());
@@ -658,16 +764,46 @@ mod tests {
         println!("path length: {}", d.encode_utf16().count());
         on_op(move || {
             println!("list: {:?}", crate::listing::list(&d, false).map(|l| l.entries.len()));
-            println!("copy in: {:?}", execute_sync(FileOp::Copy { sources: vec![a], dest: d.clone() }, Hwnd::NONE, true));
+            println!(
+                "copy in: {:?}",
+                execute_sync(
+                    FileOp::Copy {
+                        sources: vec![a],
+                        dest: d.clone()
+                    },
+                    Hwnd::NONE,
+                    true
+                )
+            );
             let inside = format!("{d}\\inside.txt");
             println!(
                 "rename: {:?}",
-                execute_sync(FileOp::Rename { path: inside.clone(), new_name: "renamed.txt".into() }, Hwnd::NONE, true)
+                execute_sync(
+                    FileOp::Rename {
+                        path: inside.clone(),
+                        new_name: "renamed.txt".into()
+                    },
+                    Hwnd::NONE,
+                    true
+                )
             );
             let renamed = format!("{d}\\renamed.txt");
-            println!("recycle: {:?}", execute_sync(FileOp::Recycle { paths: vec![renamed] }, Hwnd::NONE, true));
+            println!(
+                "recycle: {:?}",
+                execute_sync(FileOp::Recycle { paths: vec![renamed] }, Hwnd::NONE, true)
+            );
             println!("undo: {:?}", undo_sync(Hwnd::NONE, true));
-            println!("new folder: {:?}", execute_sync(FileOp::NewFolder { parent: d, name: "n".into() }, Hwnd::NONE, true));
+            println!(
+                "new folder: {:?}",
+                execute_sync(
+                    FileOp::NewFolder {
+                        parent: d,
+                        name: "n".into()
+                    },
+                    Hwnd::NONE,
+                    true
+                )
+            );
         });
     }
 

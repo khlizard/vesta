@@ -2,21 +2,21 @@
 
 use std::cell::RefCell;
 
-use windows::core::{Interface, PCSTR, PCWSTR, PSTR};
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows::Win32::Graphics::Gdi::ClientToScreen;
 use windows::Win32::UI::Input::KeyboardAndMouse::{GetKeyState, VIRTUAL_KEY, VK_CONTROL, VK_SHIFT};
 use windows::Win32::UI::Shell::Common::ITEMIDLIST;
 use windows::Win32::UI::Shell::{
-    BHID_SFObject, DefSubclassProc, IContextMenu, IContextMenu2, IContextMenu3, ILFindLastID,
-    IShellFolder, SHBindToParent, SHGetDesktopFolder, CMF_CANRENAME, CMF_EXTENDEDVERBS,
-    CMF_NORMAL, CMIC_MASK_CONTROL_DOWN, CMIC_MASK_PTINVOKE, CMIC_MASK_SHIFT_DOWN, CMINVOKECOMMANDINFO,
-    CMINVOKECOMMANDINFOEX, GCS_VERBW, SEE_MASK_FLAG_NO_UI, SEE_MASK_NOASYNC, SEE_MASK_UNICODE,
+    BHID_SFObject, CMF_CANRENAME, CMF_EXTENDEDVERBS, CMF_NORMAL, CMIC_MASK_CONTROL_DOWN, CMIC_MASK_PTINVOKE,
+    CMIC_MASK_SHIFT_DOWN, CMINVOKECOMMANDINFO, CMINVOKECOMMANDINFOEX, DefSubclassProc, GCS_VERBW, IContextMenu,
+    IContextMenu2, IContextMenu3, ILFindLastID, IShellFolder, SEE_MASK_FLAG_NO_UI, SEE_MASK_NOASYNC, SEE_MASK_UNICODE,
+    SHBindToParent, SHGetDesktopFolder,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    CreatePopupMenu, DestroyMenu, TrackPopupMenuEx, HMENU, SW_SHOWNORMAL, TPM_RETURNCMD,
-    TPM_RIGHTBUTTON, WM_DRAWITEM, WM_INITMENUPOPUP, WM_MEASUREITEM, WM_MENUCHAR,
+    CreatePopupMenu, DestroyMenu, HMENU, SW_SHOWNORMAL, TPM_RETURNCMD, TPM_RIGHTBUTTON, TrackPopupMenuEx, WM_DRAWITEM,
+    WM_INITMENUPOPUP, WM_MEASUREITEM, WM_MENUCHAR,
 };
+use windows::core::{Interface, PCSTR, PCWSTR, PSTR};
 
 use crate::com::{self, Hwnd, Pidl};
 use crate::dataobject;
@@ -65,7 +65,11 @@ unsafe extern "system" fn subclass_proc(
                 && msg != WM_MENUCHAR
                 && unsafe { cm2.HandleMenuMsg(msg, wparam, lparam) }.is_ok()
             {
-                return if msg == WM_INITMENUPOPUP { LRESULT(0) } else { LRESULT(1) };
+                return if msg == WM_INITMENUPOPUP {
+                    LRESULT(0)
+                } else {
+                    LRESULT(1)
+                };
             }
         }
     }
@@ -118,14 +122,18 @@ impl BuiltMenu {
         let mut last: *mut ITEMIDLIST = std::ptr::null_mut();
         let cm: IContextMenu = unsafe {
             let folder: IShellFolder = SHBindToParent(pidl.as_ptr(), Some(&mut last)).map_err(com::err)?;
-            folder.GetUIObjectOf(owner, &[last as *const ITEMIDLIST], None).map_err(com::err)?
+            folder
+                .GetUIObjectOf(owner, &[last as *const ITEMIDLIST], None)
+                .map_err(com::err)?
         };
         Self::query(cm, CMF_NORMAL)
     }
 
     /// The offset of the command whose canonical verb is `verb` (the last one, if several).
     fn find_verb(&self, verb: &str) -> Option<u32> {
-        (0..self.span).rev().find(|&offset| verb_of(&self.cm, ID_FIRST + offset).eq_ignore_ascii_case(verb))
+        (0..self.span)
+            .rev()
+            .find(|&offset| verb_of(&self.cm, ID_FIRST + offset).eq_ignore_ascii_case(verb))
     }
 
     /// Runs the command with the canonical verb `verb`, without showing the menu. With `silent`
@@ -187,7 +195,11 @@ fn verb_of(cm: &IContextMenu, id: u32) -> String {
             buf.len() as u32,
         )
     };
-    if r.is_ok() { com::from_wide_buf(&buf).to_lowercase() } else { String::new() }
+    if r.is_ok() {
+        com::from_wide_buf(&buf).to_lowercase()
+    } else {
+        String::new()
+    }
 }
 
 fn key_down(vk: VIRTUAL_KEY) -> bool {
@@ -205,7 +217,10 @@ fn show_blocking(
     let shift = key_down(VK_SHIFT);
     let built = build_menu(hwnd, folder, items, shift)?;
 
-    let mut pt = POINT { x: (x * scale).round() as i32, y: (y * scale).round() as i32 };
+    let mut pt = POINT {
+        x: (x * scale).round() as i32,
+        y: (y * scale).round() as i32,
+    };
     unsafe {
         let _ = ClientToScreen(hwnd, &mut pt);
     }
@@ -216,9 +231,7 @@ fn show_blocking(
             cm3: built.cm.cast::<IContextMenu3>().ok(),
         });
     });
-    let cmd = unsafe {
-        TrackPopupMenuEx(built.hmenu, (TPM_RETURNCMD | TPM_RIGHTBUTTON).0, pt.x, pt.y, hwnd, None)
-    };
+    let cmd = unsafe { TrackPopupMenuEx(built.hmenu, (TPM_RETURNCMD | TPM_RIGHTBUTTON).0, pt.x, pt.y, hwnd, None) };
     ACTIVE.with(|a| *a.borrow_mut() = None);
 
     let id = cmd.0 as u32;
@@ -282,7 +295,10 @@ pub async fn show(
 ) -> Result<Option<String>, String> {
     let hwnd = Hwnd::of(&window)?;
     let scale = window.scale_factor().map_err(|e| e.to_string())?;
-    com::on_main(&window, "context menu", move || show_blocking(hwnd.get(), &folder, &items, x, y, scale)).await?
+    com::on_main(&window, "context menu", move || {
+        show_blocking(hwnd.get(), &folder, &items, x, y, scale)
+    })
+    .await?
 }
 
 #[cfg(test)]
@@ -304,8 +320,10 @@ mod tests {
         )
         .unwrap();
         // The verbs of the menu's own commands (the test may probe a range; the app asks one id).
-        let verbs: Vec<String> =
-            (ID_FIRST..ID_FIRST + 512).map(|id| verb_of(&built.cm, id)).filter(|v| !v.is_empty()).collect();
+        let verbs: Vec<String> = (ID_FIRST..ID_FIRST + 512)
+            .map(|id| verb_of(&built.cm, id))
+            .filter(|v| !v.is_empty())
+            .collect();
         for v in ["delete", "rename", "properties"] {
             assert!(verbs.iter().any(|x| x == v), "missing {v} in {verbs:?}");
         }

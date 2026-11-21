@@ -17,25 +17,23 @@
 //!
 //! The STA pool threads run no message loop: they block on their queue between jobs.
 
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
 use std::thread;
 
-use windows::core::{PCWSTR, PWSTR};
 use windows::Win32::Foundation::{HANDLE, HWND, LPARAM, LRESULT, WPARAM};
-use windows::Win32::Graphics::Gdi::{DeleteObject, GetDC, ReleaseDC, HBITMAP, HDC};
+use windows::Win32::Graphics::Gdi::{DeleteObject, GetDC, HBITMAP, HDC, ReleaseDC};
 use windows::Win32::Storage::FileSystem::FindClose;
-use windows::Win32::System::Com::{
-    CoInitializeEx, CoTaskMemFree, COINIT_APARTMENTTHREADED, COINIT_DISABLE_OLE1DDE,
-};
+use windows::Win32::System::Com::{COINIT_APARTMENTTHREADED, COINIT_DISABLE_OLE1DDE, CoInitializeEx, CoTaskMemFree};
 use windows::Win32::System::DataExchange::{CloseClipboard, OpenClipboard};
 use windows::Win32::System::Ole::OleInitialize;
 use windows::Win32::UI::Shell::Common::ITEMIDLIST;
 use windows::Win32::UI::Shell::{
-    ILFree, IShellItem, SHCreateItemFromParsingName, SHParseDisplayName, SetWindowSubclass, SIGDN,
-    SIGDN_DESKTOPABSOLUTEPARSING, SIGDN_NORMALDISPLAY,
+    ILFree, IShellItem, SHCreateItemFromParsingName, SHParseDisplayName, SIGDN, SIGDN_DESKTOPABSOLUTEPARSING,
+    SIGDN_NORMALDISPLAY, SetWindowSubclass,
 };
+use windows::core::{PCWSTR, PWSTR};
 
 type Job = Box<dyn FnOnce() + Send + 'static>;
 

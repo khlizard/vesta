@@ -10,7 +10,17 @@ const initial = useStore.getState();
 const view = () => tabBarView({ app: getState(), config: useConfig.getState() });
 
 function tab(id: string, fsPath: string | null, more: Partial<Tab> = {}): Tab {
-  return { id, location: fsPath ?? id, displayName: id, fsPath, shown: true, locked: false, back: [], forward: [], ...more };
+  return {
+    id,
+    location: fsPath ?? id,
+    displayName: id,
+    fsPath,
+    shown: true,
+    locked: false,
+    back: [],
+    forward: [],
+    ...more,
+  };
 }
 
 beforeEach(() => {
@@ -22,7 +32,11 @@ describe("tabBarView", () => {
   it("presents the tabs in their order, with their state", () => {
     setState({
       tabs: {
-        tabs: [tab("a", "C:\\work"), tab("b", "D:\\data", { shown: false, locked: true }), tab("c", null, { displayName: "PC" })],
+        tabs: [
+          tab("a", "C:\\work"),
+          tab("b", "D:\\data", { shown: false, locked: true }),
+          tab("c", null, { displayName: "PC" }),
+        ],
         currentId: "a",
       },
     });

@@ -11,12 +11,8 @@
 use windows::Win32::Foundation::{HWND, POINT, POINTL};
 use windows::Win32::Graphics::Gdi::ClientToScreen;
 use windows::Win32::System::Com::IBindCtx;
-use windows::Win32::System::Ole::{
-    DROPEFFECT_COPY, DROPEFFECT_LINK, DROPEFFECT_MOVE, DROPEFFECT_NONE, IDropTarget,
-};
-use windows::Win32::System::SystemServices::{
-    MK_CONTROL, MK_LBUTTON, MK_RBUTTON, MK_SHIFT, MODIFIERKEYS_FLAGS,
-};
+use windows::Win32::System::Ole::{DROPEFFECT_COPY, DROPEFFECT_LINK, DROPEFFECT_MOVE, DROPEFFECT_NONE, IDropTarget};
+use windows::Win32::System::SystemServices::{MK_CONTROL, MK_LBUTTON, MK_RBUTTON, MK_SHIFT, MODIFIERKEYS_FLAGS};
 use windows::Win32::UI::Shell::BHID_SFUIObject;
 use windows::Win32::UI::WindowsAndMessaging::SetForegroundWindow;
 
@@ -46,7 +42,9 @@ fn right_drop_blocking(hwnd: HWND, sources: &[String], folder: &str, pt: POINT) 
         let _ = target.DragOver(MK_RBUTTON, at, &mut effect);
         // As in a real drag: the button is up by the time of the drop; the target remembers it.
         let mut effect = allowed;
-        target.Drop(&data, MODIFIERKEYS_FLAGS(0), at, &mut effect).map_err(com::err)
+        target
+            .Drop(&data, MODIFIERKEYS_FLAGS(0), at, &mut effect)
+            .map_err(com::err)
     }
 }
 
@@ -78,7 +76,13 @@ fn drop_keys(right_button: bool) -> MODIFIERKEYS_FLAGS {
 }
 
 /// Replays a drop of `sources` on the Shell's drop target of `item`, at `pt` (screen).
-fn drop_on_item_blocking(hwnd: HWND, sources: &[String], item: &str, pt: POINT, right_button: bool) -> Result<(), String> {
+fn drop_on_item_blocking(
+    hwnd: HWND,
+    sources: &[String],
+    item: &str,
+    pt: POINT,
+    right_button: bool,
+) -> Result<(), String> {
     let data = dataobject::data_object(sources).map_err(|e| e.plain("ドロップする項目がありません"))?;
     let target = item_drop_target(item)?;
     let at = POINTL { x: pt.x, y: pt.y };
@@ -116,7 +120,10 @@ pub async fn drop_on_item(
     let hwnd = Hwnd::of(&window)?;
     com::on_main(&window, "drop on item", move || {
         let hwnd = hwnd.get();
-        let mut pt = POINT { x: x.round() as i32, y: y.round() as i32 };
+        let mut pt = POINT {
+            x: x.round() as i32,
+            y: y.round() as i32,
+        };
         let _ = unsafe { ClientToScreen(hwnd, &mut pt) };
         drop_on_item_blocking(hwnd, &sources, &item, pt, right_button)
     })
@@ -136,7 +143,10 @@ pub async fn right_drop(
     let hwnd = Hwnd::of(&window)?;
     com::on_main(&window, "drop menu", move || {
         let hwnd = hwnd.get();
-        let mut pt = POINT { x: x.round() as i32, y: y.round() as i32 };
+        let mut pt = POINT {
+            x: x.round() as i32,
+            y: y.round() as i32,
+        };
         let _ = unsafe { ClientToScreen(hwnd, &mut pt) };
         right_drop_blocking(hwnd, &sources, &folder, pt)
     })
@@ -160,7 +170,9 @@ mod tests {
         let target = item_drop_target(&bat.to_string_lossy()).unwrap();
         let mut effect = DROPEFFECT_COPY | DROPEFFECT_MOVE | DROPEFFECT_LINK;
         unsafe {
-            target.DragEnter(&data, MK_LBUTTON, POINTL { x: 0, y: 0 }, &mut effect).unwrap();
+            target
+                .DragEnter(&data, MK_LBUTTON, POINTL { x: 0, y: 0 }, &mut effect)
+                .unwrap();
             target.DragLeave().unwrap();
         }
         assert_ne!(effect, DROPEFFECT_NONE);
@@ -190,7 +202,9 @@ mod tests {
         let target = shell_drop_target(HWND::default(), &to.path().to_string_lossy()).unwrap();
         let mut effect = DROPEFFECT_COPY | DROPEFFECT_MOVE | DROPEFFECT_LINK;
         unsafe {
-            target.DragEnter(&data, MK_RBUTTON, POINTL { x: 0, y: 0 }, &mut effect).unwrap();
+            target
+                .DragEnter(&data, MK_RBUTTON, POINTL { x: 0, y: 0 }, &mut effect)
+                .unwrap();
             target.DragLeave().unwrap();
         }
         assert_ne!(effect, DROPEFFECT_NONE);

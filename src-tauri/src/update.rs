@@ -54,7 +54,9 @@ pub fn check_and_download() -> Result<Option<String>, String> {
 /// Applies the downloaded update and restarts. Exits the process on success.
 pub fn restart_now() -> Result<(), String> {
     let ready = crate::com::lock(&READY).take();
-    let Some((um, asset)) = ready else { return Err("更新はありません".into()) };
+    let Some((um, asset)) = ready else {
+        return Err("更新はありません".into());
+    };
     um.apply_updates_and_restart(&asset).map_err(|e| e.to_string())
 }
 

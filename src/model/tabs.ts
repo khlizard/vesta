@@ -86,7 +86,10 @@ export function toggleShown(s: TabsState, id: string): TabsState {
   const t = s.tabs[i];
   if (!t.shown) return { ...update(s, id, (x) => ({ ...x, shown: true })), currentId: id };
   if (shownTabs(s).length <= 1) return s;
-  return normalize(update(s, id, (x) => ({ ...x, shown: false })), i);
+  return normalize(
+    update(s, id, (x) => ({ ...x, shown: false })),
+    i,
+  );
 }
 
 /** Show or hide a set of tabs (`X.Show(true|false|toggle)`). */
@@ -163,11 +166,7 @@ export function targetIds(s: TabsState, target: CloseTarget): string[] {
 }
 
 /** Closes tabs. Locked tabs are kept unless `lockClose`. Returns the closed tabs (for the MRU). */
-export function closeTabs(
-  s: TabsState,
-  ids: string[],
-  lockClose: boolean,
-): { state: TabsState; closed: Tab[] } {
+export function closeTabs(s: TabsState, ids: string[], lockClose: boolean): { state: TabsState; closed: Tab[] } {
   const set = new Set(ids);
   const closed = s.tabs.filter((t) => set.has(t.id) && (lockClose || !t.locked));
   if (closed.length === 0) return { state: s, closed };

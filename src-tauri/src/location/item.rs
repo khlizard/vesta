@@ -1,9 +1,7 @@
 //! IShellItem helpers: the namespace root, attributes, and the location an item is known by.
 
 use windows::Win32::System::SystemServices::{SFGAO_FILESYSTEM, SFGAO_FLAGS, SFGAO_FOLDER, SFGAO_STREAM};
-use windows::Win32::UI::Shell::{
-    IShellItem, SHCreateItemFromIDList, SHGetSpecialFolderLocation, SIGDN_FILESYSPATH,
-};
+use windows::Win32::UI::Shell::{IShellItem, SHCreateItemFromIDList, SHGetSpecialFolderLocation, SIGDN_FILESYSPATH};
 
 use super::DESKTOP;
 use crate::com::{Pidl, err, item_name, parsing_name, shell_item};

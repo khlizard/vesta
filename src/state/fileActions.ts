@@ -25,7 +25,7 @@ import { selectedEntries } from "./selection";
 import { getState, updatePane } from "./store";
 
 function paneOf(id: string | null) {
-  return id ? getState().panes[id] ?? null : null;
+  return id ? (getState().panes[id] ?? null) : null;
 }
 
 /** Selected locations, or [] when nothing is selected. */
@@ -41,7 +41,9 @@ function folderPath(id: string | null): string | null {
 /** Reads every shown pane again; `select` names an item to select in one of them. */
 async function reloadShown(select?: { paneId: string; location: string }) {
   await Promise.all(
-    shownTabs(getState().tabs).map((t) => reloadPane(t.id, select && t.id === select.paneId ? select.location : undefined)),
+    shownTabs(getState().tabs).map((t) =>
+      reloadPane(t.id, select && t.id === select.paneId ? select.location : undefined),
+    ),
   );
 }
 
@@ -141,7 +143,12 @@ export async function duplicate(id: string | null) {
 
 export async function toOther(id: string | null, kind: "copy" | "move") {
   const sources = selectedLocations(id);
-  const dest = folderPath(nextShown(shownTabs(getState().tabs).map((t) => t.id), id));
+  const dest = folderPath(
+    nextShown(
+      shownTabs(getState().tabs).map((t) => t.id),
+      id,
+    ),
+  );
   if (!sources.length) return;
   if (!dest) {
     setMessage("ほかに表示中のペインがありません");

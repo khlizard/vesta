@@ -102,12 +102,21 @@ mod tests {
     #[test]
     fn topmost_while_walks_up_to_the_root_of_the_region() {
         let inside = |p: &str| p.to_lowercase().starts_with(r"d:\users\a\dropbox");
-        assert_eq!(topmost_while(r"D:\Users\a\Dropbox\Work\x\", inside).as_deref(), Some(r"D:\Users\a\Dropbox"));
-        assert_eq!(topmost_while(r"D:\Users\a\Dropbox", inside).as_deref(), Some(r"D:\Users\a\Dropbox"));
+        assert_eq!(
+            topmost_while(r"D:\Users\a\Dropbox\Work\x\", inside).as_deref(),
+            Some(r"D:\Users\a\Dropbox")
+        );
+        assert_eq!(
+            topmost_while(r"D:\Users\a\Dropbox", inside).as_deref(),
+            Some(r"D:\Users\a\Dropbox")
+        );
         assert_eq!(topmost_while(r"D:\Users\a", inside), None);
         // A whole drive or share: stops at its first folder level without asking about `D:` or `\\server`.
         assert_eq!(topmost_while(r"D:\a\b", |_| true).as_deref(), Some(r"D:\a"));
-        assert_eq!(topmost_while(r"\\srv\share\a", |_| true).as_deref(), Some(r"\\srv\share"));
+        assert_eq!(
+            topmost_while(r"\\srv\share\a", |_| true).as_deref(),
+            Some(r"\\srv\share")
+        );
     }
 
     #[test]
@@ -149,7 +158,9 @@ mod tests {
     #[test]
     #[ignore]
     fn sync_root_of_real_folder() {
-        let Ok(path) = std::env::var("VESTA_TEST_SYNC_PATH") else { return };
+        let Ok(path) = std::env::var("VESTA_TEST_SYNC_PATH") else {
+            return;
+        };
         println!("sync_root_of({path}) = {:?}", sync_root_of(&path));
     }
 }

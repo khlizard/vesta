@@ -20,7 +20,12 @@ describe("resolveTarget", () => {
   });
 
   it("uses a tab's folder when no folder item is hit", () => {
-    expect(resolveTarget([{ tab: "t2" }], tabLoc, paneLoc)).toEqual({ kind: "tab", tabId: "t2", location: "D:\\b", index: 0 });
+    expect(resolveTarget([{ tab: "t2" }], tabLoc, paneLoc)).toEqual({
+      kind: "tab",
+      tabId: "t2",
+      location: "D:\\b",
+      index: 0,
+    });
   });
 
   it("falls back to the pane's folder", () => {
@@ -109,7 +114,12 @@ describe("program and shortcut items", () => {
 
   it("are passed over by a drag without paths, which goes to the pane", () => {
     const chain: DropAttrs[] = [{ file: "C:\\a\\run.bat" }, { pane: "t1" }];
-    expect(resolveTarget(chain, tabLoc, paneLoc, false)).toEqual({ kind: "pane", tabId: "t1", location: "C:\\a", index: 1 });
+    expect(resolveTarget(chain, tabLoc, paneLoc, false)).toEqual({
+      kind: "pane",
+      tabId: "t1",
+      location: "C:\\a",
+      index: 1,
+    });
   });
 
   it("are worth a drop from their own folder, but not of themselves", () => {

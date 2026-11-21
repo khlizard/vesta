@@ -115,7 +115,13 @@ pub fn load(usr: &Path) -> (UiConfig, Vec<String>) {
         status: load_one(usr, "status.xml", STATUS_XML, xml::parse_menu, &mut w),
         link: load_one(usr, "link.xml", LINK_XML, xml::parse_menu, &mut w),
         key_form: load_one(usr, "keyboard-form.xml", KEYBOARD_FORM_XML, xml::parse_keyboard, &mut w),
-        key_folder: load_one(usr, "keyboard-folder.xml", KEYBOARD_FOLDER_XML, xml::parse_keyboard, &mut w),
+        key_folder: load_one(
+            usr,
+            "keyboard-folder.xml",
+            KEYBOARD_FOLDER_XML,
+            xml::parse_keyboard,
+            &mut w,
+        ),
     };
     (config, w)
 }
@@ -135,7 +141,11 @@ pub fn response(usr: Result<PathBuf, String>) -> UiConfigResponse {
     match usr {
         Ok(usr) => {
             let (config, warnings) = load(&usr);
-            UiConfigResponse { config, warnings, usr_dir: usr.to_string_lossy().into_owned() }
+            UiConfigResponse {
+                config,
+                warnings,
+                usr_dir: usr.to_string_lossy().into_owned(),
+            }
         }
         // No settings folder (it cannot be created): the app still gets its menus and keys.
         Err(e) => UiConfigResponse {
@@ -160,7 +170,10 @@ mod response_tests {
     fn without_a_settings_folder_the_built_in_settings_are_used() {
         let r = response(Err("access denied".into()));
         assert_eq!(r.config, defaults());
-        assert_eq!(r.warnings, vec!["usr: access denied（組み込みの設定を使います）".to_string()]);
+        assert_eq!(
+            r.warnings,
+            vec!["usr: access denied（組み込みの設定を使います）".to_string()]
+        );
         assert_eq!(r.usr_dir, "");
     }
 
@@ -274,7 +287,8 @@ mod tests {
 
     #[test]
     fn sjis_file_with_wrong_declaration() {
-        let src = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<menu><menu text=\"開く(_O)\" command=\"File.Open\"/></menu>";
+        let src =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<menu><menu text=\"開く(_O)\" command=\"File.Open\"/></menu>";
         let (sjis, _, _) = encoding_rs::SHIFT_JIS.encode(src);
         let items = parse_menu(&decode(&sjis)).unwrap();
         assert_eq!(items[0].text.as_deref(), Some("開く(_O)"));
@@ -289,8 +303,8 @@ mod tests {
 
     #[test]
     fn single_quoted_args_keep_double_quotes() {
-        let items =
-            parse_menu("<menu><menu text=\"a\" path=\"p.exe\" args='--dir=\"C:\\x y\" &quot;z&quot;'/></menu>").unwrap();
+        let items = parse_menu("<menu><menu text=\"a\" path=\"p.exe\" args='--dir=\"C:\\x y\" &quot;z&quot;'/></menu>")
+            .unwrap();
         assert_eq!(items[0].args.as_deref(), Some("--dir=\"C:\\x y\" \"z\""));
     }
     #[test]
@@ -300,7 +314,13 @@ mod tests {
              <menu path=\"p\" include-files=\"3\" navigate=\"n\" execute=\"e\" args=\"a &amp; b\"/></menu>",
         )
         .unwrap();
-        assert_eq!(items[0], MenuItem { separator: Some(true), ..Default::default() });
+        assert_eq!(
+            items[0],
+            MenuItem {
+                separator: Some(true),
+                ..Default::default()
+            }
+        );
         assert_eq!(items[1].include_files, Some(false));
         assert_eq!(items[1].depth, Some(2));
         assert_eq!(items[1].children.as_ref().unwrap().len(), 1);
@@ -361,7 +381,9 @@ mod tests {
     #[test]
     #[ignore]
     fn real_user_files() {
-        let Ok(dir) = std::env::var("VESTA_TEST_USR") else { return };
+        let Ok(dir) = std::env::var("VESTA_TEST_USR") else {
+            return;
+        };
         let (cfg, w) = load(Path::new(&dir));
         assert!(w.is_empty(), "{w:?}");
         assert!(!cfg.menu.is_empty() && !cfg.tool.is_empty() && !cfg.link.is_empty());

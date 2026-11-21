@@ -11,17 +11,16 @@ use std::sync::{Mutex, OnceLock};
 
 use lru::LruCache;
 use tauri::http::{Request, Response};
-use windows::core::Interface;
 use windows::Win32::Foundation::SIZE;
 use windows::Win32::Graphics::Gdi::{
-    GetDIBits, GetObjectW, BITMAP, BITMAPINFO, BITMAPINFOHEADER,
-    BI_RGB, DIB_RGB_COLORS, HBITMAP,
+    BI_RGB, BITMAP, BITMAPINFO, BITMAPINFOHEADER, DIB_RGB_COLORS, GetDIBits, GetObjectW, HBITMAP,
 };
 use windows::Win32::UI::Shell::{
-    IShellItemImageFactory, SIIGBF_BIGGERSIZEOK, SIIGBF_ICONONLY, SIIGBF_RESIZETOFIT, SIIGBF,
+    IShellItemImageFactory, SIIGBF, SIIGBF_BIGGERSIZEOK, SIIGBF_ICONONLY, SIIGBF_RESIZETOFIT,
 };
+use windows::core::Interface;
 
-use crate::com::{lock, shell_item, BitmapGuard, ScreenDc};
+use crate::com::{BitmapGuard, ScreenDc, lock, shell_item};
 use crate::path;
 
 type Png = std::sync::Arc<Vec<u8>>;
@@ -45,7 +44,11 @@ struct ByteLru {
 
 impl ByteLru {
     fn new(max_bytes: usize) -> Self {
-        Self { map: LruCache::unbounded(), bytes: 0, max_bytes }
+        Self {
+            map: LruCache::unbounded(),
+            bytes: 0,
+            max_bytes,
+        }
     }
 
     fn get(&mut self, key: &str) -> Option<Png> {
@@ -95,8 +98,17 @@ fn parse_query(req: &Request<Vec<u8>>) -> Option<Query> {
         }
     }
     let loc = loc.filter(|l| !l.is_empty())?;
-    let item = if kind.is_empty() && modified.is_empty() { String::new() } else { format!("{kind}:{modified}") };
-    Some(Query { loc, size: size.clamp(8, 1024), item, raw })
+    let item = if kind.is_empty() && modified.is_empty() {
+        String::new()
+    } else {
+        format!("{kind}:{modified}")
+    };
+    Some(Query {
+        loc,
+        size: size.clamp(8, 1024),
+        item,
+        raw,
+    })
 }
 
 /// Cache key for an icon: per extension for ordinary files, per location otherwise.
@@ -203,7 +215,17 @@ fn hbitmap_to_png(hbm: HBITMAP) -> Option<Vec<u8>> {
     let mut px = vec![0u8; w * h * 4];
     let lines = {
         let dc = ScreenDc::get();
-        unsafe { GetDIBits(dc.0, hbm, 0, h as u32, Some(px.as_mut_ptr() as *mut _), &mut bmi, DIB_RGB_COLORS) }
+        unsafe {
+            GetDIBits(
+                dc.0,
+                hbm,
+                0,
+                h as u32,
+                Some(px.as_mut_ptr() as *mut _),
+                &mut bmi,
+                DIB_RGB_COLORS,
+            )
+        }
     };
     // All zero: nothing was drawn (an image the Shell has not fetched yet), not a picture.
     if lines == 0 || px.iter().all(|&b| b == 0) {
@@ -227,7 +249,11 @@ fn bgra_to_rgba(px: &mut [u8]) {
         } else {
             let a = p[3] as u32;
             let un = |c: u8| -> u8 {
-                if a == 0 || a == 255 { c } else { ((c as u32 * 255 + a / 2) / a).min(255) as u8 }
+                if a == 0 || a == 255 {
+                    c
+                } else {
+                    ((c as u32 * 255 + a / 2) / a).min(255) as u8
+                }
             };
             p[0] = un(r);
             p[1] = un(g);
@@ -264,7 +290,9 @@ pub fn icon_response(req: &Request<Vec<u8>>) -> Response<Vec<u8>> {
     if let Some(hit) = lock(icon_cache()).get(&key).cloned() {
         return ok_png(&hit);
     }
-    let Some(png) = get_image(&q.loc, q.size, SIIGBF_ICONONLY) else { return not_found() };
+    let Some(png) = get_image(&q.loc, q.size, SIIGBF_ICONONLY) else {
+        return not_found();
+    };
     let png = Png::new(png);
     lock(icon_cache()).put(key, png.clone());
     ok_png(&png)
@@ -345,9 +373,15 @@ mod tests {
         let k2 = icon_key(&f2.to_string_lossy(), 16, "");
         assert!(lock(icon_cache()).contains(&k2));
         assert!(is_png(&icon_response(&req("icon", &f2.to_string_lossy(), 16))));
-        assert_ne!(icon_key(&f1.to_string_lossy(), 16, ""), icon_key(&f1.to_string_lossy(), 32, ""));
+        assert_ne!(
+            icon_key(&f1.to_string_lossy(), 16, ""),
+            icon_key(&f1.to_string_lossy(), 32, "")
+        );
         // per-extension keys do not depend on the item
-        assert_eq!(icon_key(&f1.to_string_lossy(), 16, "f:1"), icon_key(&f1.to_string_lossy(), 16, "f:2"));
+        assert_eq!(
+            icon_key(&f1.to_string_lossy(), 16, "f:1"),
+            icon_key(&f1.to_string_lossy(), 16, "f:2")
+        );
 
         let r = icon_response(&req("icon", &d.path().to_string_lossy(), 16));
         assert!(is_png(&r));
@@ -374,10 +408,21 @@ mod tests {
             (got, count)
         };
         assert_eq!(attempts(vec![Tried::Image(vec![1])]), (Some(vec![1]), 1));
-        assert_eq!(attempts(vec![Tried::NotReady, Tried::NotReady, Tried::Image(vec![2])]), (Some(vec![2]), 3));
+        assert_eq!(
+            attempts(vec![Tried::NotReady, Tried::NotReady, Tried::Image(vec![2])]),
+            (Some(vec![2]), 3)
+        );
         // A real failure is not retried; "not ready" gives up after the last wait.
         assert_eq!(attempts(vec![Tried::Failed, Tried::Image(vec![3])]), (None, 1));
-        assert_eq!(attempts(vec![Tried::NotReady, Tried::NotReady, Tried::NotReady, Tried::Image(vec![4])]), (None, 3));
+        assert_eq!(
+            attempts(vec![
+                Tried::NotReady,
+                Tried::NotReady,
+                Tried::NotReady,
+                Tried::Image(vec![4])
+            ]),
+            (None, 3)
+        );
     }
 
     /// Asks for the icon of a real folder from several threads at once, as a starting window
@@ -385,7 +430,9 @@ mod tests {
     #[test]
     #[ignore]
     fn icon_of_real_folder_from_several_threads() {
-        let Ok(path) = std::env::var("VESTA_TEST_ICON_PATH") else { return };
+        let Ok(path) = std::env::var("VESTA_TEST_ICON_PATH") else {
+            return;
+        };
         let threads: Vec<_> = (0..6)
             .map(|n| {
                 let path = path.clone();
@@ -411,8 +458,14 @@ mod tests {
     fn online_only_file_stays_online_only() {
         use std::os::windows::fs::MetadataExt;
         const RECALL_ON_DATA_ACCESS: u32 = 0x40_0000;
-        let Ok(list) = std::env::var("VESTA_TEST_ONLINE_ONLY") else { return };
-        let path = std::fs::read_to_string(list).unwrap().trim().trim_start_matches('\u{feff}').to_string();
+        let Ok(list) = std::env::var("VESTA_TEST_ONLINE_ONLY") else {
+            return;
+        };
+        let path = std::fs::read_to_string(list)
+            .unwrap()
+            .trim()
+            .trim_start_matches('\u{feff}')
+            .to_string();
         let online_only = || {
             // Downloading is asynchronous: give it time to start.
             std::thread::sleep(std::time::Duration::from_secs(4));

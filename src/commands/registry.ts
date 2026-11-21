@@ -62,9 +62,8 @@ function showArg(arg: string | null): boolean | "toggle" {
 }
 
 function tabAt(index: number | null): T.Tab | null {
-  return index ? getState().tabs.tabs[index - 1] ?? null : null;
+  return index ? (getState().tabs.tabs[index - 1] ?? null) : null;
 }
-
 
 const toggleOption = (key: keyof Options): CommandDef => ({
   run: () => setOption(key, !getState().options[key] as never),
@@ -211,7 +210,9 @@ const COMMANDS: Record<string, CommandDef> = {
     },
     enabled: () => !!curPane()?.folder?.parent,
   },
-  "Current.Go.Location": withPane(() => openDialog("goLocation", curPane()?.folder?.fsPath ?? curPane()?.folder?.location)),
+  "Current.Go.Location": withPane(() =>
+    openDialog("goLocation", curPane()?.folder?.fsPath ?? curPane()?.folder?.location),
+  ),
   "Address.Focus": withPane((id) => focusPane("address", id)),
 
   // 表示
@@ -229,8 +230,20 @@ const COMMANDS: Record<string, CommandDef> = {
   "Current.Grouping": viewToggle("grouping", false),
   "Current.AdjustToItem": withPane((id) => adjustColumns([id], "item")),
   "Current.AdjustToWindow": withPane((id) => adjustColumns([id], "window")),
-  "Shown.AdjustToItem": { run: () => adjustColumns(T.shownTabs(getState().tabs).map((t) => t.id), "item") },
-  "Shown.AdjustToWindow": { run: () => adjustColumns(T.shownTabs(getState().tabs).map((t) => t.id), "window") },
+  "Shown.AdjustToItem": {
+    run: () =>
+      adjustColumns(
+        T.shownTabs(getState().tabs).map((t) => t.id),
+        "item",
+      ),
+  },
+  "Shown.AdjustToWindow": {
+    run: () =>
+      adjustColumns(
+        T.shownTabs(getState().tabs).map((t) => t.id),
+        "window",
+      ),
+  },
   "Current.Refresh": withPane((id) => refreshPane(id)),
 
   // ウィンドウ

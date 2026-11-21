@@ -38,7 +38,10 @@ describe("normalizeExecute", () => {
 
 describe("linkAction", () => {
   it("executes a file with its args", () => {
-    expect(linkAction("C:\\a\\app.exe", false, "--x {current}")).toEqual({ execute: "C:\\a\\app.exe", args: "--x {current}" });
+    expect(linkAction("C:\\a\\app.exe", false, "--x {current}")).toEqual({
+      execute: "C:\\a\\app.exe",
+      args: "--x {current}",
+    });
   });
 
   it("opens files without args and folders as before", () => {

@@ -34,7 +34,11 @@ pub fn list(location: &str, show_hidden: bool) -> Result<Listing, String> {
         Some(path) => fs::list_dir(path, show_hidden, folder.sync_root)?,
         None => shell::list_items(&item, show_hidden)?,
     };
-    Ok(Listing { folder, entries, elapsed_ms: start.elapsed().as_millis() as u64 })
+    Ok(Listing {
+        folder,
+        entries,
+        elapsed_ms: start.elapsed().as_millis() as u64,
+    })
 }
 
 /// Drive letter or server name for a file-system location, `None` for virtual ones.
@@ -58,8 +62,7 @@ pub fn disk_free(location: &str) -> Option<DiskFree> {
     let label = disk_label(location)?;
     let w = wide(location);
     let (mut free, mut total) = (0u64, 0u64);
-    unsafe { GetDiskFreeSpaceExW(PCWSTR(w.as_ptr()), Some(&mut free), Some(&mut total), None) }
-        .ok()?;
+    unsafe { GetDiskFreeSpaceExW(PCWSTR(w.as_ptr()), Some(&mut free), Some(&mut total), None) }.ok()?;
     Some(DiskFree { label, free, total })
 }
 
@@ -159,7 +162,12 @@ mod tests {
         let _ = list(&loc, false).unwrap(); // warm up caches
         let t = Instant::now();
         let l = list(&loc, false).unwrap();
-        println!("bench_list_10k: {} entries in {:?} (elapsed_ms={})", l.entries.len(), t.elapsed(), l.elapsed_ms);
+        println!(
+            "bench_list_10k: {} entries in {:?} (elapsed_ms={})",
+            l.entries.len(),
+            t.elapsed(),
+            l.elapsed_ms
+        );
         assert_eq!(l.entries.len(), 10_000);
     }
 }

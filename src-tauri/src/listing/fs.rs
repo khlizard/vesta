@@ -3,15 +3,15 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use windows::core::PCWSTR;
 use windows::Win32::Foundation::{ERROR_FILE_NOT_FOUND, FILETIME};
 use windows::Win32::Storage::FileSystem::{
-    FindExInfoBasic, FindExSearchNameMatch, FindFirstFileExW, FindNextFileW,
     FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_HIDDEN, FILE_ATTRIBUTE_NORMAL, FILE_ATTRIBUTE_OFFLINE,
-    FILE_ATTRIBUTE_PINNED, FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS, FILE_ATTRIBUTE_RECALL_ON_OPEN,
-    FILE_ATTRIBUTE_SYSTEM, FIND_FIRST_EX_LARGE_FETCH, WIN32_FIND_DATAW,
+    FILE_ATTRIBUTE_PINNED, FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS, FILE_ATTRIBUTE_RECALL_ON_OPEN, FILE_ATTRIBUTE_SYSTEM,
+    FIND_FIRST_EX_LARGE_FETCH, FindExInfoBasic, FindExSearchNameMatch, FindFirstFileExW, FindNextFileW,
+    WIN32_FIND_DATAW,
 };
-use windows::Win32::UI::Shell::{SHGetFileInfoW, SHFILEINFOW, SHGFI_TYPENAME, SHGFI_USEFILEATTRIBUTES};
+use windows::Win32::UI::Shell::{SHFILEINFOW, SHGFI_TYPENAME, SHGFI_USEFILEATTRIBUTES, SHGetFileInfoW};
+use windows::core::PCWSTR;
 
 use crate::com::{from_wide_buf, lock, wide};
 use crate::types::{Entry, SyncState};
@@ -65,7 +65,11 @@ pub fn type_name(name: &str, is_folder: bool) -> String {
     let v = if is_folder {
         query_type_name("folder", FILE_ATTRIBUTE_DIRECTORY.0)
     } else {
-        let probe = if key.is_empty() { "file".to_string() } else { format!("file{key}") };
+        let probe = if key.is_empty() {
+            "file".to_string()
+        } else {
+            format!("file{key}")
+        };
         query_type_name(&probe, FILE_ATTRIBUTE_NORMAL.0)
     };
     lock(type_cache()).insert(key, v.clone());
@@ -111,7 +115,11 @@ pub fn list_dir(dir: &str, show_hidden: bool, sync_root: bool) -> Result<Vec<Ent
 
     let mut out = Vec::new();
     loop {
-        let n = data.cFileName.iter().position(|&c| c == 0).unwrap_or(data.cFileName.len());
+        let n = data
+            .cFileName
+            .iter()
+            .position(|&c| c == 0)
+            .unwrap_or(data.cFileName.len());
         let name_w = &data.cFileName[..n];
         let skip = name_w == [b'.' as u16] || name_w == [b'.' as u16, b'.' as u16];
         let attrs = data.dwFileAttributes;

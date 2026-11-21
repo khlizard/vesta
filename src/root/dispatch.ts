@@ -11,7 +11,14 @@ import { runItem } from "../commands/items";
 import { bindingFor } from "../commands/keys";
 import { parseCommand, runCommand } from "../commands/registry";
 import { useConfig } from "../config/store";
-import { ALL_COLUMNS, COLUMN_LABEL, DEFAULT_COLUMNS, moveShownColumn, toggleColumn, visibleColumns } from "../model/columns";
+import {
+  ALL_COLUMNS,
+  COLUMN_LABEL,
+  DEFAULT_COLUMNS,
+  moveShownColumn,
+  toggleColumn,
+  visibleColumns,
+} from "../model/columns";
 import { verbCommand } from "../model/fileOps";
 import { errorText, modsOf } from "../model/input";
 import { barItemFor, menuBarKey, menuLabel } from "../model/menu";
@@ -136,7 +143,10 @@ function columnMenuItems(): PopupItem[] {
     disabled: key === "name",
     onSelect: () => attempt(setOption("Columns", toggleColumn(getState().options.Columns, key))),
   }));
-  items.push({ separator: true }, { text: "既定に戻す(_D)", onSelect: () => attempt(setOption("Columns", [...DEFAULT_COLUMNS])) });
+  items.push(
+    { separator: true },
+    { text: "既定に戻す(_D)", onSelect: () => attempt(setOption("Columns", [...DEFAULT_COLUMNS])) },
+  );
   return items;
 }
 
@@ -214,7 +224,11 @@ function listKey(id: string, key: string, mods: Mods, grid: { columns: number; p
 }
 
 /** Whether `key` is one the list acts on by itself (so the page must not also scroll or type). */
-export function isListKey(key: string, mods: Mods, grid: { columns: number; page: number; horizontal: boolean }): boolean {
+export function isListKey(
+  key: string,
+  mods: Mods,
+  grid: { columns: number; page: number; horizontal: boolean },
+): boolean {
   if (keyStep(key, grid) !== null) return true;
   if (key === "Enter") return !mods.alt;
   // Space toggles the cursor item whatever is held (Ctrl+Space after moving with Ctrl+arrows).
@@ -354,7 +368,8 @@ export function dispatch(e: UiEvent): void {
     }
     case "address.contextIcon": {
       const folder = s.panes[e.id]?.folder;
-      if (folder) attempt(native(backend.showContextMenu(folder.parent ?? "DESKTOP", [folder.location], e.at.x, e.at.y)));
+      if (folder)
+        attempt(native(backend.showContextMenu(folder.parent ?? "DESKTOP", [folder.location], e.at.x, e.at.y)));
       return;
     }
 
@@ -394,7 +409,9 @@ export function dispatch(e: UiEvent): void {
         clickItem(e.id, e.item, { ctrl: false, shift: false });
       }
       const items = selectedLocations(e.id);
-      attempt(native(backend.startDrag(items.length ? items : [e.item]), e.button === "right" ? RIGHT_DRAG_TAIL_MS : 0));
+      attempt(
+        native(backend.startDrag(items.length ? items : [e.item]), e.button === "right" ? RIGHT_DRAG_TAIL_MS : 0),
+      );
       return;
     }
     case "list.doubleClick": {

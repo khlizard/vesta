@@ -3,7 +3,10 @@ import { externalAction } from "../model/navigation";
 import { modsOf } from "../model/input";
 import { accessKeyPressed, switchesOnHover } from "./popup";
 
-const key = (k: string, mods: Partial<{ ctrlKey: boolean; shiftKey: boolean; altKey: boolean; metaKey: boolean }> = {}) => ({
+const key = (
+  k: string,
+  mods: Partial<{ ctrlKey: boolean; shiftKey: boolean; altKey: boolean; metaKey: boolean }> = {},
+) => ({
   key: k,
   ctrlKey: false,
   shiftKey: false,

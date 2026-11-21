@@ -101,9 +101,7 @@ export interface AltPress {
 export const NO_ALT: AltPress = { down: false, used: false };
 
 export type AltEvent =
-  | { type: "keydown"; key: string; repeat: boolean }
-  | { type: "keyup"; key: string }
-  | { type: "pointerdown" };
+  { type: "keydown"; key: string; repeat: boolean } | { type: "keyup"; key: string } | { type: "pointerdown" };
 
 const MODIFIER_KEYS = ["Control", "Shift", "Meta"];
 

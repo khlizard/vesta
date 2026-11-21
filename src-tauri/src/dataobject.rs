@@ -57,7 +57,10 @@ pub fn pidls(paths: &[String]) -> Result<Vec<Pidl>, ItemsError> {
     paths
         .iter()
         .map(|p| {
-            Pidl::from_parsing(p).map_err(|e| ItemsError::Parse { path: p.clone(), message: err(e) })
+            Pidl::from_parsing(p).map_err(|e| ItemsError::Parse {
+                path: p.clone(),
+                message: err(e),
+            })
         })
         .collect()
 }
@@ -179,7 +182,11 @@ impl Medium {
     /// The memory block, when the medium is one.
     fn hglobal(&self) -> Option<HGLOBAL> {
         // The union is read only as what `tymed` says it holds.
-        if self.is(TYMED_HGLOBAL) { Some(unsafe { self.0.u.hGlobal }) } else { None }
+        if self.is(TYMED_HGLOBAL) {
+            Some(unsafe { self.0.u.hGlobal })
+        } else {
+            None
+        }
     }
 
     /// The stream, when the medium is one.
@@ -203,7 +210,9 @@ impl Medium {
 
     /// The paths of a CF_HDROP medium.
     pub fn hdrop_paths(&self) -> Vec<String> {
-        let Some(handle) = self.hglobal() else { return Vec::new() };
+        let Some(handle) = self.hglobal() else {
+            return Vec::new();
+        };
         let hdrop = HDROP(handle.0);
         unsafe {
             let count = DragQueryFileW(hdrop, u32::MAX, None);
@@ -234,13 +243,17 @@ pub fn hdrop_format() -> FORMATETC {
 
 /// The file paths `data` carries (CF_HDROP); empty when it has none.
 pub fn hdrop_paths(data: &IDataObject) -> Vec<String> {
-    Medium::get(data, &hdrop_format()).map(|m| m.hdrop_paths()).unwrap_or_default()
+    Medium::get(data, &hdrop_format())
+        .map(|m| m.hdrop_paths())
+        .unwrap_or_default()
 }
 
 /// The bytes of a format handed over as a memory block.
 pub fn global_data(data: &IDataObject, format: u16) -> Result<Vec<u8>, String> {
     let medium = Medium::get(data, &global(format)).map_err(err)?;
-    medium.bytes(None).unwrap_or_else(|| Err("受け取れない形式のデータです".into()))
+    medium
+        .bytes(None)
+        .unwrap_or_else(|| Err("受け取れない形式のデータです".into()))
 }
 
 /// Stores `bytes` in `data` as `format`, in a memory block the data object then owns.
@@ -250,7 +263,9 @@ pub fn set_global(data: &IDataObject, format: &FORMATETC, bytes: &[u8]) -> Resul
     let block = Global::copy_of(bytes)?;
     let medium = STGMEDIUM {
         tymed: TYMED_HGLOBAL.0 as u32,
-        u: windows::Win32::System::Com::STGMEDIUM_0 { hGlobal: block.handle() },
+        u: windows::Win32::System::Com::STGMEDIUM_0 {
+            hGlobal: block.handle(),
+        },
         pUnkForRelease: ManuallyDrop::new(None),
     };
     // fRelease = true: the data object owns the block once the call has succeeded. When it
@@ -294,12 +309,21 @@ mod tests {
     fn items_errors_keep_the_callers_wording() {
         crate::com::init_sta();
         let none: [String; 0] = [];
-        assert_eq!(item_array(&none).unwrap_err().with_path("対象がありません"), "対象がありません");
-        assert_eq!(data_object(&none).map(|_| ()).unwrap_err().plain("no items to drag"), "no items to drag");
+        assert_eq!(
+            item_array(&none).unwrap_err().with_path("対象がありません"),
+            "対象がありません"
+        );
+        assert_eq!(
+            data_object(&none).map(|_| ()).unwrap_err().plain("no items to drag"),
+            "no items to drag"
+        );
         let missing = r"C:\no-such-dir-vesta-test\nofile.txt".to_string();
         let named = item_array(std::slice::from_ref(&missing)).unwrap_err().with_path("-");
         assert!(named.starts_with(&format!("{missing}: ")), "{named}");
-        let plain = pidls(std::slice::from_ref(&missing)).map(|_| ()).unwrap_err().plain("-");
+        let plain = pidls(std::slice::from_ref(&missing))
+            .map(|_| ())
+            .unwrap_err()
+            .plain("-");
         assert!(!plain.contains(&missing), "{plain}");
         assert_eq!(named, format!("{missing}: {plain}"));
     }

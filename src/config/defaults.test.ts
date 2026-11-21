@@ -22,6 +22,7 @@ describe("default usr/*.xml", () => {
   });
 
   it("has no Avesta-only parts", () => {
-    for (const [file, xml] of Object.entries(files)) expect(xml, file).not.toMatch(/xml-stylesheet|Avesta|cygwin|lamoo|takechi/i);
+    for (const [file, xml] of Object.entries(files))
+      expect(xml, file).not.toMatch(/xml-stylesheet|Avesta|cygwin|lamoo|takechi/i);
   });
 });

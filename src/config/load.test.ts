@@ -43,7 +43,11 @@ describe("pruneBindings", () => {
     const b = pruneBindings([
       { modifier: "C", key: "P", item: { command: "Preview.Show(toggle)" } },
       { modifier: "C", key: "E", item: { execute: "C:\\x.exe", args: "[selected]" } },
-      { modifier: "CS", key: "F", item: { children: [{ text: "_A", command: "Address.Focus" }, { command: "Tree.Focus" }] } },
+      {
+        modifier: "CS",
+        key: "F",
+        item: { children: [{ text: "_A", command: "Address.Focus" }, { command: "Tree.Focus" }] },
+      },
     ]);
     expect(b.map((x) => x.key)).toEqual(["E", "F"]);
     expect(b[1].item.children).toHaveLength(1);

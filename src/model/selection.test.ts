@@ -50,7 +50,12 @@ describe("clickSelect", () => {
   });
 
   it("adds the range with Ctrl+Shift", () => {
-    expect(picked(clickSelect(sel(["a", "c"], "c"), order, "e", { ctrl: true, shift: true }))).toEqual(["a", "c", "d", "e"]);
+    expect(picked(clickSelect(sel(["a", "c"], "c"), order, "e", { ctrl: true, shift: true }))).toEqual([
+      "a",
+      "c",
+      "d",
+      "e",
+    ]);
   });
 
   it("treats Shift without a usable anchor as a plain click", () => {

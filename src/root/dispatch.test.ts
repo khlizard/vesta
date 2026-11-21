@@ -5,7 +5,10 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: vi.fn() }));
 vi.mock("../api/backend", () => ({
   backend: {
-    listFolder: vi.fn(async (location: string) => ({ folder: { location, displayName: location, fsPath: location }, entries: [] })),
+    listFolder: vi.fn(async (location: string) => ({
+      folder: { location, displayName: location, fsPath: location },
+      entries: [],
+    })),
     diskFree: vi.fn(async () => null),
     watchFolders: vi.fn(async () => {}),
     writeState: vi.fn(async () => {}),
@@ -26,11 +29,29 @@ import { DEFAULT_OPTIONS, emptyPane, getState, modeIn, setState, type PaneState 
 import { dispatch, keyDown, keyUp, pointerDown, windowBlur, type KeyInput } from "./dispatch";
 
 function tab(id: string, shown = true): Tab {
-  return { id, location: `C:\\${id}`, displayName: id, fsPath: `C:\\${id}`, shown, locked: false, back: [], forward: [] };
+  return {
+    id,
+    location: `C:\\${id}`,
+    displayName: id,
+    fsPath: `C:\\${id}`,
+    shown,
+    locked: false,
+    back: [],
+    forward: [],
+  };
 }
 
 const entry = (name: string): Entry =>
-  ({ name, location: `C:\\a\\${name}`, isFolder: false, isLink: false, size: 1, modified: null, typeName: "", hidden: false }) as Entry;
+  ({
+    name,
+    location: `C:\\a\\${name}`,
+    isFolder: false,
+    isLink: false,
+    size: 1,
+    modified: null,
+    typeName: "",
+    hidden: false,
+  }) as Entry;
 
 function pane(id: string, names: string[] = []): PaneState {
   const folder = { location: `C:\\${id}`, displayName: id, fsPath: `C:\\${id}`, parent: "C:\\" } as FolderInfo;
@@ -77,7 +98,13 @@ beforeEach(() => {
     focus: null,
     gate: OPEN_GATE,
     message: null,
-    layout: { menuBar: [{ x: 0, y: 20 }, { x: 60, y: 20 }], listWidths: {} },
+    layout: {
+      menuBar: [
+        { x: 0, y: 20 },
+        { x: 60, y: 20 },
+      ],
+      listWidths: {},
+    },
   });
   useConfig.setState({
     menu: MENU,
@@ -273,7 +300,9 @@ describe("list", () => {
   });
 
   it("keeps the selection while a selected item is pressed, and collapses it when released without a drag", () => {
-    setState({ panes: { ...getState().panes, a: { ...getState().panes.a, selected: new Set([loc("x.txt"), loc("y.txt")]) } } });
+    setState({
+      panes: { ...getState().panes, a: { ...getState().panes.a, selected: new Set([loc("x.txt"), loc("y.txt")]) } },
+    });
     dispatch({ type: "list.press", id: "a", item: loc("y.txt"), mods: { ctrl: false, shift: false } });
     expect(selected()).toEqual(["x.txt", "y.txt"]);
     expect(getState().panes.a.cursor).toBe(loc("y.txt"));
@@ -282,7 +311,9 @@ describe("list", () => {
   });
 
   it("drags the whole selection, and does not collapse it afterwards", async () => {
-    setState({ panes: { ...getState().panes, a: { ...getState().panes.a, selected: new Set([loc("x.txt"), loc("y.txt")]) } } });
+    setState({
+      panes: { ...getState().panes, a: { ...getState().panes.a, selected: new Set([loc("x.txt"), loc("y.txt")]) } },
+    });
     dispatch({ type: "list.press", id: "a", item: loc("y.txt"), mods: { ctrl: false, shift: false } });
     dispatch({ type: "list.drag", id: "a", item: loc("y.txt"), button: "left" });
     expect(backend.startDrag).toHaveBeenCalledWith([loc("x.txt"), loc("y.txt")]);
