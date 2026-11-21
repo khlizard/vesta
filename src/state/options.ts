@@ -4,10 +4,11 @@ import { backend } from "../api/backend";
 import { scaleWidths } from "../model/fontSize";
 import { normalizeOptions } from "../model/options";
 import { saveLater } from "../model/pacing";
+import { saveFailed, setAsideBadState } from "./log";
 import { DEFAULT_OPTIONS, getState, setState, type Options } from "./store";
 
 /** config.json is written shortly after the last change (column drags and Ctrl+wheel change options rapidly). */
-const save = saveLater(500, () => backend.writeState("config", JSON.stringify(getState().options)).catch(() => {}));
+const save = saveLater(500, () => backend.writeState("config", JSON.stringify(getState().options)).catch(saveFailed("config.json")));
 
 /** Writes config.json now (before a restart). */
 export const saveOptions = save.now;
@@ -31,6 +32,7 @@ export async function loadOptions() {
   try {
     setState({ options: normalizeOptions(JSON.parse(raw), DEFAULT_OPTIONS) });
   } catch {
-    /* keep defaults */
+    // Defaults stay. The file is kept: the next save must not overwrite what the user had.
+    await setAsideBadState("config", "オプション");
   }
 }

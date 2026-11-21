@@ -106,7 +106,7 @@ fn write_medium(medium: &Medium, size: Option<u64>, out: &mut impl Write) -> Res
     } else if let Some(bytes) = medium.bytes(size) {
         out.write_all(&bytes?).map_err(|e| e.to_string())
     } else {
-        Err("unsupported data".to_string())
+        Err("受け取れない形式のデータです".to_string())
     }
 }
 
@@ -114,7 +114,7 @@ fn write_medium(medium: &Medium, size: Option<u64>, out: &mut impl Write) -> Res
 fn save_virtual(data: &IDataObject, dir: &Path) -> Result<Vec<PathBuf>, String> {
     let files = virtual_files(data);
     if files.is_empty() {
-        return Err("no files in the dropped data".into());
+        return Err("ドロップされたデータにファイルがありません".into());
     }
     let names = distinct_names(files.iter().map(|(_, f)| safe_name(&f.name)).collect());
     let tymed = (TYMED_ISTREAM.0 | TYMED_HGLOBAL.0) as u32;
@@ -132,7 +132,7 @@ fn save_virtual(data: &IDataObject, dir: &Path) -> Result<Vec<PathBuf>, String> 
 
 /// Writes an Internet shortcut for the URL of `data` into `dir`.
 fn save_url(data: &IDataObject, dir: &Path) -> Result<Vec<PathBuf>, String> {
-    let (name, text) = url_of(data).ok_or("not a web address")?;
+    let (name, text) = url_of(data).ok_or("Web のアドレスではありません")?;
     let path = dir.join(name);
     std::fs::write(&path, text).map_err(|e| e.to_string())?;
     Ok(vec![path])

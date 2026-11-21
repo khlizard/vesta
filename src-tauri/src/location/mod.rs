@@ -143,8 +143,8 @@ mod tests {
         assert!(resolve("~nobody-here").is_err());
         assert_eq!(folder(resolve("DESKTOP")).location, DESKTOP);
         assert!(folder(resolve("desktopdirectory")).fs_path.is_some());
-        assert!(resolve("AVESTA").unwrap_err().contains("not available"));
-        assert!(resolve("VESTA").unwrap_err().contains("not available"));
+        assert!(resolve("AVESTA").unwrap_err().contains("まだ決まっていません"));
+        assert!(resolve("VESTA").unwrap_err().contains("まだ決まっていません"));
     }
 
     #[test]

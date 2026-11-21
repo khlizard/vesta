@@ -58,7 +58,7 @@ fn retry_busy<T>(mut f: impl FnMut() -> windows::core::Result<T>) -> windows::co
 /// loop, cannot answer. The flush then fails or the other program gets nothing, and a paste in
 /// Explorer does nothing.
 fn set_files_sync(paths: &[String], cut: bool) -> Result<(), String> {
-    let data = dataobject::data_object(paths).map_err(|e| e.with_path("no files"))?;
+    let data = dataobject::data_object(paths).map_err(|e| e.with_path("コピーするファイルがありません"))?;
     let copy_of = |format: u16| -> Result<Global, String> {
         Global::copy_of(&dataobject::global_data(&data, format)?)
     };

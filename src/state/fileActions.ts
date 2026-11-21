@@ -105,7 +105,13 @@ export async function paste(id: string | null) {
   const folder = folderPath(id);
   if (!p || !folder) return;
   const dest = pasteDest(folder, selectedEntries(p), getState().options.PasteInFolder);
-  const clip = await backend.clipboardGetFiles().catch(() => null);
+  let clip;
+  try {
+    clip = await backend.clipboardGetFiles();
+  } catch (e) {
+    setMessage(`クリップボードを読めません: ${errorText(e)}`);
+    return;
+  }
   if (!clip || !clip.paths.length) {
     setMessage("貼り付けるファイルがありません");
     return;

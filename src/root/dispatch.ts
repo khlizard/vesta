@@ -88,7 +88,7 @@ function openMenuBar(index: number, byKey: boolean) {
   } else {
     closePopup();
     setState({ menuBarHot: null });
-    void runItem(item, NO_MODS);
+    attempt(runItem(item, NO_MODS));
   }
 }
 
@@ -134,9 +134,9 @@ function columnMenuItems(): PopupItem[] {
     text: `${COLUMN_LABEL[key]}(_${COLUMN_KEY[key]})`,
     checked: columns.includes(key),
     disabled: key === "name",
-    onSelect: () => void setOption("Columns", toggleColumn(getState().options.Columns, key)),
+    onSelect: () => attempt(setOption("Columns", toggleColumn(getState().options.Columns, key))),
   }));
-  items.push({ separator: true }, { text: "既定に戻す(_D)", onSelect: () => void setOption("Columns", [...DEFAULT_COLUMNS]) });
+  items.push({ separator: true }, { text: "既定に戻す(_D)", onSelect: () => attempt(setOption("Columns", [...DEFAULT_COLUMNS])) });
   return items;
 }
 
@@ -151,7 +151,7 @@ async function ancestorItems(id: string): Promise<PopupItem[]> {
     iconSrc: iconUrl(f.location),
     indent: i,
     strong: i === ancestors.length - 1,
-    onSelect: (mods: Mods) => void navigate(id, f.location, mods),
+    onSelect: (mods: Mods) => attempt(navigate(id, f.location, mods)),
   }));
 }
 
@@ -182,7 +182,15 @@ const waitingPress = new Map<string, string>();
 /** Letters typed in each pane's list, for type-ahead. */
 const typed = new Map<string, TypeAhead>();
 
+/** Drops what is remembered for panes that are gone (closed tabs). */
+function forgetClosedPanes() {
+  const panes = getState().panes;
+  for (const id of typed.keys()) if (!panes[id]) typed.delete(id);
+  for (const id of waitingPress.keys()) if (!panes[id]) waitingPress.delete(id);
+}
+
 function listKey(id: string, key: string, mods: Mods, grid: { columns: number; page: number; horizontal: boolean }) {
+  forgetClosedPanes();
   const p = getState().panes[id];
   if (!p) return;
   const step = keyStep(key, grid);
@@ -191,7 +199,7 @@ function listKey(id: string, key: string, mods: Mods, grid: { columns: number; p
     const sel = selectedEntries(p);
     const cur = ordered(p).entries.find((x) => x.location === p.cursor);
     const targets = sel.length ? sel : cur ? [cur] : [];
-    if (targets.length) void openEntries(id, targets, mods);
+    if (targets.length) attempt(openEntries(id, targets, mods));
     return;
   }
   const now = Date.now();
@@ -222,7 +230,7 @@ export function dispatch(e: UiEvent): void {
   switch (e.type) {
     // ------------------------------------------------------------ bars and menus
     case "item":
-      if (commandsAllowed(mode())) void runItem(e.item, e.middle ? { ...e.mods, ctrl: true } : e.mods);
+      if (commandsAllowed(mode())) attempt(runItem(e.item, e.middle ? { ...e.mods, ctrl: true } : e.mods));
       return;
     case "menu.open":
       openPopup(e.items, e.at.x, e.at.y, e.owner);
@@ -231,7 +239,7 @@ export function dispatch(e: UiEvent): void {
       // The menu closes first: the item acts on what is behind it.
       closePopup();
       if (e.item.onSelect) e.item.onSelect(e.mods);
-      else void runItem(e.item, e.mods);
+      else attempt(runItem(e.item, e.mods));
       return;
     case "menu.context":
       e.item.onContextMenu?.(e.at);
@@ -258,13 +266,13 @@ export function dispatch(e: UiEvent): void {
       return;
     }
     case "link.click":
-      void clickLink(e.index, e.middle ? { ...e.mods, ctrl: true } : e.mods, e.at);
+      attempt(clickLink(e.index, e.middle ? { ...e.mods, ctrl: true } : e.mods, e.at));
       return;
     case "link.hover":
       hoverLink(e.index, e.at);
       return;
     case "link.context":
-      void native(contextLink(e.index, e.at));
+      attempt(native(contextLink(e.index, e.at)));
       return;
 
     // ------------------------------------------------------------ tabs
@@ -310,7 +318,7 @@ export function dispatch(e: UiEvent): void {
       return;
     }
     case "pane.history":
-      void goHistory(e.id, e.dir);
+      attempt(goHistory(e.id, e.dir));
       return;
 
     // ------------------------------------------------------------ address bar
@@ -320,13 +328,13 @@ export function dispatch(e: UiEvent): void {
       if (!e.on) forgetSuggestions(e.id);
       return;
     case "address.input":
-      void suggestFor(e.id, e.text);
+      attempt(suggestFor(e.id, e.text));
       return;
     case "address.commit": {
       const text = e.text.trim();
       if (!text) return;
       // When it could not be opened the reason is in the status bar and the field keeps the text.
-      void openInput(text, e.mods, e.id).then((opened) => opened && focusPane("list", e.id));
+      attempt(openInput(text, e.mods, e.id).then((opened) => opened && focusPane("list", e.id)));
       return;
     }
     case "address.cancel":
@@ -390,16 +398,16 @@ export function dispatch(e: UiEvent): void {
       return;
     }
     case "list.doubleClick": {
-      if (e.item === null) return void goUp(e.id, e.mods);
+      if (e.item === null) return attempt(goUp(e.id, e.mods));
       const p = s.panes[e.id];
       if (!p) return;
       const item = ordered(p).entries.find((x) => x.location === e.item);
-      void openEntries(e.id, openTargets(selectedEntries(p), item, e.item), e.mods);
+      attempt(openEntries(e.id, openTargets(selectedEntries(p), item, e.item), e.mods));
       return;
     }
     case "list.middleClick":
       // Empty space goes up; a middle click on an item does nothing.
-      if (e.item === null) void goUp(e.id);
+      if (e.item === null) attempt(goUp(e.id));
       return;
     case "list.context": {
       // The click that ends a right-button drag is not a request for the menu.
@@ -414,7 +422,7 @@ export function dispatch(e: UiEvent): void {
       return;
     case "list.zoom":
       if (s.panes[e.id]?.view.mode === "thumbnail") {
-        void setOption("ThumbnailSize", stepThumbnailSize(s.options.ThumbnailSize, e.dir));
+        attempt(setOption("ThumbnailSize", stepThumbnailSize(s.options.ThumbnailSize, e.dir)));
       }
       return;
     case "list.sort":
@@ -425,23 +433,23 @@ export function dispatch(e: UiEvent): void {
       return;
     case "list.moveColumn": {
       const shown = visibleColumns(s.options.Columns, !!s.panes[e.id]?.folder?.syncRoot);
-      void setOption("Columns", moveShownColumn(s.options.Columns, shown, e.key, e.to));
+      attempt(setOption("Columns", moveShownColumn(s.options.Columns, shown, e.key, e.to)));
       return;
     }
     case "list.columnWidth":
       // Column widths are shared by all folders and panes (docs/spec/listing.md「列のカスタマイズ」).
-      void setOption("ColumnWidths", { ...s.options.ColumnWidths, [e.key]: e.width });
+      attempt(setOption("ColumnWidths", { ...s.options.ColumnWidths, [e.key]: e.width }));
       return;
     case "list.fitColumn": {
       const p = s.panes[e.id];
-      if (p) void setOption("ColumnWidths", { ...s.options.ColumnWidths, [e.key]: fitWidth(e.key, p.entries) });
+      if (p) attempt(setOption("ColumnWidths", { ...s.options.ColumnWidths, [e.key]: fitWidth(e.key, p.entries) }));
       return;
     }
     case "rename.end":
       if (s.panes[e.id]?.renaming !== e.item) return;
       updatePane(e.id, () => ({ renaming: null }));
       if (e.refocus) focusPane("list", e.id);
-      if (e.name !== null) void rename(e.id, e.item, e.name);
+      if (e.name !== null) attempt(rename(e.id, e.item, e.name));
       return;
 
     // ------------------------------------------------------------ dialogs
@@ -452,11 +460,11 @@ export function dispatch(e: UiEvent): void {
       if (kind === "location") {
         const input = e.text.trim() || "HOME";
         rememberLocation(input);
-        void openExternal(input, e.mods);
+        attempt(openExternal(input, e.mods));
       } else if (kind === "goLocation") {
-        void openInput(e.text.trim() || "HOME", e.mods, id);
+        attempt(openInput(e.text.trim() || "HOME", e.mods, id));
       } else if (kind === "newFile") {
-        void newItem(id, e.text);
+        attempt(newItem(id, e.text));
       } else if (kind === "pattern" && id) {
         selectPattern(id, e.text);
       }
@@ -525,7 +533,7 @@ export function keyDown(k: KeyInput): boolean {
       if (!binding) return false;
       const item = binding.item;
       if (item.children?.length) openPopup(item.children, k.at.x, k.at.y);
-      else void runItem(item, modsOf(k), k.repeat);
+      else attempt(runItem(item, modsOf(k), k.repeat));
       return true;
     }
     case "text": {
@@ -534,7 +542,7 @@ export function keyDown(k: KeyInput): boolean {
       if (m.kind !== "edit" || m.field !== "rename") return false;
       const item = bindingFor(k, true)?.item;
       if (!item?.command || parseCommand(item.command).name !== "Current.Rename") return false;
-      void runItem(item, modsOf(k), k.repeat);
+      attempt(runItem(item, modsOf(k), k.repeat));
       return true;
     }
     default:
@@ -551,7 +559,7 @@ export function keyUp(key: string): boolean {
   const s = getState();
   if (!s.options.MenuVisible) {
     // A hidden menu bar could otherwise only be brought back by editing config.json.
-    void setOption("MenuVisible", true);
+    attempt(setOption("MenuVisible", true));
   } else if (s.popup) {
     closePopup();
   } else {

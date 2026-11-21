@@ -5,6 +5,7 @@ import { backend } from "../api/backend";
 import { saveLater } from "../model/pacing";
 import { normPath } from "../model/paths";
 import { DEFAULT_VIEW, type ViewSettings } from "./store";
+import { saveFailed, setAsideBadState } from "./log";
 
 /** Saved settings over the defaults, keeping only known fields (older files also stored column widths). */
 function viewOf(saved: Partial<ViewSettings>): ViewSettings {
@@ -72,11 +73,12 @@ export async function loadViews() {
     );
   } catch {
     views = new Map();
+    await setAsideBadState("folders", "フォルダごとの表示設定");
   }
 }
 
 const save = saveLater(2000, () =>
-  backend.writeState("folders", JSON.stringify(Object.fromEntries(views))).catch(() => {}),
+  backend.writeState("folders", JSON.stringify(Object.fromEntries(views))).catch(saveFailed("folders.json")),
 );
 
 /** Writes folders.json now (before the window closes). */

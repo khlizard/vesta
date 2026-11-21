@@ -33,7 +33,7 @@ fn shell_drop_target(hwnd: HWND, folder: &str) -> Result<IDropTarget, String> {
 /// shows its menu at `pt` (screen): copy / move / shortcut plus the items of drag-and-drop
 /// handler extensions (FastCopy, archivers), and carries out the choice itself.
 fn right_drop_blocking(hwnd: HWND, sources: &[String], folder: &str, pt: POINT) -> Result<(), String> {
-    let data = dataobject::data_object(sources).map_err(|e| e.plain("no items to drag"))?;
+    let data = dataobject::data_object(sources).map_err(|e| e.plain("ドロップする項目がありません"))?;
     let target = shell_drop_target(hwnd, folder)?;
     let at = POINTL { x: pt.x, y: pt.y };
     let allowed = DROPEFFECT_COPY | DROPEFFECT_MOVE | DROPEFFECT_LINK;
@@ -79,7 +79,7 @@ fn drop_keys(right_button: bool) -> MODIFIERKEYS_FLAGS {
 
 /// Replays a drop of `sources` on the Shell's drop target of `item`, at `pt` (screen).
 fn drop_on_item_blocking(hwnd: HWND, sources: &[String], item: &str, pt: POINT, right_button: bool) -> Result<(), String> {
-    let data = dataobject::data_object(sources).map_err(|e| e.plain("no items to drag"))?;
+    let data = dataobject::data_object(sources).map_err(|e| e.plain("ドロップする項目がありません"))?;
     let target = item_drop_target(item)?;
     let at = POINTL { x: pt.x, y: pt.y };
     let allowed = DROPEFFECT_COPY | DROPEFFECT_MOVE | DROPEFFECT_LINK;

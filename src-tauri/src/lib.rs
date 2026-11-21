@@ -155,6 +155,18 @@ async fn write_state(app: tauri::AppHandle, name: String, json: String) -> Resul
     com::blocking(move || store::write_state(&app, &name, &json)).await?
 }
 
+/// Sets an unreadable `var/<name>.json` aside as `<name>.bad.json`.
+#[tauri::command]
+async fn keep_bad_state(app: tauri::AppHandle, name: String) -> Result<(), String> {
+    com::blocking(move || store::keep_bad_state(&app, &name)).await?
+}
+
+/// Writes a line to `var/vesta.log` for the frontend (a release build has no console).
+#[tauri::command]
+async fn log_line(text: String) -> Result<(), String> {
+    com::blocking(move || logfile::line(&text)).await
+}
+
 #[tauri::command]
 async fn get_ui_config(app: tauri::AppHandle) -> Result<config::UiConfigResponse, String> {
     config::ui_config(app).await
@@ -248,6 +260,8 @@ pub fn run() {
             drop_on_item,
             read_state,
             write_state,
+            keep_bad_state,
+            log_line,
             get_ui_config,
             update_check,
             update_restart,

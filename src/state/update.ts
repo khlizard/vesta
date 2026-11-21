@@ -2,6 +2,7 @@
 
 import { backend } from "../api/backend";
 import { errorText } from "../model/input";
+import { logLine } from "./log";
 import { setMessage } from "./message";
 import { flushState } from "./session";
 import { mayClose } from "./exclusive";
@@ -15,7 +16,10 @@ let started = false;
 async function check() {
   if (getState().updateReady) return;
   // Offline, rate-limited, not installed by Velopack...: stay quiet and try again next time.
-  const version = await backend.updateCheck().catch(() => null);
+  const version = await backend.updateCheck().catch((e) => {
+    logLine("update check", e);
+    return null;
+  });
   if (version) setState({ updateReady: version });
 }
 

@@ -13,6 +13,10 @@ use crate::com::{lock, wide};
 /// Answers by path key (`crate::path::key`).
 type Cache = Mutex<HashMap<String, bool>>;
 
+/// The cache is emptied when it reaches this many folders, so a long session that visits
+/// very many folders does not keep them all. Asking again is cheap.
+const CACHE_LIMIT: usize = 4096;
+
 fn sync_cache() -> &'static Cache {
     static C: OnceLock<Cache> = OnceLock::new();
     C.get_or_init(Default::default)
@@ -42,7 +46,11 @@ fn cached(cache: &Cache, path: &str, ask: impl FnOnce(&str) -> bool) -> bool {
     }
     // Asked without holding the lock: the answer can take a while.
     let ok = ask(path);
-    lock(cache).insert(key, ok);
+    let mut cache = lock(cache);
+    if cache.len() >= CACHE_LIMIT {
+        cache.clear();
+    }
+    cache.insert(key, ok);
     ok
 }
 

@@ -297,7 +297,14 @@ impl Watcher {
                 }
             }
         };
-        *lock(&shared.watcher) = notify::recommended_watcher(handler).ok();
+        *lock(&shared.watcher) = match notify::recommended_watcher(handler) {
+            Ok(w) => Some(w),
+            Err(e) => {
+                // Without it the lists do not refresh on their own (F5 still works).
+                crate::logfile::line(&format!("folder watcher could not start: {e}"));
+                None
+            }
+        };
         shared
     }
 

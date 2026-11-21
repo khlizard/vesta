@@ -186,9 +186,12 @@ impl Outcome {
     /// Events of the items the operation was asked for. The sink also reports every item inside
     /// a folder; those are left out (undoing the folder takes them along).
     pub(super) fn ok_events(&self, kind: Kind) -> impl Iterator<Item = &Event> {
+        // A copied folder reports one event per file in it, so this must not compare every
+        // event with every other: the done sources go into a set, and each event looks up its
+        // own parents there (the cost follows the depth of the path, not the number of files).
         let done: Vec<&Event> = self.events.iter().filter(|e| e.kind == kind && e.done()).collect();
-        let sources: Vec<&str> = done.iter().map(|e| e.source.as_str()).collect();
-        done.into_iter().filter(move |e| !sources.iter().any(|s| crate::path::is_inside(&e.source, s)))
+        let sources: std::collections::HashSet<String> = done.iter().map(|e| crate::path::key(&e.source)).collect();
+        done.into_iter().filter(move |e| !crate::path::is_below_any(&e.source, &sources))
     }
 
     pub(super) fn any_ok(&self) -> bool {
@@ -309,6 +312,23 @@ mod tests {
         assert_eq!(moved, vec![r"C:\src\moved.txt"]);
         assert_eq!(out.ok_events(Kind::Delete).count(), 0);
         assert!(out.any_ok());
+    }
+
+    #[test]
+    fn ok_events_of_a_big_folder_are_found_quickly() {
+        // One folder with many files in it, as the sink reports a folder copy.
+        let mut events = vec![event(Kind::Copy, r"C:\src\big", Some(r"C:\dst\big"), S_OK)];
+        for i in 0..100_000 {
+            let name = format!(r"C:\src\big\sub{}\f{i}.txt", i % 100);
+            events.push(event(Kind::Copy, &name, Some(&name), S_OK));
+        }
+        events.push(event(Kind::Copy, r"C:\src\other.txt", Some(r"C:\dst\other.txt"), S_OK));
+        let out = outcome(events);
+        let started = std::time::Instant::now();
+        let copied: Vec<&str> = out.ok_events(Kind::Copy).map(|e| e.source.as_str()).collect();
+        assert_eq!(copied, vec![r"C:\src\big", r"C:\src\other.txt"]);
+        // Comparing every pair took minutes at this size.
+        assert!(started.elapsed() < std::time::Duration::from_secs(5), "{:?}", started.elapsed());
     }
 
     #[test]

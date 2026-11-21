@@ -44,6 +44,10 @@ export const backend = {
     invoke<void>("drop_on_item", { sources, item, x, y, rightButton }),
   readState: (name: string) => invoke<string | null>("read_state", { name }),
   writeState: (name: string, json: string) => invoke<void>("write_state", { name, json }),
+  /** Sets an unreadable var/<name>.json aside as <name>.bad.json. */
+  keepBadState: (name: string) => invoke<void>("keep_bad_state", { name }),
+  /** Appends a line to var/vesta.log. */
+  logLine: (text: string) => invoke<void>("log_line", { text }),
   /** The folder a shortcut (.lnk) points to, or null. */
   linkFolder: (location: string) => invoke<FolderInfo | null>("link_folder", { location }),
   /** Folders and files given on the command line of this instance. */

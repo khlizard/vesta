@@ -63,7 +63,7 @@ fn parse_tree(text: &str) -> Result<Node, String> {
                 match stack.last_mut() {
                     Some(parent) => parent.children.push(node),
                     None if root.is_none() => root = Some(node),
-                    None => return Err("multiple root elements".into()),
+                    None => return Err("ルート要素が 2 つ以上あります".into()),
                 }
             }
             Event::End(_) => {
@@ -71,7 +71,7 @@ fn parse_tree(text: &str) -> Result<Node, String> {
                 match stack.last_mut() {
                     Some(parent) => parent.children.push(node),
                     None if root.is_none() => root = Some(node),
-                    None => return Err("multiple root elements".into()),
+                    None => return Err("ルート要素が 2 つ以上あります".into()),
                 }
             }
             Event::Eof => break,
@@ -79,7 +79,7 @@ fn parse_tree(text: &str) -> Result<Node, String> {
         }
     }
     if !stack.is_empty() {
-        return Err("unexpected end of file (unclosed element)".into());
+        return Err("要素が閉じられないまま終わっています".into());
     }
     root.ok_or_else(|| "no root element".into())
 }

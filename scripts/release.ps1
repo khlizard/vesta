@@ -91,6 +91,8 @@ try {
   Remove-Item $Publish -Recurse -Force -ErrorAction SilentlyContinue
   New-Item -ItemType Directory -Force $Publish, $Releases | Out-Null
   Copy-Item $exe $Publish
+  # The licences of Vesta and of the libraries in the exe go with every copy.
+  Copy-Item (Join-Path $Root "LICENSE"), (Join-Path $Root "THIRD-PARTY-NOTICES.md") $Publish
 
   # ---- previous release (for delta updates); none yet is fine
   if ($Token) {

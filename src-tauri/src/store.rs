@@ -27,7 +27,7 @@ fn check_name(name: &str) -> Result<(), String> {
     if !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
         Ok(())
     } else {
-        Err(format!("invalid state name: {name}"))
+        Err(format!("状態ファイルの名前が正しくありません: {name}"))
     }
 }
 
@@ -49,6 +49,18 @@ pub fn write_state(app: &AppHandle, name: &str, json: &str) -> Result<(), String
     let tmp = dir.join(format!("{name}.json.tmp"));
     fs::write(&tmp, json).map_err(|e| e.to_string())?;
     fs::rename(&tmp, dir.join(format!("{name}.json"))).map_err(|e| e.to_string())
+}
+
+/// Sets a state file that could not be read aside as `var/<name>.bad.json` (replacing an older
+/// one), so the next save does not overwrite what the user had. Nothing to do when it is gone.
+pub fn keep_bad_state(app: &AppHandle, name: &str) -> Result<(), String> {
+    check_name(name)?;
+    let dir = var_dir(app)?;
+    match fs::rename(dir.join(format!("{name}.json")), dir.join(format!("{name}.bad.json"))) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 #[cfg(test)]

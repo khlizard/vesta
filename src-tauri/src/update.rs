@@ -61,7 +61,9 @@ pub fn restart_now() -> Result<(), String> {
 /// On exit: lets the Velopack updater apply a downloaded update once this process has ended.
 pub fn apply_on_exit() {
     let ready = crate::com::lock(&READY).take();
-    if let Some((um, asset)) = ready {
-        let _ = um.wait_exit_then_apply_updates(&asset, true, false, Vec::<String>::new());
+    if let Some((um, asset)) = ready
+        && let Err(e) = um.wait_exit_then_apply_updates(&asset, true, false, Vec::<String>::new())
+    {
+        crate::logfile::line(&format!("update could not be applied on exit: {e}"));
     }
 }

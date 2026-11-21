@@ -23,7 +23,7 @@ fn effect_name(effect: DROPEFFECT) -> &'static str {
 }
 
 fn drag_blocking(hwnd: HWND, locations: &[String]) -> Result<String, String> {
-    let data = dataobject::data_object(locations).map_err(|e| e.plain("no items to drag"))?;
+    let data = dataobject::data_object(locations).map_err(|e| e.plain("ドラッグする項目がありません"))?;
     let effect = unsafe {
         SHDoDragDrop(
             Some(hwnd),
@@ -82,7 +82,7 @@ pub async fn start_drag(window: tauri::WebviewWindow, locations: Vec<String>) ->
     // A request that never ran (should not happen) is answered by dropping its sender.
     *com::lock(&PENDING) = Some((locations, tx));
     unsafe { PostMessageW(Some(hwnd), WM_APP_DRAG, WPARAM(0), LPARAM(0)) }.map_err(com::err)?;
-    rx.await.map_err(|_| "drag was dropped".to_string())?
+    rx.await.map_err(|_| "ドラッグが途中で止まりました".to_string())?
 }
 
 #[cfg(test)]

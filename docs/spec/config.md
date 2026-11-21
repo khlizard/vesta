@@ -11,7 +11,10 @@
 
 - `Option.Reload`（設定ファイルの再読み込み）で usr/ を読み直す
 - session.json の `window` は `{ "x", "y", "width", "height", "maximized" }`（物理ピクセル。ui.md「ウィンドウ」）
-- 「設定ファイルフォルダを開く」は usr/ をタブで開く
+- メニューの「ツール → 設定ファイルのフォルダ」は usr/ をタブで開く
+- var/ の JSON（session.json、config.json、folders.json）が読めないとき（途中で切れている、JSON でない）は、既定の状態で始める。読めなかったファイルは `<名前>.bad.json` に名前を変えて残し（次の保存で上書きしないため。前の .bad.json があれば置き換える）、ステータスバーに出す
+- var/ の JSON を保存できなかったときは、ステータスバーに出し、vesta.log に書く
+- vesta.log には、フロントエンドの問題（起動の各段階の失敗、設定ファイルの警告、Vesta にないコマンド名、更新の確認の失敗など）も書く
 
 ## XML の共通ルール
 

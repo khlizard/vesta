@@ -7,6 +7,7 @@ import { sameLocation } from "../model/paths";
 import * as T from "../model/tabs";
 import { mayClose } from "./exclusive";
 import { loadViews } from "./folderViews";
+import { logLine } from "./log";
 import { reloadPane } from "./loading";
 import { openExternal } from "./navigation";
 import { flushState, restoreSession, saveSessionSoon, sessionRestored } from "./session";
@@ -31,7 +32,7 @@ export async function startApp() {
     try {
       await f();
     } catch (e) {
-      console.warn(`startup: ${what}`, e);
+      logLine(`startup: ${what}`, e);
     }
   };
   await step("folder events", () =>
@@ -68,8 +69,8 @@ export async function startApp() {
  */
 async function watchWindow() {
   const win = getCurrentWindow();
-  await win.onMoved(saveSessionSoon).catch(() => {});
-  await win.onResized(saveSessionSoon).catch(() => {});
+  await win.onMoved(saveSessionSoon).catch((e) => logLine("window move events", e));
+  await win.onResized(saveSessionSoon).catch((e) => logLine("window resize events", e));
   // The window is destroyed after this handler returns, unless the close is cancelled.
   await win
     .onCloseRequested(async (event) => {
@@ -79,7 +80,8 @@ async function watchWindow() {
       }
       await flushState();
     })
-    .catch(() => {});
+    // Without this handler nothing is written when the window closes.
+    .catch((e) => logLine("window close events", e));
 }
 
 /**

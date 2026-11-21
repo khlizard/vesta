@@ -7,6 +7,7 @@ import { reloadUiConfig } from "../config/load";
 import { NO_MODS, type Mods } from "../model/navigation";
 import * as T from "../model/tabs";
 import { refreshPane } from "../state/loading";
+import { logLine } from "../state/log";
 import { goHistory, goUp, openNewTab } from "../state/navigation";
 import * as A from "../state/tabActions";
 import * as F from "../state/fileActions";
@@ -303,7 +304,7 @@ export async function runCommand(text: string, ctx: CommandContext = { mods: NO_
     const p = parseCommand(part);
     const def = COMMANDS[p.name];
     if (!def) {
-      console.warn(`unknown command: ${part}`);
+      logLine(`unknown command: ${part}`);
       continue;
     }
     if (def.enabled && !def.enabled(p)) continue;

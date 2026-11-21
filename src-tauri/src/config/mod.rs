@@ -74,7 +74,7 @@ fn load_one<T>(
     match fs::OpenOptions::new().write(true).create_new(true).open(&path) {
         Ok(mut f) => {
             if let Err(e) = f.write_all(default.as_bytes()) {
-                warnings.push(format!("{name}: cannot write default file: {e}"));
+                warnings.push(format!("{name}: 既定のファイルを書けません: {e}"));
             }
         }
         Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
@@ -86,7 +86,7 @@ fn load_one<T>(
     match parsed {
         Ok(v) => v,
         Err(e) => {
-            warnings.push(format!("{name}: {e}; using the built-in default"));
+            warnings.push(format!("{name}: {e}（組み込みの既定を使います）"));
             parse(default).expect("embedded default must parse")
         }
     }
@@ -140,7 +140,7 @@ pub fn response(usr: Result<PathBuf, String>) -> UiConfigResponse {
         // No settings folder (it cannot be created): the app still gets its menus and keys.
         Err(e) => UiConfigResponse {
             config: defaults(),
-            warnings: vec![format!("usr: {e}; using the built-in settings")],
+            warnings: vec![format!("usr: {e}（組み込みの設定を使います）")],
             usr_dir: String::new(),
         },
     }
@@ -160,7 +160,7 @@ mod response_tests {
     fn without_a_settings_folder_the_built_in_settings_are_used() {
         let r = response(Err("access denied".into()));
         assert_eq!(r.config, defaults());
-        assert_eq!(r.warnings, vec!["usr: access denied; using the built-in settings".to_string()]);
+        assert_eq!(r.warnings, vec!["usr: access denied（組み込みの設定を使います）".to_string()]);
         assert_eq!(r.usr_dir, "");
     }
 

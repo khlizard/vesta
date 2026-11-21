@@ -2,6 +2,7 @@
 
 import { backend } from "../api/backend";
 import { shownTabs } from "../model/tabs";
+import { logLine } from "./log";
 import { getState, type AppState } from "./store";
 
 let watched = "";
@@ -20,5 +21,5 @@ export function syncWatches(fresh = false) {
   const key = locs.join("|");
   if (key === watched && !fresh) return;
   watched = key;
-  void backend.watchFolders(locs, fresh).catch(() => {});
+  void backend.watchFolders(locs, fresh).catch((e) => logLine("watch_folders", e));
 }

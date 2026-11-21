@@ -240,7 +240,7 @@ pub fn hdrop_paths(data: &IDataObject) -> Vec<String> {
 /// The bytes of a format handed over as a memory block.
 pub fn global_data(data: &IDataObject, format: u16) -> Result<Vec<u8>, String> {
     let medium = Medium::get(data, &global(format)).map_err(err)?;
-    medium.bytes(None).unwrap_or_else(|| Err("unsupported data".into()))
+    medium.bytes(None).unwrap_or_else(|| Err("受け取れない形式のデータです".into()))
 }
 
 /// Stores `bytes` in `data` as `format`, in a memory block the data object then owns.

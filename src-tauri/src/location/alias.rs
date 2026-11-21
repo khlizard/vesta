@@ -113,7 +113,7 @@ fn normalize_with(
             AliasTarget::Known(id) => known_folder(&id)?,
             AliasTarget::Fixed(p) => p.to_string(),
             AliasTarget::Avesta => avesta_dir
-                .ok_or("AVESTA alias is not available yet")?
+                .ok_or("設定フォルダの場所がまだ決まっていません")?
                 .to_string_lossy()
                 .into_owned(),
         };
@@ -211,7 +211,7 @@ mod tests {
         assert_eq!(norm(r"vesta\usr").unwrap(), r"C:\Users\a\AppData\Roaming\vesta\usr");
         // Before the app has set its folder.
         let early = normalize_with("AVESTA", env, known, None).unwrap_err();
-        assert!(early.contains("not available"), "{early}");
+        assert!(early.contains("まだ決まっていません"), "{early}");
         // A known folder Windows cannot name is an error, not a path.
         assert_eq!(norm("mymusic").unwrap_err(), "no such folder");
     }

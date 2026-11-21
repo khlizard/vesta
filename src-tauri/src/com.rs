@@ -71,6 +71,10 @@ impl StaPool {
     }
 
     /// Runs `f` on a pool thread and waits for the result without blocking the async runtime.
+    ///
+    /// The `catch_unwind` here (and in `run_blocking` / `spawn`) only works in debug and test
+    /// builds. A release build is compiled with `panic = "abort"`: there a panic runs the hook
+    /// of `startup::install_panic_hook` (crash.log and a message) and ends the process.
     pub async fn run<R, F>(&self, f: F) -> Result<R, String>
     where
         R: Send + 'static,
@@ -82,8 +86,8 @@ impl StaPool {
                 let result = catch_unwind(AssertUnwindSafe(f)).map_err(panic_message);
                 let _ = otx.send(result);
             }))
-            .map_err(|_| "STA pool is closed".to_string())?;
-        orx.await.map_err(|_| "STA job was dropped".to_string())?
+            .map_err(|_| "処理を始められません（作業スレッドが止まっています）".to_string())?;
+        orx.await.map_err(|_| "処理が途中で止まりました".to_string())?
     }
 
     /// Runs `f` on a pool thread and blocks the caller until it finishes (used by tests).
@@ -99,8 +103,8 @@ impl StaPool {
                 let result = catch_unwind(AssertUnwindSafe(f)).map_err(panic_message);
                 let _ = otx.send(result);
             }))
-            .map_err(|_| "STA pool is closed".to_string())?;
-        orx.recv().map_err(|_| "STA job was dropped".to_string())?
+            .map_err(|_| "処理を始められません（作業スレッドが止まっています）".to_string())?;
+        orx.recv().map_err(|_| "処理が途中で止まりました".to_string())?
     }
 
     /// Queues `f` without waiting for it.
@@ -304,7 +308,7 @@ where
             let _ = tx.send(f());
         })
         .map_err(|e| e.to_string())?;
-    rx.await.map_err(|_| format!("{what} was dropped"))
+    rx.await.map_err(|_| format!("処理が途中で止まりました（{what}）"))
 }
 
 /// Runs `f` on the runtime's blocking threads (work that waits on the disk or the network and

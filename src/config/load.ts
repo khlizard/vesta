@@ -4,6 +4,7 @@
 import { backend } from "../api/backend";
 import { isKnownCommand } from "../commands/registry";
 import { errorText } from "../model/input";
+import { logLine } from "../state/log";
 import { setMessage } from "../state/message";
 import { useConfig } from "./store";
 import type { KeyBinding, MenuItem, UiConfig } from "./types";
@@ -76,15 +77,15 @@ export async function loadUiConfig(): Promise<string[]> {
   try {
     const r = await backend.uiConfig();
     useConfig.setState(pruneConfig(r.config));
-    for (const w of r.warnings) console.warn(w);
+    for (const w of r.warnings) logLine(w);
     if (r.warnings.length) setMessage(`設定ファイルの一部を読めませんでした: ${r.warnings[0]}`);
     const unknown = unknownCommands(r.config);
-    if (unknown.length) console.warn(`unknown commands in usr/*.xml: ${unknown.join(", ")}`);
+    if (unknown.length) logLine(`unknown commands in usr/*.xml: ${unknown.join(", ")}`);
     return unknown;
   } catch (e) {
     // The backend answers with the built-in settings even when usr/ cannot be used, so this
     // only happens if the call itself fails; the window then has no menus until a reload works.
-    console.warn("get_ui_config failed", e);
+    logLine("get_ui_config failed", e);
     setMessage(`設定ファイルを読めませんでした: ${errorText(e)}`);
     return [];
   }

@@ -6,8 +6,10 @@ import { iconUrl } from "../api/urls";
 import { linkAction, runItem } from "../commands/items";
 import { useConfig } from "../config/store";
 import type { MenuItem } from "../config/types";
+import { errorText } from "../model/input";
 import type { Mods } from "../model/navigation";
 import { compareNames } from "../model/sort";
+import { setMessage } from "./message";
 import { isSeparator, openPopup, popupOwner, switchesOnHover, type PopupItem } from "./popup";
 import { getState, setState, type LinkTarget } from "./store";
 
@@ -66,7 +68,7 @@ export function linkHasMenu(cfg: MenuItem, target: LinkTarget | null | undefined
 function showLinkMenu(at: { x: number; y: number }, parent: string, location: string): Promise<void> {
   return backend.showContextMenu(parent, [location], at.x, at.y).then(
     () => {},
-    () => {},
+    (e) => setMessage(errorText(e)),
   );
 }
 
@@ -149,7 +151,7 @@ export function hoverLink(index: number, at: { x: number; y: number }) {
   const cfg = button(index);
   if (!cfg) return;
   const hasMenu = linkHasMenu(cfg, cfg.path ? getState().linkTargets[cfg.path] : null);
-  if (switchesOnHover(popupOwner(), `${LINK_OWNER}${index}`, LINK_OWNER, hasMenu)) void openLinkMenu(index, cfg, at, true);
+  if (switchesOnHover(popupOwner(), `${LINK_OWNER}${index}`, LINK_OWNER, hasMenu)) openLinkMenu(index, cfg, at, true).catch((e) => setMessage(errorText(e)));
 }
 
 /** Right-click on a link bar button: the Shell menu of what it points to. Ends when the menu has closed. */

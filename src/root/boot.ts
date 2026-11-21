@@ -8,6 +8,7 @@ import { useConfig } from "../config/store";
 import { windowTitle } from "../model/labels";
 import { currentTab } from "../model/tabs";
 import { resolveLinks } from "../state/links";
+import { logLine } from "../state/log";
 import { loadOptions } from "../state/options";
 import { startApp } from "../state/startup";
 import { setState, useStore, type AppState } from "../state/store";
@@ -43,7 +44,7 @@ export function boot(): () => void {
     try {
       await f();
     } catch (e) {
-      console.warn(`startup: ${what}`, e);
+      logLine(`startup: ${what}`, e);
     }
   };
   followTitle();

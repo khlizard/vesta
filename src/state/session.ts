@@ -6,6 +6,7 @@ import { saveLater, within } from "../model/pacing";
 import { buildSession, parseSession, placeholderFolder } from "../model/session";
 import * as T from "../model/tabs";
 import { getViewFor, saveViews } from "./folderViews";
+import { saveFailed, setAsideBadState } from "./log";
 import { reloadPane } from "./loading";
 import { makeTab } from "./navigation";
 import { saveOptions } from "./options";
@@ -25,7 +26,7 @@ const saver = saveLater(1000, async () => {
   if (!sessionReady) return;
   lastWindow = (await backend.windowPlacement().catch(() => null)) ?? lastWindow;
   const s = getState();
-  await backend.writeState("session", JSON.stringify(buildSession(s.tabs, s.mru, lastWindow))).catch(() => {});
+  await backend.writeState("session", JSON.stringify(buildSession(s.tabs, s.mru, lastWindow))).catch(saveFailed("session.json"));
 });
 
 const FLUSH_LIMIT_MS = 2000;
@@ -44,7 +45,11 @@ export async function restoreSession(): Promise<boolean> {
   const raw = await backend.readState("session").catch(() => null);
   if (!raw) return false;
   const session = parseSession(raw);
-  if (!session) return false;
+  if (!session) {
+    // Kept aside: the first save of this run would otherwise overwrite the tabs it held.
+    await setAsideBadState("session", "前回のタブ");
+    return false;
+  }
   lastWindow = session.window ?? null;
   setState({ mru: session.mru });
   if (!getState().options.RestoreCond || !session.tabs.length) return false;

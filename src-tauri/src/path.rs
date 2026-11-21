@@ -18,13 +18,19 @@ pub fn key(path: &str) -> String {
     path.trim_end_matches('\\').to_lowercase()
 }
 
-/// `path` is somewhere below the folder `folder` (not the folder itself). Empty paths never match.
-/// Only ASCII letters are compared without case.
-pub fn is_inside(path: &str, folder: &str) -> bool {
-    let folder = folder.trim_end_matches('\\');
-    !folder.is_empty()
-        && path.get(..folder.len()).is_some_and(|head| head.eq_ignore_ascii_case(folder))
-        && path[folder.len()..].starts_with('\\')
+/// `path` is somewhere below one of `folders` (not one of them itself). `folders` holds `key`s;
+/// an empty key never matches. Looks up each parent of `path`, so the cost follows the depth of
+/// the path and not the number of folders.
+pub fn is_below_any(path: &str, folders: &std::collections::HashSet<String>) -> bool {
+    let path = key(path);
+    let mut parent = path.as_str();
+    while let Some(i) = parent.rfind('\\') {
+        parent = &parent[..i];
+        if !parent.is_empty() && folders.contains(parent) {
+            return true;
+        }
+    }
+    false
 }
 
 /// A file name as (stem, extension with its dot): `a.tar.gz` is (`a.tar`, `.gz`). A name that
@@ -76,13 +82,16 @@ mod tests {
     }
 
     #[test]
-    fn is_inside_matches_items_below_a_folder_only() {
-        assert!(is_inside(r"C:\a\b\c.txt", r"C:\a\b"));
-        assert!(is_inside(r"C:\A\B\c.txt", r"c:\a\b\"));
-        assert!(!is_inside(r"C:\a\b", r"C:\a\b"));
-        assert!(!is_inside(r"C:\a\bc\d.txt", r"C:\a\b"));
-        assert!(!is_inside(r"C:\a\b", ""));
-        assert!(!is_inside(r"C:\あ\い", r"C:\あい"));
+    fn is_below_any_matches_items_below_a_folder_only() {
+        let set = |folders: &[&str]| folders.iter().map(|f| key(f)).collect::<std::collections::HashSet<_>>();
+        assert!(is_below_any(r"C:\a\b\c.txt", &set(&[r"C:\a\b"])));
+        assert!(is_below_any(r"C:\A\B\sub\c.txt", &set(&[r"C:\x", r"c:\a\b\"])));
+        assert!(!is_below_any(r"C:\a\b", &set(&[r"C:\a\b"])));
+        assert!(!is_below_any(r"C:\a\bc\d.txt", &set(&[r"C:\a\b"])));
+        assert!(!is_below_any(r"C:\a\b", &set(&[""])));
+        assert!(!is_below_any(r"\\srv\share\a", &set(&[""])));
+        assert!(!is_below_any(r"C:\あ\い", &set(&[r"C:\あい"])));
+        assert!(!is_below_any("", &set(&[r"C:\a"])));
     }
 
     #[test]
