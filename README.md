@@ -2,6 +2,8 @@
 
 Windows 用のタブ型ファイラ。開いたタブを横に並べて表示し、Explorer と同じ右クリックメニュー・ごみ箱・元に戻すが使える。
 
+![2 つのタブを横に並べて表示している Vesta。左は詳細、右は縮小版](docs/images/screenshot.png)
+
 タブ型ファイラ Avesta（作者：LaLa Moo-Moo 氏。現在は [Avestan](https://github.com/takechi/Avestan) として保守されている）を手本に、Tauri（Rust と Web 技術）で一から作り直したもの。Avesta のプログラム・画像・設定ファイルは含んでいない。
 
 ## インストール
