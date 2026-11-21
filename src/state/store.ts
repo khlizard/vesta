@@ -1,4 +1,5 @@
-// Application state (zustand). Flows that call the backend live in ./actions.ts.
+// Application state (zustand). The flows that change it and call the backend are the other
+// files of this folder (loading.ts, navigation.ts, fileActions.ts, ...).
 
 import { create } from "zustand";
 import type { DiskFree, Entry, FolderInfo } from "../api/types";

@@ -6,7 +6,7 @@
 // chosen is sent to the root.
 
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
-import { modsOf } from "../model/input";
+import { cx, modsOf } from "../model/input";
 import { accessKeyTarget, endSelectable, nextSelectable, placeMenu } from "../model/menu";
 import type { Mods } from "../model/navigation";
 import { popupView } from "../presenters/chrome";
@@ -153,7 +153,7 @@ function Menu({ items, x, y, parentRect, onBack, selectFirst }: MenuProps) {
               ref={(el) => {
                 itemEls.current[i] = el;
               }}
-              className={`popup-item${i === active ? " active" : ""}${enabled ? "" : " disabled"}${item.missing ? " missing" : ""}`}
+              className={cx("popup-item", i === active && "active", !enabled && "disabled", item.missing && "missing")}
               title={item.missing ? missingTitle(item.path) : undefined}
               onMouseEnter={() => {
                 if (!enabled) return setSub(null);
@@ -172,7 +172,7 @@ function Menu({ items, x, y, parentRect, onBack, selectFirst }: MenuProps) {
                 dispatch({ type: "menu.context", item, at: { x: e.clientX, y: e.clientY } });
               }}
             >
-              <span className={`popup-icon${checked ? " checked" : ""}`}>
+              <span className={cx("popup-icon", checked && "checked")}>
                 {item.missing ? (
                   MISSING_MARK
                 ) : item.iconSrc ? (

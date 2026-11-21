@@ -372,3 +372,28 @@ export function reuseTab(s: TabsState, id: string, action: Action): TabsState {
       return s;
   }
 }
+
+/** The box of a tab on screen. */
+export interface TabBox {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+/**
+ * While the tab at index `from` is dragged with the pointer at (x, y): the index of the tab it
+ * should change places with, or null. `boxes` are the tabs' boxes in order (null: not drawn).
+ * The tabs change places only once the pointer is past the middle of the other one: they would
+ * swap back and forth otherwise.
+ */
+export function dragOverIndex(from: number, boxes: (TabBox | null)[], x: number, y: number): number | null {
+  for (let to = 0; to < boxes.length; to++) {
+    const r = boxes[to];
+    if (to === from || !r) continue;
+    if (x < r.left || x >= r.right || y < r.top || y >= r.bottom) continue;
+    const mid = (r.left + r.right) / 2;
+    return (to > from && x > mid) || (to < from && x < mid) ? to : null;
+  }
+  return null;
+}

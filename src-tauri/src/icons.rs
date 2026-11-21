@@ -136,10 +136,9 @@ fn icon_key(loc: &str, size: i32, item: &str) -> String {
         }
         _ => false,
     };
-    if per_ext {
-        format!("ext:{}:{size}", ext.unwrap())
-    } else {
-        format!("loc:{}:{size}:{item}", loc.to_lowercase())
+    match ext {
+        Some(ext) if per_ext => format!("ext:{ext}:{size}"),
+        _ => format!("loc:{}:{size}:{item}", loc.to_lowercase()),
     }
 }
 

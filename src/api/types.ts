@@ -1,5 +1,7 @@
 // Mirror of src-tauri/src/types.rs. Change both together.
 
+import type { UiConfig } from "../config/types";
+
 export interface FolderInfo {
   /** File system path, Shell parsing name (`::{GUID}`, `\\server`) or `DESKTOP` (namespace root). */
   location: string;
@@ -87,4 +89,12 @@ export interface WindowPlacement {
   width: number;
   height: number;
   maximized: boolean;
+}
+
+/** Mirror of `config::UiConfigResponse` (src-tauri/src/config/mod.rs). */
+export interface UiConfigResponse {
+  config: UiConfig;
+  /** The files that fell back to the built-in ones, and why. */
+  warnings: string[];
+  usrDir: string;
 }

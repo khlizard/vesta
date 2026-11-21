@@ -3,7 +3,7 @@
 // Specs: docs/spec/listing.md「選択」「マウス」, docs/spec/fileops.md
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { dragStarted, modsOf } from "../../model/input";
+import { cx, dragStarted, modsOf } from "../../model/input";
 import { edgeScrollSpeed, isListKey, pageStep } from "../../model/selection";
 import type { Entry, ListModel } from "../../presenters/list";
 import { dispatch } from "../../root/dispatch";
@@ -306,7 +306,7 @@ export function ListBase(props: ListBaseProps) {
   return (
     <div
       ref={scrollerRef}
-      className={`list ${className ?? ""}`}
+      className={cx("list", className)}
       {...LIST_MARK}
       tabIndex={0}
       onScroll={(e) => {

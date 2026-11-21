@@ -43,6 +43,11 @@ export interface PopupRequest {
 /** Owner prefix of the popups opened from the menu bar. */
 export const MENU_OWNER = "menu:";
 
+/** Index of the menu bar item that owns a popup with this owner, or -1. */
+export function menuBarIndex(owner: string | null | undefined): number {
+  return owner?.startsWith(MENU_OWNER) ? Number(owner.slice(MENU_OWNER.length)) : -1;
+}
+
 let opened = 0;
 
 /**

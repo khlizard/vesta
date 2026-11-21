@@ -30,3 +30,15 @@ export async function setAsideBadState(name: string, what: string) {
     15000,
   );
 }
+
+/**
+ * Runs one step of startup. A step that fails is logged and the next one still runs: a damaged
+ * file or an unreachable folder must not leave the window empty or keep saving from working.
+ */
+export async function startupStep(what: string, f: () => unknown): Promise<void> {
+  try {
+    await f();
+  } catch (e) {
+    logLine(`startup: ${what}`, e);
+  }
+}

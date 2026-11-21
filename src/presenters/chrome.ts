@@ -2,7 +2,7 @@
 // around a drop target.
 
 import type { MenuItem } from "../config/types";
-import { MENU_OWNER, type PopupRequest } from "../state/popup";
+import { menuBarIndex, type PopupRequest } from "../state/popup";
 import type { Dialog, Frame } from "../state/store";
 import { itemLabel, type ItemLabel } from "./items";
 import { presenter } from "./view";
@@ -34,7 +34,7 @@ export interface MenuBarVM {
 
 /** Index of the menu bar item that owns the popup, or -1. */
 export function openBarItem(popup: Pick<PopupRequest, "owner"> | null): number {
-  return popup?.owner?.startsWith(MENU_OWNER) ? Number(popup.owner.slice(MENU_OWNER.length)) : -1;
+  return menuBarIndex(popup?.owner);
 }
 
 export const menuBarView = presenter(

@@ -36,7 +36,7 @@ import { clickLink, contextLink, hoverLink } from "../commands/links";
 import { setMessage } from "../state/message";
 import { goHistory, goUp, navigate, openEntries, openExternal, openInput } from "../state/navigation";
 import { setOption } from "../state/options";
-import { closePopup, MENU_OWNER, openPopup, popupOwner, type PopupItem } from "../state/popup";
+import { closePopup, MENU_OWNER, menuBarIndex, openPopup, popupOwner, type PopupItem } from "../state/popup";
 import {
   clickItem,
   jumpToPrefix,
@@ -100,8 +100,7 @@ function openMenuBar(index: number, byKey: boolean) {
 
 /** Index of the menu bar item whose menu is open, or -1. */
 function openBarIndex(): number {
-  const owner = popupOwner();
-  return owner?.startsWith(MENU_OWNER) ? Number(owner.slice(MENU_OWNER.length)) : -1;
+  return menuBarIndex(popupOwner());
 }
 
 const barAccessKeys = () => useConfig.getState().menu.map((m) => menuLabel(m.text).accessKey);

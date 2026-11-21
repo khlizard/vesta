@@ -7,7 +7,7 @@ import { sameLocation } from "../model/paths";
 import * as T from "../model/tabs";
 import { mayClose } from "./exclusive";
 import { loadViews } from "./folderViews";
-import { logLine } from "./log";
+import { logLine, startupStep } from "./log";
 import { reloadPane } from "./loading";
 import { openExternal } from "./navigation";
 import { flushState, restoreSession, saveSessionSoon, sessionRestored } from "./session";
@@ -28,13 +28,7 @@ export async function startApp() {
   subscribe();
   // Each step may fail on its own (a damaged file, an unreachable folder); the rest still runs,
   // so the window always ends up usable, saving works and the caller can go on to the update check.
-  const step = async (what: string, f: () => Promise<unknown>) => {
-    try {
-      await f();
-    } catch (e) {
-      logLine(`startup: ${what}`, e);
-    }
-  };
+  const step = startupStep;
   await step("folder events", () =>
     listen<{ location: string }>("folder-changed", (ev) => {
       const s = getState();

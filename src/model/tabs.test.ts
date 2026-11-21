@@ -6,6 +6,7 @@ import {
   clickTab,
   closeTabs,
   cycleCurrent,
+  dragOverIndex,
   focusTab,
   moveTab,
   newlyShown,
@@ -288,5 +289,25 @@ describe("wheel", () => {
     const s = wheelTabs(state("a* b*! c! d", "a"), 1);
     expect(shownIds(s)).toEqual(["b", "d"]);
     expect(s.currentId).toBe("d");
+  });
+});
+
+describe("dragOverIndex", () => {
+  // Three tabs of 100px side by side, 20px high.
+  const boxes = [0, 100, 200].map((left) => ({ left, right: left + 100, top: 0, bottom: 20 }));
+
+  it("changes places only past the middle of the other tab", () => {
+    expect(dragOverIndex(0, boxes, 140, 10)).toBeNull();
+    expect(dragOverIndex(0, boxes, 160, 10)).toBe(1);
+    expect(dragOverIndex(2, boxes, 160, 10)).toBeNull();
+    expect(dragOverIndex(2, boxes, 140, 10)).toBe(1);
+    expect(dragOverIndex(0, boxes, 260, 10)).toBe(2);
+  });
+
+  it("is nothing over the dragged tab itself, outside the tabs, or over a tab that is not drawn", () => {
+    expect(dragOverIndex(1, boxes, 150, 10)).toBeNull();
+    expect(dragOverIndex(0, boxes, 160, 30)).toBeNull();
+    expect(dragOverIndex(0, boxes, 400, 10)).toBeNull();
+    expect(dragOverIndex(0, [boxes[0], null, boxes[2]], 160, 10)).toBeNull();
   });
 });

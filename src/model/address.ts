@@ -21,3 +21,16 @@ export function listableParent(parent: string): { path: string; resolve: boolean
   const path = parent.replace(/\//g, "\\");
   return { path, resolve: path.startsWith("~\\") };
 }
+
+/**
+ * What Enter commits in the address bar: the suggestion picked from the list (its folder plus
+ * the name), else what is typed.
+ */
+export function committedText(
+  suggest: { parent: string; names: string[] } | null,
+  pick: number,
+  typed: string,
+): string {
+  const picked = suggest && pick >= 0 ? suggest.names[pick] : undefined;
+  return suggest && picked !== undefined ? suggest.parent + picked : typed;
+}

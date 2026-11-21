@@ -9,7 +9,7 @@ import { windowTitle } from "../model/labels";
 import { currentTab } from "../model/tabs";
 import { resolveLinks } from "../state/links";
 import { loadUiConfig } from "../state/uiConfig";
-import { logLine } from "../state/log";
+import { startupStep } from "../state/log";
 import { loadOptions } from "../state/options";
 import { startApp } from "../state/startup";
 import { setState, useStore, type AppState } from "../state/store";
@@ -43,13 +43,7 @@ export function boot(): () => void {
   const stopInput = listenToWindow(!import.meta.env.DEV);
   // Every step runs even when an earlier one fails: a broken settings file must not leave the
   // window empty, and the update check must always start (it is how a bad release gets fixed).
-  const step = (what: string, f: () => unknown) => async () => {
-    try {
-      await f();
-    } catch (e) {
-      logLine(`startup: ${what}`, e);
-    }
-  };
+  const step = (what: string, f: () => unknown) => () => startupStep(what, f);
   followTitle();
   // The links are looked up again whenever the settings are read (Option.Reload).
   useConfig.subscribe((now, before) => {

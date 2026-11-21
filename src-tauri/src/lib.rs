@@ -138,7 +138,8 @@ async fn drop_on_item(
     shelldrop::drop_on_item(window, sources, item, x, y, right_button).await
 }
 
-// File access runs off the main thread: the data folder may sit on a slow or offline share.
+// File access from commands runs off the main thread: the data folder may sit on a slow or
+// offline share. (`setup` reads session.json once on the main thread, before the window shows.)
 #[tauri::command]
 async fn read_state(app: tauri::AppHandle, name: String) -> Result<Option<String>, String> {
     com::blocking(move || store::read_state(&app, &name)).await?

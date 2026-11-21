@@ -69,7 +69,6 @@ pub fn disk_free(location: &str) -> Option<DiskFree> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::SyncState;
 
     #[test]
     fn lists_files_dirs_hidden() {
@@ -115,7 +114,6 @@ mod tests {
         let l = list(&loc, true).unwrap();
         assert_eq!(l.entries.len(), 4);
         assert!(l.entries.iter().find(|e| e.name == "h.txt").unwrap().hidden);
-        let _ = SyncState::Available;
     }
 
     #[test]

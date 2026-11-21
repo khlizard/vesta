@@ -1,6 +1,7 @@
 // Tab bar. Spec: docs/spec/tabs.md
 import { useRef, type PointerEvent } from "react";
-import { dragStarted, modsOf } from "../model/input";
+import { cx, dragStarted, modsOf } from "../model/input";
+import { dragOverIndex } from "../model/tabs";
 import { tabBarView } from "../presenters/tabBar";
 import { useView } from "../presenters/view";
 import { dispatch } from "../root/dispatch";
@@ -33,17 +34,9 @@ export function TabBar() {
     d.moved = true;
     const from = tabs.findIndex((t) => t.id === d.id);
     if (from < 0) return;
-    for (let to = 0; to < tabs.length; to++) {
-      if (to === from) continue;
-      const r = els.current.get(tabs[to].id)?.getBoundingClientRect();
-      if (!r || e.clientX < r.left || e.clientX >= r.right || e.clientY < r.top || e.clientY >= r.bottom) continue;
-      // The tabs change places only past the middle of the other one: they would swap back and forth otherwise.
-      const mid = r.left + r.width / 2;
-      if ((to > from && e.clientX > mid) || (to < from && e.clientX < mid)) {
-        dispatch({ type: "tab.dragOver", id: d.id, over: tabs[to].id });
-      }
-      return;
-    }
+    const boxes = tabs.map((t) => els.current.get(t.id)?.getBoundingClientRect() ?? null);
+    const to = dragOverIndex(from, boxes, e.clientX, e.clientY);
+    if (to !== null) dispatch({ type: "tab.dragOver", id: d.id, over: tabs[to].id });
   };
 
   const endDrag = () => {
@@ -67,9 +60,7 @@ export function TabBar() {
         }}
       >
         {tabs.map((t) => {
-          const cls = ["tab", t.shown ? "shown" : "hidden", t.current ? "current" : "", t.locked ? "locked" : ""]
-            .filter(Boolean)
-            .join(" ");
+          const cls = cx("tab", t.shown ? "shown" : "hidden", t.current && "current", t.locked && "locked");
           return (
             <div
               key={t.id}

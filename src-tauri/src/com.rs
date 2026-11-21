@@ -8,9 +8,10 @@
 //! | Thread | Work | Why there |
 //! |---|---|---|
 //! | main thread (`on_main`, window subclasses) | context menu (`context_menu`), starting a drag (`dragdrop`), the window's drop target (`droptarget`), right-button drop (`shelldrop`) | they need the window and its message loop (menus, OLE drag and drop) |
+//! | main thread (commands that are not `async`) | `key_state`, `expand_env`, `startup_paths`, `window_placement` in `lib.rs`; reading session.json in `setup` | they answer at once from memory or the window; nothing here may wait for a disk or the network |
 //! | `sta-list` x4 (`list_pool`) | listing folders, resolving locations, ancestors, shortcut targets, free space | quick queries; a slow network folder holds up one thread only |
 //! | `sta-icon` x4 (`icon_pool`) | icons and thumbnails (`icons`) | many and slow; must not hold up listings |
-//! | `sta-op` x1 (`op_pool`) | file operations and undo (`fileops`) | one at a time, so the undo history stays ordered |
+//! | `sta-op` x1 (`op_pool`) | file operations and undo (`fileops`), including the Recycle Bin's own menu used to restore an item (`fileops::recycle_bin`) | one at a time, so the undo history stays ordered |
 //! | `sta-clip` x1 (`clip_pool`) | the clipboard (`clipboard`) | must answer while a long file operation runs |
 //! | `sta-launch` x2 (`launch_pool`) | opening items (`launch`) | the Shell may show a dialog and block the thread until it is closed |
 //! | blocking threads (`blocking`) | state files, settings, applying the watch list, updates | disk and network waits, no COM |

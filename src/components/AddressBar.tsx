@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { iconUrl } from "../api/urls";
-import { dragStarted, isImeKey, modsOf } from "../model/input";
+import { committedText } from "../model/address";
+import { cx, dragStarted, isImeKey, modsOf } from "../model/input";
 import { addressBarView } from "../presenters/addressBar";
 import { useView } from "../presenters/view";
 import { dispatch } from "../root/dispatch";
@@ -54,9 +55,7 @@ export function AddressBar({ id }: { id: string }) {
     if (isImeKey(e)) return;
     if (e.key === "Enter") {
       e.preventDefault();
-      const picked = suggest && pick >= 0 ? suggest.names[pick] : undefined;
-      const text = suggest && picked !== undefined ? suggest.parent + picked : (draft ?? v.text);
-      dispatch({ type: "address.commit", id, text, mods: modsOf(e) });
+      dispatch({ type: "address.commit", id, text: committedText(suggest, pick, draft ?? v.text), mods: modsOf(e) });
     } else if (e.key === "Escape" || e.key === "Tab") {
       e.preventDefault();
       // The root moves the focus to the list; losing it here drops what was typed.
@@ -86,7 +85,7 @@ export function AddressBar({ id }: { id: string }) {
   };
 
   return (
-    <div ref={rootRef} className={`address${v.current ? " current" : ""}`}>
+    <div ref={rootRef} className={cx("address", v.current && "current")}>
       <div className="address-box">
         {v.hasFolder && v.iconSrc && (
           <img
@@ -134,7 +133,7 @@ export function AddressBar({ id }: { id: string }) {
           {suggest.names.map((name, i) => (
             <div
               key={name}
-              className={`address-item${i === pick ? " picked" : ""}`}
+              className={cx("address-item", i === pick && "picked")}
               onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => dispatch({ type: "address.commit", id, text: suggest.parent + name, mods: modsOf(e) })}
             >

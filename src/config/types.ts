@@ -9,7 +9,7 @@ export interface MenuItem {
   /** Program to run (`execute`) with `args`. */
   execute?: string;
   args?: string;
-  /** Index into the icon strip (menu.png / tool.png / status.png). */
+  /** Icon number, as in Avesta's image strips; drawn from the table in ./icons.ts. */
   image?: number;
   /** link.xml only. */
   path?: string;
