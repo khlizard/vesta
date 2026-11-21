@@ -1,6 +1,6 @@
 [package]
 name = "vesta"
-version = "0.1.0"
+version = "0.1.1"
 description = "Vesta: a tabbed file manager for Windows, remade after Avesta"
 authors = ["khlizard"]
 license = "MIT"
