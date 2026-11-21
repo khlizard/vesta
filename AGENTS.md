@@ -22,6 +22,7 @@
 | `src-tauri/src/` | バックエンド（Rust、`windows` crate で Shell API を呼ぶ） |
 | `src-tauri/resources/usr/` | 既定の設定ファイル |
 | `docs/spec/` | 仕様（コマンドの一覧は `docs/spec/commands.md`） |
+| `docs/development.md` | 同期フォルダでのビルド、検証、リリースの手順 |
 | `docs/poc.md` | 技術検証の結果 |
 | `docs/checklist.md` | 手動で確認する項目 |
 
